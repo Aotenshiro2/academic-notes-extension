@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Academic Notes Collector",
+  "version": "1.0.0",
+  "description": "Capture du contenu web académique et synchronisation avec Journal d'Études",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "tabCapture",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "commands": {
+    "toggle-sidebar": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Toggle Academic Notes sidebar"
+    },
+    "quick-capture": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Quick capture current page"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
