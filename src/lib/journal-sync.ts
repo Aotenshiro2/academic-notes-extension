@@ -359,7 +359,7 @@ export class JournalSync {
    * Créer un lien direct vers la note dans Journal d'Études
    */
   static createJournalLink(note: AcademicNote, canvasId?: string): string {
-    const baseUrl = this.apiBaseUrl || 'https://journal-d-etude-beta.vercel.app'
+    const baseUrl = this.apiBaseUrl || 'https://trading-journal.app'
     
     if (canvasId) {
       return `${baseUrl}/canvas/${canvasId}?search=${encodeURIComponent(note.title)}`

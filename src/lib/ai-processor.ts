@@ -117,7 +117,7 @@ export class AIProcessor {
       if (note.concepts.length === 0) {
         const conceptsResult = results[taskIndex++]
         if (conceptsResult.status === 'fulfilled') {
-          result.concepts = summaryResult.value as string[]
+          result.concepts = conceptsResult.value as string[]
         }
       }
 

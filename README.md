@@ -1,230 +1,107 @@
-# Academic Notes Collector - Extension Chrome
+# Trading Notes by AOKnowledge
 
-> Extension Chrome pour la capture intelligente de contenu académique et synchronisation avec Journal d'Études
+![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Available-green)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 
-## 🎯 Vision du Projet
+Une extension Chrome moderne pour prendre des notes de trading directement pendant votre navigation web.
 
-**Academic Notes Collector** est une extension Chrome moderne qui révolutionne la prise de notes académiques en capturant intelligemment le contenu web et en le synchronisant avec l'application Journal d'Études pour visualisation sous forme de mindmap.
+## ✨ Fonctionnalités
 
-## ✨ Fonctionnalités Principales
+- **📝 Prise de notes rapide** - Interface style Claude avec panneau latéral
+- **📸 Captures d'écran** - Incluez facilement des captures dans vos notes  
+- **🏷️ Organisation automatique** - Classement par page web et métadonnées
+- **💾 Stockage local** - Toutes vos données restent privées sur votre appareil
+- **⌨️ Raccourcis clavier** - Navigation rapide et productive
+- **🌙 Mode sombre** - Interface adaptée à tous les environnements
 
-### 📝 **Capture Intelligente**
-- ✅ **Articles académiques** avec extraction des métadonnées (auteur, DOI, journal)
-- ✅ **Vidéos YouTube/Vimeo** avec extraction des sous-titres
-- ✅ **Documents PDF** avec reconnaissance automatique
-- ✅ **Pages web génériques** avec extraction du contenu principal
-- ✅ **Captures d'écran** annotées et contextuelles
+## 🚀 Installation
 
-### 🧠 **Intelligence Artificielle**
-- ✅ **Résumés automatiques** via Chrome AI (Gemini Nano)
-- ✅ **Extraction de concepts** académiques clés
-- ✅ **Génération de tags** de classification
-- ✅ **Structure mindmap** automatique
-- ✅ **Questions d'étude** générées
+### Depuis le Chrome Web Store (Recommandé)
+1. Visitez le [Chrome Web Store](#) (lien bientôt disponible)
+2. Cliquez sur "Ajouter à Chrome"
+3. Confirmez l'installation
 
-### 🔗 **Synchronisation Journal d'Études**
-- ✅ **Sync bidirectionnelle** avec l'application web
-- ✅ **Canvas automatique** pour organisation des notes
-- ✅ **Métadonnées enrichies** pour traçabilité
-- ✅ **Mode offline** avec sync différée
+### Installation manuelle (Développeurs)
+1. Téléchargez la dernière release depuis [GitHub Releases](#)
+2. Ouvrez Chrome → Extensions → Mode développeur
+3. "Charger l'extension non empaquetée"
+4. Sélectionnez le dossier `dist/`
 
-### 🎨 **Interface Moderne**
-- ✅ **Side panel** React avec Tailwind CSS
-- ✅ **Recherche intelligente** dans les notes
-- ✅ **Statistiques d'usage** et analytics
-- ✅ **Dark/Light mode** adaptatif
+## 📖 Utilisation
 
-## 🛠️ Stack Technique
+1. **Activation** - Cliquez sur l'icône de l'extension ou utilisez `Ctrl+Shift+A`
+2. **Nouvelle note** - Tapez dans l'éditeur en bas et pressez Entrée
+3. **Capture d'écran** - Cliquez sur l'icône appareil photo
+4. **Historique** - Accédez à vos notes précédentes via l'icône horloge
 
-### **Core Technologies**
-- **Chrome Extension Manifest V3** - Architecture moderne et sécurisée
-- **TypeScript** - Sécurité des types et développement robuste
-- **React 18** - Interface utilisateur moderne et réactive
-- **Tailwind CSS** - Styling rapide et cohérent
-
-### **Storage & Data**
-- **IndexedDB** via Dexie.js - Stockage local performant
-- **Chrome Storage API** - Configuration et préférences
-- **Sync Queue System** - Synchronisation fiable
-
-### **AI & Processing**
-- **Chrome AI (Gemini Nano)** - Traitement local et privacy-first
-- **Content Extractors** - Modules spécialisés par type de contenu
-- **Mindmap Generation** - Structure hiérarchique intelligente
-
-### **Build System**
-- **Vite** - Build rapide et hot-reload
-- **Multi-entrypoint** - Service worker, content script, sidepanel
-- **TypeScript compilation** - Type safety
-
-## 🚀 Installation & Développement
+## 🛠️ Développement
 
 ### Prérequis
 - Node.js 18+
-- Chrome/Chromium 120+ (pour Chrome AI)
-- Accès à Journal d'Études (optionnel)
+- npm ou yarn
 
-### Setup Développement
+### Installation locale
 ```bash
-# Installation des dépendances
-npm install
-
-# Build de développement
-npm run dev
-
-# Build de production
-npm run build
-
-# Vérifications
-npm run type-check
-npm run lint
-```
-
-### Chargement dans Chrome
-1. Ouvrir `chrome://extensions/`
-2. Activer le "Mode développeur"
-3. Cliquer "Charger l'extension non empaquetée"
-4. Sélectionner le dossier `dist/`
-
-## 📱 Utilisation
-
-### **Captures Rapides**
-- **Raccourci global** : `Ctrl+Shift+A` (ouvrir sidepanel)
-- **Capture page** : `Ctrl+Shift+C` (capture rapide)
-- **Menu contextuel** : Clic droit → Academic Notes
-
-### **Types de Contenu Supportés**
-- 📄 **Articles** : Blogs, actualités, articles académiques
-- 🎥 **Vidéos** : YouTube, Vimeo, plateformes éducatives
-- 📚 **PDF** : ArXiv, ResearchGate, Google Drive, viewers génériques
-- 🌐 **Documentation** : API docs, tutoriels, guides techniques
-
-### **Synchronisation**
-1. Configurer l'URL Journal d'Études dans les paramètres
-2. Activer la synchronisation automatique
-3. Les notes sont automatiquement envoyées vers un canvas dédié
-4. Visualisation mindmap dans l'application web
-
-## 🔧 Architecture du Code
-
-### **Structure des Dossiers**
-```
-src/
-├── background/           # Service worker
-│   └── service-worker.ts # Orchestration centrale
-├── content/             # Content scripts
-│   └── content-script.ts # Injection DOM et extraction
-├── sidepanel/           # Interface utilisateur
-│   ├── App.tsx         # Application React principale
-│   └── components/     # Composants React
-├── lib/                # Bibliothèques
-│   ├── storage.ts      # Dexie.js et Chrome Storage
-│   ├── ai-processor.ts # Chrome AI et enrichissement
-│   ├── journal-sync.ts # Synchronisation Journal d'Études
-│   └── extractors/     # Extracteurs spécialisés
-└── types/              # Définitions TypeScript
-```
-
-### **Composants Clés**
-- **ContentExtractor** - Orchestration des extracteurs spécialisés
-- **AIProcessor** - Enrichissement IA avec Chrome AI
-- **JournalSync** - Synchronisation bidirectionnelle
-- **Storage** - Gestion unifiée des données locales
-
-## 📊 Fonctionnalités Avancées
-
-### **Intelligence Artificielle**
-- **Chrome AI local** - Pas d'API externe, privacy-first
-- **Résumés contextuels** - Adaptés au type de contenu
-- **Concepts académiques** - Extraction terminologique spécialisée
-- **Mindmap automatique** - Structure hiérarchique intelligente
-
-### **Extracteurs Spécialisés**
-- **ArticleExtractor** - Métadonnées Open Graph, auteurs, citations
-- **VideoExtractor** - Sous-titres, durée, métadonnées enrichies
-- **PDFExtractor** - Support multi-viewer, ArXiv, Google Drive
-
-### **Stockage Hybride**
-- **IndexedDB** - Notes, captures, extraits (données volumineuses)
-- **Chrome Storage** - Configuration, préférences (sync cross-device)
-- **Export/Import** - Sauvegarde complète JSON
-
-## 🌐 Intégration Journal d'Études
-
-### **Workflow Complet**
-1. **Capture** via extension → Stockage local IndexedDB
-2. **Enrichissement IA** → Résumés, concepts, tags
-3. **Sync automatique** → API Journal d'Études
-4. **Visualisation mindmap** → Canvas interactif React Flow
-5. **Organisation** → Connexions, groupements, métadonnées
-
-### **Données Synchronisées**
-- Contenu enrichi avec résumés IA
-- Métadonnées complètes (URL, auteur, date, domaine)
-- Tags et concepts automatiques
-- Structure mindmap prégénérée
-- Captures d'écran contextuelles
-
-## 🔒 Sécurité & Privacy
-
-### **Privacy-First**
-- **Chrome AI local** - Pas de données envoyées vers des serveurs tiers
-- **Stockage local** - IndexedDB chiffré côté navigateur
-- **Sync optionnelle** - Contrôle utilisateur complet
-- **Permissions minimales** - Seulement le nécessaire
-
-### **Permissions Chrome**
-- `sidePanel` - Interface latérale persistante
-- `storage` - Configuration locale
-- `activeTab` - Accès page courante uniquement
-- `scripting` - Injection de scripts pour extraction
-- `contextMenus` - Menus contextuels
-
-## 🚀 Roadmap & Évolutions
-
-### **Phase 1** (Actuelle) - MVP Fonctionnel
-- [x] Architecture complète Manifest V3
-- [x] Extracteurs spécialisés (articles, vidéos, PDF)
-- [x] Interface React moderne
-- [x] Chrome AI intégration
-- [x] Synchronisation Journal d'Études
-
-### **Phase 2** - Enrichissements
-- [ ] Support Notion, Obsidian (export)
-- [ ] OCR pour images et PDFs scannés
-- [ ] Collaboration temps réel
-- [ ] Analytics avancées d'usage
-
-### **Phase 3** - Écosystème
-- [ ] API publique pour intégrations tierces
-- [ ] Plugins pour autres navigateurs
-- [ ] Mobile companion app
-- [ ] Marketplace d'extracteurs
-
-## 🤝 Contribution & Support
-
-### **Développement Local**
-```bash
-git clone <repository-url>
+git clone https://github.com/Aotenshiro2/academic-notes-extension.git
 cd academic-notes-extension
 npm install
-npm run dev
 ```
 
-### **Standards de Code**
-- **TypeScript strict** obligatoire
-- **ESLint** + **Prettier** pour la qualité
-- **React Hooks** patterns modernes
-- **Tests unitaires** avec Vitest
+### Scripts disponibles
+```bash
+npm run dev        # Mode développement
+npm run build      # Build production
+npm run type-check # Vérification TypeScript
+```
 
-### **Architecture Patterns**
-- **Composition over inheritance** pour les extracteurs
-- **Event-driven communication** entre composants
-- **Async/await** pour toutes les opérations async
-- **Error boundaries** React pour la robustesse
+### Architecture
+- **Frontend** : React + TypeScript + Tailwind CSS
+- **Stockage** : Chrome Storage API + IndexedDB
+- **Build** : Vite avec configuration Chrome Extension
+
+## 🔒 Confidentialité
+
+Cette extension respecte votre vie privée :
+- ✅ **Aucune collecte de données** personnelles
+- ✅ **Stockage local uniquement** - vos notes ne quittent jamais votre appareil
+- ✅ **Aucun tracking** ou analytics
+- ✅ **Open source** - code entièrement auditable
+
+[Lire notre politique de confidentialité complète](https://aotenshiro2.github.io/academic-notes-extension/privacy-policy.html)
+
+## 📋 Permissions
+
+L'extension demande les permissions suivantes :
+
+- `sidePanel` - Affichage de l'interface
+- `storage` - Sauvegarde locale de vos notes  
+- `activeTab` - Contexte de la page courante
+- `tabCapture` - Captures d'écran
+- `scripting` - Intégration avec les pages web
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! Consultez notre [guide de contribution](CONTRIBUTING.md).
+
+1. Fork du projet
+2. Créez une branche feature (`git checkout -b feature/amazing-feature`)
+3. Commit des changements (`git commit -m 'Add amazing feature'`)
+4. Push vers la branche (`git push origin feature/amazing-feature`)
+5. Ouvrez une Pull Request
+
+## 🐛 Signaler un bug
+
+Utilisez les [GitHub Issues](https://github.com/Aotenshiro2/academic-notes-extension/issues) pour signaler des bugs ou demander des fonctionnalités.
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## 👥 Équipe
+
+Développé par **AOKnowledge** - Spécialistes en outils de trading et formation.
 
 ---
 
-**Maintenu par l'équipe AOKnowledge**  
-**Version actuelle :** 1.0 Beta  
-**Dernière mise à jour :** 8 novembre 2025
+⭐ N'hésitez pas à donner une étoile si ce projet vous aide dans vos analyses de trading !

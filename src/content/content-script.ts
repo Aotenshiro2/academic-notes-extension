@@ -397,7 +397,7 @@ function enableContentSelection() {
 
 // Initialisation du content script
 function init() {
-  console.log('Academic Notes content script loaded')
+  // Content script initialisé
   
   // Attendre que la page soit entièrement chargée
   if (document.readyState === 'loading') {

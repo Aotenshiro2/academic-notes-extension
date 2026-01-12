@@ -16,62 +16,84 @@ import {
 } from 'lucide-react'
 
 import Header from '@/components/Header'
-import NotesList from '@/components/NotesList'
-import StatsView from '@/components/StatsView'
-import SettingsView from '@/components/SettingsView'
-import CaptureControls from '@/components/CaptureControls'
-import SearchBar from '@/components/SearchBar'
+import CurrentNoteView from '@/components/CurrentNoteView'
+import EmptyNoteView from '@/components/EmptyNoteView'
+import SimpleRichEditor from '@/components/SimpleRichEditor'
+import HistoryDropdown from '@/components/HistoryDropdown'
+import SkoolBanner from '@/components/SkoolBanner'
+import DataMigration from '@/components/DataMigration'
 
 import storage from '@/lib/storage'
-import type { AcademicNote, Settings as SettingsType } from '@/types/academic'
-
-type View = 'notes' | 'stats' | 'settings'
+import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('notes')
+  // Suppression du système de vue par tabs
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   const [notes, setNotes] = useState<AcademicNote[]>([])
-  const [filteredNotes, setFilteredNotes] = useState<AcademicNote[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState({
-    total: { notes: 0, screenshots: 0, extracts: 0 },
-    recent: { notes: 0 }
-  })
+  const [showMigration, setShowMigration] = useState(false)
+  const [editorContent, setEditorContent] = useState('')
+  const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
 
   // Charger les données initiales
   useEffect(() => {
     loadData()
+    loadCurrentPageInfo()
+    
+    // Signaler que le sidepanel est ouvert
+    chrome.storage.session.set({ sidePanelOpen: true })
+    
+    // Écouter les messages de fermeture
+    const handleMessage = (message: any) => {
+      if (message.type === 'CLOSE_SIDEPANEL') {
+        window.close()
+      }
+    }
+    
+    chrome.runtime.onMessage.addListener(handleMessage)
+    
+    // Nettoyer l'état à la fermeture
+    const handleBeforeUnload = () => {
+      chrome.storage.session.set({ sidePanelOpen: false })
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    // Cleanup
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      chrome.storage.session.set({ sidePanelOpen: false })
+    }
   }, [])
 
-  // Filtrer les notes selon la recherche
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredNotes(notes)
-    } else {
-      const filtered = notes.filter(note =>
-        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        note.metadata.domain.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      setFilteredNotes(filtered)
+  // Charger les informations de la page courante
+  async function loadCurrentPageInfo() {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      const currentTab = tabs[0]
+      if (currentTab) {
+        setCurrentPageInfo({
+          url: currentTab.url || '',
+          title: currentTab.title || 'Page sans titre'
+        })
+      }
+    } catch (error) {
+      console.error('Error loading current page info:', error)
     }
-  }, [searchQuery, notes])
+  }
 
   async function loadData() {
     try {
       setIsLoading(true)
-      
-      const [loadedNotes, loadedSettings, loadedStats] = await Promise.all([
-        storage.getNotes(50),
-        storage.getSettings(),
-        storage.getStats()
+      const [loadedNotes, loadedSettings] = await Promise.all([
+        storage.getNotes(1000), // Charger toutes les notes
+        storage.getSettings()
       ])
-
       setNotes(loadedNotes)
       setSettings(loadedSettings)
-      setStats(loadedStats)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -79,196 +101,174 @@ function App() {
     }
   }
 
-  const handleCapture = async (type: 'page' | 'selection' | 'screenshot') => {
+  // Fonction pour ajouter du contenu à la note courante (maintenant avec support HTML)
+  const handleAddContent = async (content: string, noteId: string | null) => {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      if (!tabs[0]?.id) return
-
-      const messageMap = {
-        page: 'CAPTURE_CURRENT_PAGE',
-        selection: 'CAPTURE_SELECTION',
-        screenshot: 'CAPTURE_SCREENSHOT'
+      const currentTab = tabs[0]
+      
+      let domain = ''
+      try {
+        if (currentTab?.url) {
+          domain = new URL(currentTab.url).hostname
+        }
+      } catch (urlError) {
+        console.warn('Invalid URL:', currentTab?.url)
       }
 
-      const response = await chrome.runtime.sendMessage({
-        type: messageMap[type],
-        tabId: tabs[0].id
-      })
-
-      if (response?.success) {
-        await loadData() // Recharger les notes
-      }
-    } catch (error) {
-      console.error('Error capturing:', error)
-    }
-  }
-
-  const handleSettingsChange = async (newSettings: Partial<SettingsType>) => {
-    try {
-      await storage.saveSettings(newSettings)
-      setSettings(prev => prev ? { ...prev, ...newSettings } : null)
-    } catch (error) {
-      console.error('Error saving settings:', error)
-    }
-  }
-
-  const handleExport = async () => {
-    try {
-      const data = await storage.exportData()
-      const blob = new Blob([data], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `academic-notes-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error exporting:', error)
-    }
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0]
-      if (!file) return
-
-      const text = await file.text()
-      const result = await storage.importData(text)
-      
-      if (result.success) {
-        await loadData()
+      if (noteId) {
+        // Ajouter à une note existante
+        const existingNote = notes.find(n => n.id === noteId)
+        if (existingNote) {
+          const updatedNote = {
+            ...existingNote,
+            content: existingNote.content + '<br><br>' + content,
+            timestamp: Date.now() // Mettre à jour la date de modification
+          }
+          await storage.saveNote(updatedNote)
+          await loadData()
+        }
       } else {
-        alert('Erreur lors de l\'import: ' + result.error)
+        // Créer une nouvelle note
+        const newNoteId = Date.now().toString()
+        const newNote: AcademicNote = {
+          id: newNoteId,
+          title: content.slice(0, 50) + (content.length > 50 ? '...' : ''), // Titre basé sur le contenu
+          content,
+          url: currentTab?.url || '',
+          favicon: currentTab?.favIconUrl || '',
+          timestamp: Date.now(),
+          type: 'manual',
+          tags: [],
+          concepts: [],
+          screenshots: [],
+          metadata: {
+            domain,
+            title: currentTab?.title || 'Note de trading',
+            language: 'fr'
+          }
+        }
+
+        await storage.saveNote(newNote)
+        setCurrentNoteId(newNoteId)
+        await loadData()
       }
+      
+      // Vider l'éditeur après ajout
+      setEditorContent('')
     } catch (error) {
-      console.error('Error importing:', error)
+      console.error('Error adding content:', error)
+      alert('Erreur lors de l\'ajout du contenu')
     }
   }
 
-  const handleSyncToJournal = async () => {
+  // Fonction pour prendre une capture d'écran
+  const handleScreenshot = async (): Promise<string | null> => {
     try {
-      // TODO: Implémenter la synchronisation avec Journal d'Études
-      console.log('Sync to journal not implemented yet')
+      const response = await chrome.runtime.sendMessage({
+        type: 'CAPTURE_SCREENSHOT'
+      })
+      return response?.dataUrl || null
     } catch (error) {
-      console.error('Error syncing:', error)
+      console.error('Error taking screenshot:', error)
+      return null
     }
   }
 
   if (isLoading) {
     return (
       <div className="sidebar-container">
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full animate-fade-in-up">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Chargement de vos notes...</p>
           </div>
         </div>
       </div>
     )
   }
 
+  // Obtenir le titre de la note courante
+  const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
+
   return (
     <div className="sidebar-container">
-      <Header />
+      {/* Bannière promo au-dessus du header */}
+      <SkoolBanner />
       
-      {/* Navigation */}
-      <div className="border-b bg-gray-50 px-4 py-3">
-        <div className="flex space-x-1">
-          <button
-            onClick={() => setCurrentView('notes')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              currentView === 'notes' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <BookOpen size={16} />
-            <span>Notes</span>
-          </button>
-          
-          <button
-            onClick={() => setCurrentView('stats')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              currentView === 'stats' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <BarChart3 size={16} />
-            <span>Stats</span>
-          </button>
-          
-          <button
-            onClick={() => setCurrentView('settings')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              currentView === 'settings' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <Settings size={16} />
-            <span>Config</span>
-          </button>
-        </div>
-      </div>
+      <Header 
+        onShowHistory={() => setShowHistoryDropdown(!showHistoryDropdown)}
+        onNewNote={() => setCurrentNoteId(Date.now().toString())}
+      />
 
-      {/* Contrôles de capture */}
-      {currentView === 'notes' && (
-        <CaptureControls onCapture={handleCapture} />
-      )}
-
-      {/* Zone de recherche */}
-      {currentView === 'notes' && (
-        <div className="px-4 py-3 border-b">
-          <SearchBar 
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Rechercher dans vos notes..."
-          />
+      {/* Accès temporaire à la migration - TODO: À retirer après migration */}
+      {notes.length === 0 && (
+        <div className="border-b border-border px-4 py-2">
+          <button
+            onClick={() => setShowMigration(!showMigration)}
+            className="text-sm text-primary hover:text-primary/80"
+          >
+            🔄 Récupérer les anciennes notes
+          </button>
         </div>
       )}
 
-      {/* Contenu principal */}
-      <div className="content-section">
-        {currentView === 'notes' && (
-          <NotesList 
-            notes={filteredNotes}
-            onRefresh={loadData}
-          />
-        )}
+      {/* Zone principale - Note courante (style Claude) */}
+      <main className="content-section flex flex-col">
+        {/* Contenu de la note courante */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {showMigration ? (
+            <DataMigration />
+          ) : currentNoteId ? (
+            <CurrentNoteView noteId={currentNoteId} />
+          ) : (
+            <EmptyNoteView onNewNote={() => setCurrentNoteId(Date.now().toString())} />
+          )}
+        </div>
         
-        {currentView === 'stats' && (
-          <StatsView 
-            stats={stats}
-            notes={notes}
-          />
+        {/* Rich Editor bottom fixe (style Claude avec fonctionnalités) */}
+        {!showMigration && (
+          <div className="border-t border-border bg-background p-4">
+            <SimpleRichEditor
+              value={editorContent}
+              onChange={setEditorContent}
+              placeholder={currentNoteId ? "Ajouter du contenu à cette note..." : "Commencer une nouvelle note de trading..."}
+              onInsertScreenshot={handleScreenshot}
+              onSubmit={() => handleAddContent(editorContent, currentNoteId)}
+              currentPageInfo={currentPageInfo || undefined}
+              className="w-full"
+            />
+            
+            {/* Actions rapides */}
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleAddContent(editorContent, currentNoteId)}
+                  disabled={!editorContent.trim()}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                >
+                  {currentNoteId ? 'Ajouter' : 'Créer note'}
+                </button>
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">⏎</kbd> pour sauvegarder, 
+                <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs ml-1">⇧⏎</kbd> pour nouvelle ligne
+              </div>
+            </div>
+          </div>
         )}
-        
-        {currentView === 'settings' && settings && (
-          <SettingsView 
-            settings={settings}
-            onChange={handleSettingsChange}
-            onExport={handleExport}
-            onImport={handleImport}
-            onSyncToJournal={handleSyncToJournal}
-          />
-        )}
-      </div>
+      </main>
 
-      {/* Bouton de synchronisation flottant */}
-      {settings?.journalSync.syncEnabled && currentView === 'notes' && (
-        <div className="absolute bottom-4 right-4">
-          <button
-            onClick={handleSyncToJournal}
-            className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-lg transition-colors"
-            title="Synchroniser avec Journal d'Études"
-          >
-            <ArrowRight size={20} />
-          </button>
-        </div>
-      )}
+      {/* Dropdown historique des notes */}
+      <HistoryDropdown
+        isOpen={showHistoryDropdown}
+        onClose={() => setShowHistoryDropdown(false)}
+        notes={notes}
+        currentNoteId={currentNoteId}
+        onSelectNote={setCurrentNoteId}
+        onNotesUpdate={loadData}
+      />
     </div>
   )
 }

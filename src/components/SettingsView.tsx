@@ -205,7 +205,7 @@ function SettingsView({
                     value={settings.journalSync.journalAppUrl}
                     onChange={(e) => handleSyncSettingChange('journalAppUrl', e.target.value)}
                     className="input-field flex-1"
-                    placeholder="https://journal-d-etude-beta.vercel.app"
+                    placeholder="https://trading-journal.app"
                   />
                   <button
                     onClick={testJournalConnection}

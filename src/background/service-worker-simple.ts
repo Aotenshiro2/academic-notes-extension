@@ -9,7 +9,7 @@ function keepAlive() {
 
 // Initialisation
 chrome.runtime.onStartup.addListener(() => {
-  console.log('Academic Notes Extension started')
+  // Service worker démarré
   keepAlive()
 })
 

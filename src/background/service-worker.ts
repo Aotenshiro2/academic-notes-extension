@@ -9,7 +9,7 @@ function keepAlive() {
 
 // Initialisation du service worker
 chrome.runtime.onStartup.addListener(() => {
-  console.log('Academic Notes Extension started')
+  // Service worker démarré
   keepAlive()
 })
 
@@ -19,12 +19,12 @@ chrome.runtime.onInstalled.addListener(() => {
   keepAlive()
 })
 
-// Configuration des menus contextuels
+// Configuration des menus contextuels (clic droit uniquement)
 function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'open-sidebar',
-      title: 'Ouvrir Academic Notes',
+      title: 'Ouvrir Trading Notes',
       contexts: ['page', 'selection']
     })
 
@@ -88,10 +88,35 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   }
 })
 
-// Clic sur l'icône de l'extension
+// Clic sur l'icône de l'extension - Toggle du panneau
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id) {
-    await chrome.sidePanel.open({ tabId: tab.id })
+    try {
+      // Récupérer l'état actuel du panneau depuis le storage de session
+      const result = await chrome.storage.session.get(['sidePanelOpen'])
+      const isCurrentlyOpen = result.sidePanelOpen || false
+
+      if (isCurrentlyOpen) {
+        // Panneau ouvert → Fermer
+        // Envoyer un message au sidepanel pour qu'il se ferme
+        try {
+          await chrome.runtime.sendMessage({ type: 'CLOSE_SIDEPANEL' })
+        } catch (error) {
+          // Si le message échoue (panneau déjà fermé), on met juste à jour l'état
+          console.log('Sidepanel already closed or unreachable')
+        }
+        await chrome.storage.session.set({ sidePanelOpen: false })
+      } else {
+        // Panneau fermé → Ouvrir
+        await chrome.sidePanel.open({ tabId: tab.id })
+        await chrome.storage.session.set({ sidePanelOpen: true })
+      }
+    } catch (error) {
+      console.error('Error toggling sidepanel:', error)
+      // Fallback : essayer d'ouvrir le panneau
+      await chrome.sidePanel.open({ tabId: tab.id })
+      await chrome.storage.session.set({ sidePanelOpen: true })
+    }
   }
 })
 
@@ -127,8 +152,14 @@ async function handleMessage(
 
       case 'CAPTURE_SCREENSHOT':
         if (tabId) {
-          const result = await takeScreenshot(tabId)
-          sendResponse(result)
+          // Si des options sont fournies, c'est pour le formulaire de note
+          if (message.options) {
+            const result = await captureScreenshotForNote(tabId, message.options)
+            sendResponse(result)
+          } else {
+            const result = await takeScreenshot(tabId)
+            sendResponse(result)
+          }
         }
         break
 
@@ -176,10 +207,12 @@ async function capturePage(tabId: number): Promise<CaptureResult> {
 
     // Créer la note académique
     const note = {
+      id: Date.now().toString(),
       title: contentData.title || tab.title || 'Page sans titre',
       content: contentData.content || '',
       url: tab.url || '',
       favicon: tab.favIconUrl,
+      timestamp: Date.now(),
       type: detectContentType(tab.url || '', contentData.title || ''),
       metadata: {
         domain: new URL(tab.url || '').hostname,
@@ -192,7 +225,8 @@ async function capturePage(tabId: number): Promise<CaptureResult> {
         language: contentData.language
       },
       tags: [],
-      concepts: []
+      concepts: [],
+      screenshots: []
     }
 
     // Sauvegarder dans IndexedDB via le content script
@@ -216,17 +250,20 @@ async function captureSelection(tabId: number, selectedText: string): Promise<Ca
     const tab = await chrome.tabs.get(tabId)
     
     const note = {
+      id: Date.now().toString(),
       title: `Sélection - ${tab.title || 'Page'}`,
       content: selectedText,
       url: tab.url || '',
       favicon: tab.favIconUrl,
+      timestamp: Date.now(),
       type: 'webpage' as const,
       metadata: {
         domain: new URL(tab.url || '').hostname,
         title: tab.title
       },
       tags: ['sélection'],
-      concepts: []
+      concepts: [],
+      screenshots: []
     }
 
     await chrome.tabs.sendMessage(tabId, {
@@ -248,17 +285,20 @@ async function takeScreenshot(tabId: number): Promise<CaptureResult> {
 
     // Créer une note avec la capture d'écran
     const note = {
+      id: Date.now().toString(),
       title: `Capture d'écran - ${tab.title || 'Page'}`,
       content: `![Capture d'écran](${dataUrl})`,
       url: tab.url || '',
       favicon: tab.favIconUrl,
+      timestamp: Date.now(),
       type: 'webpage' as const,
       metadata: {
         domain: new URL(tab.url || '').hostname,
         title: tab.title
       },
       tags: ['capture'],
-      concepts: []
+      concepts: [],
+      screenshots: []
     }
 
     await chrome.tabs.sendMessage(tabId, {
@@ -270,6 +310,24 @@ async function takeScreenshot(tabId: number): Promise<CaptureResult> {
   } catch (error) {
     console.error('Error taking screenshot:', error)
     return { success: false, error: 'Erreur capture d\'écran' }
+  }
+}
+
+async function captureScreenshotForNote(tabId: number, options: any) {
+  try {
+    const dataUrl = await chrome.tabs.captureVisibleTab()
+    
+    return { 
+      success: true, 
+      dataUrl,
+      message: 'Screenshot captured successfully'
+    }
+  } catch (error) {
+    console.error('Error capturing screenshot for note:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erreur capture d\'écran' 
+    }
   }
 }
 
@@ -405,7 +463,7 @@ function extractMainContent() {
 
 // ---- UTILITAIRES ----
 
-function detectContentType(url: string, title: string) {
+function detectContentType(url: string, title: string): import('@/types/academic').ContentType {
   if (url.includes('.pdf')) return 'pdf'
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'video'
   if (title.toLowerCase().includes('research') || 

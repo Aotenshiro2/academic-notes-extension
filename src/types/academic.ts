@@ -10,6 +10,7 @@ export interface AcademicNote {
   metadata: ContentMetadata
   tags: string[]
   concepts: string[]
+  screenshots?: Screenshot[]
   mindmapStructure?: MindmapNode[]
 }
 
@@ -20,6 +21,7 @@ export type ContentType =
   | 'webpage' 
   | 'research-paper'
   | 'documentation'
+  | 'manual'
 
 export interface ContentMetadata {
   // Métadonnées communes
@@ -105,6 +107,7 @@ export type MessageType =
   | 'CAPTURE_SELECTION' 
   | 'CAPTURE_SCREENSHOT'
   | 'OPEN_SIDEBAR'
+  | 'CLOSE_SIDEPANEL'
   | 'SAVE_NOTE'
   | 'SYNC_TO_JOURNAL'
   | 'EXTRACT_CONTENT'
@@ -114,6 +117,7 @@ export interface ExtensionMessage {
   payload?: any
   tabId?: number
   responseRequired?: boolean
+  options?: any
 }
 
 export interface CaptureResult {

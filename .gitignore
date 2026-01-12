@@ -37,3 +37,30 @@ key.pem
 
 # Test coverage
 coverage/
+
+# Build artifacts et packages
+dist/
+*.zip
+trading-notes-extension.zip
+trading-notes-by-aoknowledge-*.zip
+
+# Fichiers de développement à ne pas exposer
+BUILD_STATUS.md
+TESTING_GUIDE.md
+ICONS_SETUP.md
+
+# Scripts temporaires de génération
+create-*.html
+create-*.js
+create-*.py
+create-*.cjs
+generate-*.js
+generate-*.html
+
+# Icônes sources et temporaires (garder uniquement les PNG en public/)
+icon_voulu.png
+icon.svg
+
+# Configuration locale sensible
+config/local.ts
+config/production.ts
