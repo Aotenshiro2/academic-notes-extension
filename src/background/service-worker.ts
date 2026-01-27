@@ -98,14 +98,19 @@ chrome.action.onClicked.addListener(async (tab) => {
 
       if (isCurrentlyOpen) {
         // Panneau ouvert → Fermer
-        // Envoyer un message au sidepanel pour qu'il se ferme
+        // Méthode plus robuste : utiliser l'API sidePanel pour fermer
         try {
+          // D'abord essayer d'envoyer un message pour fermer proprement
           await chrome.runtime.sendMessage({ type: 'CLOSE_SIDEPANEL' })
+          // Petit délai pour permettre la fermeture propre
+          setTimeout(async () => {
+            await chrome.storage.session.set({ sidePanelOpen: false })
+          }, 100)
         } catch (error) {
-          // Si le message échoue (panneau déjà fermé), on met juste à jour l'état
+          // Si le message échoue, mettre à jour directement l'état
           console.log('Sidepanel already closed or unreachable')
+          await chrome.storage.session.set({ sidePanelOpen: false })
         }
-        await chrome.storage.session.set({ sidePanelOpen: false })
       } else {
         // Panneau fermé → Ouvrir
         await chrome.sidePanel.open({ tabId: tab.id })
@@ -114,8 +119,12 @@ chrome.action.onClicked.addListener(async (tab) => {
     } catch (error) {
       console.error('Error toggling sidepanel:', error)
       // Fallback : essayer d'ouvrir le panneau
-      await chrome.sidePanel.open({ tabId: tab.id })
-      await chrome.storage.session.set({ sidePanelOpen: true })
+      try {
+        await chrome.sidePanel.open({ tabId: tab.id })
+        await chrome.storage.session.set({ sidePanelOpen: true })
+      } catch (fallbackError) {
+        console.error('Fallback failed:', fallbackError)
+      }
     }
   }
 })

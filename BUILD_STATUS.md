@@ -107,8 +107,8 @@ Generated files:
 #### **Permissions Chrome**
 - `sidePanel` - Interface latérale
 - `storage` - Stockage local
-- `activeTab` - Accès page courante
-- `scripting` - Injection de scripts
+- `activeTab` - Accès page courante + captures d'écran
+- `tabs` - Informations des onglets
 - `contextMenus` - Menus contextuels
 
 ### 🌟 **Points Forts de l'Architecture**

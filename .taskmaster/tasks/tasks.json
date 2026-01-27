@@ -1,0 +1,189 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Corrections post-review Chrome Store",
+      "description": "Mettre à jour la documentation pour refléter les permissions actuelles après suppression de 'scripting'",
+      "status": "done",
+      "priority": "high",
+      "dependencies": [],
+      "details": "Documentation mise à jour pour refléter les permissions actuelles: sidePanel, storage, activeTab, tabs, contextMenus. La permission 'tabCapture' a été supprimée car non utilisée (captureVisibleTab utilise activeTab/host_permissions).",
+      "testStrategy": "Vérifier que toutes les mentions de 'scripting' sont supprimées de la documentation. Vérifier la cohérence entre manifest.json et la documentation.",
+      "subtasks": [],
+      "updatedAt": "2026-01-21T15:20:00.000Z"
+    },
+    {
+      "id": "2",
+      "title": "Tests manuels sur différents sites",
+      "description": "Tester l'extension sur différents types de contenus web pour valider la stabilité",
+      "status": "in-progress",
+      "priority": "high",
+      "dependencies": [],
+      "details": "Tester l'extension sur: articles de blog, pages Wikipedia, vidéos YouTube, PDF viewers en ligne, sites e-commerce, réseaux sociaux. Vérifier: capture de page, screenshots, raccourcis clavier, stockage local, export/import.",
+      "testStrategy": "Créer une checklist de sites à tester et documenter les résultats. Reporter tout bug ou comportement inattendu.",
+      "subtasks": [],
+      "updatedAt": "2026-01-16T11:52:44.350Z"
+    },
+    {
+      "id": "3",
+      "title": "Validation sync Journal d'Études",
+      "description": "Tester et valider la fonctionnalité de synchronisation avec l'application Journal d'Études",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [
+        "2"
+      ],
+      "details": "Le code de sync existe dans journal-sync.ts mais n'a pas été testé en production. Valider: connexion API, authentification, envoi de notes, réception de notes, gestion des conflits, mode offline avec sync différée.",
+      "testStrategy": "Configurer un environnement de test Journal d'Études. Tester le flow complet de sync dans les deux sens.",
+      "subtasks": []
+    },
+    {
+      "id": "4",
+      "title": "Documentation utilisateur",
+      "description": "Créer une documentation complète pour les utilisateurs de l'extension",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [
+        "1"
+      ],
+      "details": "Créer: guide d'installation, guide d'utilisation avec screenshots, FAQ, liste des raccourcis clavier, guide de dépannage. Format: pages markdown ou site web simple.",
+      "testStrategy": "Faire relire la documentation par un utilisateur non-technique pour valider la clarté.",
+      "subtasks": []
+    },
+    {
+      "id": "5",
+      "title": "Optimisations UX",
+      "description": "Améliorer l'expérience utilisateur avec des feedbacks visuels et messages clairs",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [
+        "2"
+      ],
+      "details": "Ajouter: feedback visuel lors des saves/captures (toast notifications), tooltips sur les boutons, améliorer les messages d'erreur, ajouter un onboarding pour la première utilisation, indicateur de statut de sync.",
+      "testStrategy": "Tester chaque interaction utilisateur et vérifier qu'un feedback approprié est fourni.",
+      "subtasks": []
+    },
+    {
+      "id": "6",
+      "title": "Configurer tests automatisés Vitest",
+      "description": "Mettre en place une suite de tests unitaires avec Vitest",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [],
+      "details": "Installer et configurer Vitest pour le projet. Écrire des tests pour: fonctions utilitaires (storage.ts, image-utils.ts), extracteurs de contenu, logique de sync. Viser 60% de couverture minimum sur les modules critiques.",
+      "testStrategy": "Exécuter npm run test et vérifier que tous les tests passent. Vérifier le rapport de couverture.",
+      "subtasks": []
+    },
+    {
+      "id": "7",
+      "title": "Amélioration extraction de contenu",
+      "description": "Améliorer l'extraction de contenu pour différents types de pages",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [
+        "2"
+      ],
+      "details": "Améliorer le content-script pour mieux extraire: contenu principal (ignorer nav, footer, ads), métadonnées (auteur, date, tags), support amélioré des PDF, support des vidéos YouTube/Vimeo avec métadonnées.",
+      "testStrategy": "Tester l'extraction sur 10 sites différents par type de contenu et comparer la qualité.",
+      "subtasks": []
+    },
+    {
+      "id": "8",
+      "title": "Documentation AI Processing",
+      "description": "Documenter et tester les fonctionnalités AI avec Chrome AI",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [
+        "4"
+      ],
+      "details": "Le module ai-processor.ts existe mais dépend de Chrome AI (disponibilité limitée). Documenter: prérequis Chrome AI, comment activer, fonctionnalités disponibles. Implémenter fallback graceful si Chrome AI indisponible.",
+      "testStrategy": "Tester sur Chrome avec et sans Chrome AI activé. Vérifier que l'extension fonctionne dans les deux cas.",
+      "subtasks": []
+    },
+    {
+      "id": "9",
+      "title": "Assets marketing Chrome Web Store",
+      "description": "Préparer les assets visuels pour la page Chrome Web Store",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [
+        "1"
+      ],
+      "details": "Créer: screenshots de l'extension en action (1280x800), icône promotionnelle (440x280), bannière marquee (1400x560), description détaillée, liste des fonctionnalités clés.",
+      "testStrategy": "Vérifier que tous les assets respectent les guidelines Chrome Web Store.",
+      "subtasks": []
+    },
+    {
+      "id": "10",
+      "title": "CI/CD GitHub Actions",
+      "description": "Configurer l'intégration continue avec GitHub Actions",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [
+        "6"
+      ],
+      "details": "Créer workflows GitHub Actions pour: lint et type-check sur chaque PR, build automatique, tests automatiques, création de release avec zip. Ajouter badges au README.",
+      "testStrategy": "Créer une PR de test et vérifier que tous les workflows s'exécutent correctement.",
+      "subtasks": []
+    },
+    {
+      "id": "11",
+      "title": "Capture améliorée avec screenshot",
+      "description": "Ajouter un screenshot automatique lors de la capture de page",
+      "status": "done",
+      "priority": "high",
+      "dependencies": [],
+      "details": "Implémenté dans App.tsx handleCapturePage(). Utilise chrome.tabs.captureVisibleTab() pour capturer un screenshot. Le contenu de la note inclut: titre, URL, et screenshot en image HTML. Fallback gracieux si la capture échoue.",
+      "testStrategy": "Tester la capture sur différents sites. Vérifier que le screenshot apparaît dans la note.",
+      "subtasks": [],
+      "updatedAt": "2026-01-21T15:25:00.000Z"
+    },
+    {
+      "id": "12",
+      "title": "Carte conversation récente sur l'écran d'accueil",
+      "description": "Afficher la dernière conversation sur l'écran d'accueil pour un accès rapide",
+      "status": "done",
+      "priority": "high",
+      "dependencies": [],
+      "details": "Implémenté dans EmptyNoteView.tsx. Affiche une carte sous le bouton 'Capturer' avec: titre de la dernière note, temps relatif (À l'instant, Il y a X min, Hier, etc.), domaine du site. Clic pour reprendre la conversation.",
+      "testStrategy": "Vérifier que la carte apparaît quand il y a des notes. Tester le clic pour sélectionner la note.",
+      "subtasks": [],
+      "updatedAt": "2026-01-21T15:25:00.000Z"
+    },
+    {
+      "id": "13",
+      "title": "Extraction de description de page (v1.3)",
+      "description": "Extraire la méta-description ou premiers paragraphes lors de la capture",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [
+        "11"
+      ],
+      "details": "Utiliser message passing avec le content-script existant pour extraire la description. Éviter la permission 'scripting' qui peut causer un rejet Chrome Store. Extraire: meta description, og:description, ou premiers paragraphes.",
+      "testStrategy": "Tester sur différents types de pages. Vérifier que la description est pertinente.",
+      "subtasks": []
+    },
+    {
+      "id": "14",
+      "title": "Bouton Analyse IA (v1.4)",
+      "description": "Ajouter un bouton pour exporter les notes vers ChatGPT/Claude/Gemini",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [
+        "13"
+      ],
+      "details": "Ajouter un bouton 'Analyser avec IA' dans les notes. Ouvre un nouvel onglet dans le navigateur avec le contenu pré-rempli. Support: ChatGPT, Claude, Gemini. Configuration du service préféré dans les settings. Prompt personnalisable. Référence: YouTube Summary extension.",
+      "testStrategy": "Tester l'ouverture de chaque service IA. Vérifier que le contenu est correctement formaté.",
+      "subtasks": []
+    }
+  ],
+  "metadata": {
+    "version": "1.2.0",
+    "lastModified": "2026-01-21T15:25:00.000Z",
+    "taskCount": 14,
+    "completedCount": 4,
+    "tags": [
+      "master"
+    ]
+  }
+}

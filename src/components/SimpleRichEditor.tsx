@@ -149,26 +149,36 @@ function SimpleRichEditor({
             </p>
           `
           
-          // Insérer le HTML à la position du curseur
+          // Insérer le HTML à la position du curseur avec focus forcé
           if (editorRef.current?.isContentEditable) {
+            // S'assurer que l'éditeur a le focus
+            editorRef.current.focus()
+            
             const selection = window.getSelection()
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0)
-              range.deleteContents()
               
-              const tempDiv = document.createElement('div')
-              tempDiv.innerHTML = screenshotHtml
-              
-              // Insérer tous les nœuds
-              while (tempDiv.firstChild) {
-                range.insertNode(tempDiv.firstChild)
+              // Vérifier que la sélection est bien dans notre éditeur
+              if (editorRef.current.contains(range.commonAncestorContainer)) {
+                range.deleteContents()
+                
+                const tempDiv = document.createElement('div')
+                tempDiv.innerHTML = screenshotHtml
+                
+                // Insérer tous les nœuds
+                while (tempDiv.firstChild) {
+                  range.insertNode(tempDiv.firstChild)
+                }
+                
+                range.collapse(false)
+                selection.removeAllRanges()
+                selection.addRange(range)
+              } else {
+                // Sélection hors de l'éditeur, ajouter à la fin
+                editorRef.current.insertAdjacentHTML('beforeend', screenshotHtml)
               }
-              
-              range.collapse(false)
-              selection.removeAllRanges()
-              selection.addRange(range)
             } else {
-              // Pas de sélection, ajouter à la fin
+              // Pas de sélection, ajouter à la fin de l'éditeur
               editorRef.current.insertAdjacentHTML('beforeend', screenshotHtml)
             }
           }
@@ -238,10 +248,10 @@ function SimpleRichEditor({
       event.preventDefault()
       if (onSubmit && value.trim()) {
         onSubmit()
-        // Remettre le focus automatiquement pour continuer l'écriture
+        // Remettre le focus automatiquement APRÈS que le contenu soit vidé
         setTimeout(() => {
           editorRef.current?.focus()
-        }, 50)
+        }, 150) // Délai plus long pour attendre le clearing du contenu
       }
     }
     // Shift+Enter = nouvelle ligne (comportement par défaut)

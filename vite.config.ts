@@ -11,6 +11,7 @@ export default defineConfig({
         'background/service-worker': resolve(__dirname, 'src/background/service-worker-simple.ts'),
         'content/content-script': resolve(__dirname, 'src/content/content-script.ts'),
         'sidepanel/index': resolve(__dirname, 'src/sidepanel/index.html'),
+        'fullscreen/index': resolve(__dirname, 'src/fullscreen/index.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {

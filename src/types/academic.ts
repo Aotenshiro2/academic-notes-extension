@@ -6,6 +6,7 @@ export interface AcademicNote {
   url: string
   favicon?: string
   timestamp: number
+  syncedAt?: number
   type: ContentType
   metadata: ContentMetadata
   tags: string[]

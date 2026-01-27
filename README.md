@@ -74,11 +74,11 @@ Cette extension respecte votre vie privée :
 
 L'extension demande les permissions suivantes :
 
-- `sidePanel` - Affichage de l'interface
-- `storage` - Sauvegarde locale de vos notes  
+- `sidePanel` - Affichage de l'interface latérale
+- `storage` - Sauvegarde locale de vos notes
 - `activeTab` - Contexte de la page courante
-- `tabCapture` - Captures d'écran
-- `scripting` - Intégration avec les pages web
+- `tabs` - Accès aux informations des onglets
+- `contextMenus` - Menu contextuel (clic droit)
 
 ## 🤝 Contribution
 

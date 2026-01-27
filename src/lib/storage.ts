@@ -49,7 +49,8 @@ export const storage = {
     const fullNote: AcademicNote = {
       ...note,
       id,
-      timestamp: note.timestamp || Date.now()
+      timestamp: note.timestamp || Date.now(),
+      syncedAt: note.syncedAt
     }
     
     await db.notes.put(fullNote)

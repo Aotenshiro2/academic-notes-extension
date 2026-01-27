@@ -4,9 +4,11 @@ import { Download, Maximize2, Clock, Plus } from 'lucide-react'
 interface HeaderProps {
   onShowHistory?: () => void
   onNewNote?: () => void
+  onFullscreen?: () => void
+  onExportPDF?: () => void
 }
 
-function Header({ onShowHistory, onNewNote }: HeaderProps) {
+function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF }: HeaderProps) {
   return (
     <div className="header-section px-4 py-3">
       <div className="flex items-center justify-between">
@@ -20,15 +22,22 @@ function Header({ onShowHistory, onNewNote }: HeaderProps) {
         {/* 4 icônes style Claude */}
         <div className="flex items-center space-x-1">
           <button
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Exporter en PDF"
+            onClick={onExportPDF}
+            disabled={!onExportPDF}
+            className={`p-2 rounded-md transition-colors ${
+              onExportPDF
+                ? 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                : 'text-muted-foreground/40 cursor-not-allowed'
+            }`}
+            title={onExportPDF ? "Exporter en PDF" : "Sélectionnez une note pour exporter"}
           >
             <Download size={18} />
           </button>
           
           <button
+            onClick={onFullscreen}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Plein écran"
+            title="Ouvrir dans Journal d'Études"
           >
             <Maximize2 size={18} />
           </button>
