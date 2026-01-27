@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trading Notes by AOKnowledge",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Extensions de prise de notes pour Trader et Apprenti",
   "icons": {
     "16": "icons/icon-16.png",
@@ -14,8 +14,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content-script.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content-script.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -53,12 +57,20 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/content/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "src/content/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     },
     {
-      "resources": ["src/fullscreen/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "src/fullscreen/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
