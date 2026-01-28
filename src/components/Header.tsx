@@ -1,14 +1,15 @@
 import React from 'react'
-import { Download, Maximize2, Clock, Plus } from 'lucide-react'
+import { Download, Maximize2, Clock, Plus, Settings } from 'lucide-react'
 
 interface HeaderProps {
   onShowHistory?: () => void
   onNewNote?: () => void
   onFullscreen?: () => void
   onExportPDF?: () => void
+  onSettings?: () => void
 }
 
-function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF }: HeaderProps) {
+function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF, onSettings }: HeaderProps) {
   return (
     <div className="header-section px-4 py-3">
       <div className="flex items-center justify-between">
@@ -56,6 +57,14 @@ function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF }: HeaderP
             title="Nouvelle note"
           >
             <Plus size={18} />
+          </button>
+
+          <button
+            onClick={onSettings}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            title="Paramètres"
+          >
+            <Settings size={18} />
           </button>
         </div>
       </div>

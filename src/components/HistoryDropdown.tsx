@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { X, FileText, Clock, Edit3, Check, XCircle } from 'lucide-react'
+import { X, FileText, Clock, Edit3, Check, XCircle, Trash2 } from 'lucide-react'
 import storage from '@/lib/storage'
 import type { AcademicNote } from '@/types/academic'
 
@@ -93,6 +93,18 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
       saveTitle(noteId)
     } else if (e.key === 'Escape') {
       cancelEditing()
+    }
+  }
+
+  const handleDeleteNote = async (noteId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (confirm('Supprimer cette note ?')) {
+      try {
+        await storage.deleteNote(noteId)
+        onNotesUpdate?.()
+      } catch (error) {
+        console.error('Error deleting note:', error)
+      }
     }
   }
 
@@ -192,6 +204,13 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                                 title="Modifier le titre"
                               >
                                 <Edit3 size={12} />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteNote(note.id, e)}
+                                className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors opacity-0 group-hover:opacity-100"
+                                title="Supprimer la note"
+                              >
+                                <Trash2 size={12} />
                               </button>
                             </>
                           )}

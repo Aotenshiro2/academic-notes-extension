@@ -6,9 +6,10 @@ import type { AcademicNote } from '@/types/academic'
 interface CurrentNoteViewProps {
   noteId: string
   onNoteUpdate?: () => void
+  refreshTrigger?: number // Pour forcer le rechargement quand App.tsx modifie la note
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -16,9 +17,10 @@ function CurrentNoteView({ noteId, onNoteUpdate }: CurrentNoteViewProps) {
   const [originalContent, setOriginalContent] = useState('')
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Recharger la note quand noteId ou refreshTrigger change
   useEffect(() => {
     loadNote()
-  }, [noteId])
+  }, [noteId, refreshTrigger])
 
   // Réinitialiser le mode édition quand on change de note
   useEffect(() => {
@@ -132,7 +134,7 @@ function CurrentNoteView({ noteId, onNoteUpdate }: CurrentNoteViewProps) {
   return (
     <div className="space-y-4">
       {/* Header avec boutons de contrôle */}
-      <div className="flex justify-end" data-edit-controls>
+      <div className="flex justify-end gap-1" data-edit-controls>
         {!isEditing ? (
           <button
             onClick={startEditing}
@@ -186,11 +188,54 @@ function CurrentNoteView({ noteId, onNoteUpdate }: CurrentNoteViewProps) {
         />
       </div>
 
-      {/* Métadonnées supplémentaires */}
+      {/* Résumé */}
       {note.summary && (
         <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
           <h3 className="text-sm font-semibold text-primary mb-2">Résumé IA</h3>
           <p className="text-sm text-foreground/90">{note.summary}</p>
+        </div>
+      )}
+
+      {/* Points clés */}
+      {note.keyPoints && note.keyPoints.length > 0 && (
+        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
+          <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">Points clés</h3>
+          <ul className="space-y-1.5">
+            {note.keyPoints.map((point, index) => (
+              <li key={index} className="flex items-start gap-2 text-sm text-foreground/90">
+                <span className="text-amber-500 mt-0.5 flex-shrink-0">•</span>
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Concepts */}
+      {note.concepts.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {note.concepts.map((concept, index) => (
+            <span
+              key={index}
+              className="px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/30 rounded-full"
+            >
+              {concept}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Tags */}
+      {note.tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {note.tags.map((tag, index) => (
+            <span
+              key={index}
+              className="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full"
+            >
+              #{tag}
+            </span>
+          ))}
         </div>
       )}
 

@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { 
-  Settings, 
-  Download, 
-  Upload, 
+import {
+  Settings,
+  Download,
+  Upload,
   ArrowRight,
   Zap,
   Brain,
@@ -12,9 +12,12 @@ import {
   CheckCircle,
   XCircle,
   Info,
-  ExternalLink
+  ExternalLink,
+  Key,
+  Loader2
 } from 'lucide-react'
-import type { Settings as SettingsType } from '@/types/academic'
+import type { Settings as SettingsType, AIProvider } from '@/types/academic'
+import { AIService, AI_MODELS, AI_PROVIDER_LABELS } from '@/lib/ai-service'
 
 interface SettingsViewProps {
   settings: SettingsType
@@ -32,6 +35,8 @@ function SettingsView({
   onSyncToJournal 
 }: SettingsViewProps) {
   const [importFileRef, setImportFileRef] = useState<HTMLInputElement | null>(null)
+  const [testingAI, setTestingAI] = useState(false)
+  const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
     onChange({ [key]: value })
@@ -54,12 +59,68 @@ function SettingsView({
     try {
       const response = await fetch(settings.journalSync.journalAppUrl + '/api/health')
       if (response.ok) {
-        alert('✅ Connexion réussie avec Journal d\'Études')
+        alert('Connexion réussie avec Journal d\'Études')
       } else {
-        alert('❌ Impossible de se connecter à Journal d\'Études')
+        alert('Impossible de se connecter à Journal d\'Études')
       }
     } catch (error) {
-      alert('❌ Erreur de connexion : ' + error)
+      alert('Erreur de connexion : ' + error)
+    }
+  }
+
+  const handleAIProviderChange = (provider: AIProvider) => {
+    const models = AI_MODELS[provider]
+    onChange({
+      aiConfig: {
+        provider,
+        apiKey: settings.aiConfig?.apiKey || '',
+        model: models[0].value
+      }
+    })
+  }
+
+  const handleAIApiKeyChange = (apiKey: string) => {
+    onChange({
+      aiConfig: {
+        provider: settings.aiConfig?.provider || 'openai',
+        apiKey,
+        model: settings.aiConfig?.model || 'gpt-4o-mini'
+      }
+    })
+  }
+
+  const handleAIModelChange = (model: string) => {
+    onChange({
+      aiConfig: {
+        provider: settings.aiConfig?.provider || 'openai',
+        apiKey: settings.aiConfig?.apiKey || '',
+        model
+      }
+    })
+  }
+
+  const testAIConnection = async () => {
+    if (!settings.aiConfig?.apiKey) {
+      setAiTestResult({ success: false, message: 'Veuillez entrer une clé API' })
+      return
+    }
+    setTestingAI(true)
+    setAiTestResult(null)
+    try {
+      const service = new AIService(settings.aiConfig)
+      const result = await service.testConnection()
+      service.destroy()
+      setAiTestResult({
+        success: result.success,
+        message: result.success ? 'Connexion réussie !' : (result.error || 'Erreur de connexion')
+      })
+    } catch (error) {
+      setAiTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Erreur inconnue'
+      })
+    } finally {
+      setTestingAI(false)
     }
   }
 
@@ -160,10 +221,75 @@ function SettingsView({
                 <ul className="list-disc list-inside space-y-1">
                   <li>Résumés automatiques du contenu</li>
                   <li>Extraction de concepts clés</li>
-                  <li>Génération de structure mindmap</li>
-                  <li>Traitement local (privacy-first)</li>
+                  <li>Points clés de la page</li>
+                  <li>Transcription YouTube</li>
                 </ul>
               </div>
+            </div>
+          </div>
+
+          {/* Configuration API IA */}
+          <div className="p-4 border rounded-lg space-y-3">
+            <div className="flex items-center space-x-2 mb-2">
+              <Key size={16} className="text-gray-600" />
+              <p className="font-medium text-gray-900">Configuration API</p>
+            </div>
+
+            <p className="text-xs text-gray-500 mb-3">
+              Chrome AI sera utilisé automatiquement si disponible. Sinon, l'API externe configurée ci-dessous sera utilisée.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fournisseur</label>
+              <select
+                value={settings.aiConfig?.provider || 'openai'}
+                onChange={(e) => handleAIProviderChange(e.target.value as AIProvider)}
+                className="input-field"
+              >
+                {(Object.keys(AI_PROVIDER_LABELS) as AIProvider[]).map(p => (
+                  <option key={p} value={p}>{AI_PROVIDER_LABELS[p]}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Clé API</label>
+              <input
+                type="password"
+                value={settings.aiConfig?.apiKey || ''}
+                onChange={(e) => handleAIApiKeyChange(e.target.value)}
+                className="input-field"
+                placeholder="sk-... ou clé API"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle</label>
+              <select
+                value={settings.aiConfig?.model || 'gpt-4o-mini'}
+                onChange={(e) => handleAIModelChange(e.target.value)}
+                className="input-field"
+              >
+                {AI_MODELS[settings.aiConfig?.provider || 'openai'].map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={testAIConnection}
+                disabled={testingAI || !settings.aiConfig?.apiKey}
+                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
+              >
+                {testingAI ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                <span>Tester</span>
+              </button>
+              {aiTestResult && (
+                <span className={`text-sm ${aiTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                  {aiTestResult.message}
+                </span>
+              )}
             </div>
           </div>
         </div>

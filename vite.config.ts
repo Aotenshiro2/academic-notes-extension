@@ -8,7 +8,7 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        'background/service-worker': resolve(__dirname, 'src/background/service-worker-simple.ts'),
+        'background/service-worker': resolve(__dirname, 'src/background/service-worker.ts'),
         'content/content-script': resolve(__dirname, 'src/content/content-script.ts'),
         'sidepanel/index': resolve(__dirname, 'src/sidepanel/index.html'),
         'fullscreen/index': resolve(__dirname, 'src/fullscreen/index.html'),

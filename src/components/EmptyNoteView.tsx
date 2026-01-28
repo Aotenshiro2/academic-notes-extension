@@ -1,9 +1,10 @@
 import React from 'react'
-import { BookOpen, Camera, History } from 'lucide-react'
+import { BookOpen, Camera, History, Sparkles } from 'lucide-react'
 import type { AcademicNote } from '@/types/academic'
 
 interface EmptyNoteViewProps {
   onCapturePage?: () => void
+  onSmartCapture?: () => void
   lastNote?: AcademicNote
   onSelectNote?: (id: string) => void
 }
@@ -20,7 +21,7 @@ function formatTimeAgo(timestamp: number): string {
   return `Il y a ${Math.floor(diffInSeconds / 86400)} jours`
 }
 
-function EmptyNoteView({ onCapturePage, lastNote, onSelectNote }: EmptyNoteViewProps) {
+function EmptyNoteView({ onCapturePage, onSmartCapture, lastNote, onSelectNote }: EmptyNoteViewProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-12">
       {/* Salutation */}
@@ -38,6 +39,22 @@ function EmptyNoteView({ onCapturePage, lastNote, onSelectNote }: EmptyNoteViewP
 
       {/* Actions rapides */}
       <div className="space-y-3 w-full max-w-md">
+        {/* Bouton Capture intelligente */}
+        {onSmartCapture && (
+          <button
+            onClick={onSmartCapture}
+            className="w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-purple-200 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
+          >
+            <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <div className="font-medium text-foreground">Capture intelligente</div>
+              <div className="text-sm text-muted-foreground">Résumé + points clés de la page</div>
+            </div>
+          </button>
+        )}
+
         {/* Bouton Capture */}
         {onCapturePage && (
           <button

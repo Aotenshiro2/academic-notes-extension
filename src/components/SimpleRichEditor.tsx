@@ -1,6 +1,10 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react'
+import React, { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Camera, ImageIcon, Bold, Italic, List, ListOrdered, Type } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize } from '@/lib/image-utils'
+
+export interface SimpleRichEditorHandle {
+  focus: () => void
+}
 
 interface SimpleRichEditorProps {
   value: string
@@ -15,7 +19,7 @@ interface SimpleRichEditorProps {
   }
 }
 
-function SimpleRichEditor({
+const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProps>(function SimpleRichEditor({
   value,
   onChange,
   placeholder = 'Écrivez votre note ici...',
@@ -23,9 +27,27 @@ function SimpleRichEditor({
   onSubmit,
   currentPageInfo,
   className = ''
-}: SimpleRichEditorProps) {
+}, ref) {
   const editorRef = useRef<HTMLDivElement>(null)
   const [isEditorFocused, setIsEditorFocused] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      const el = editorRef.current
+      if (!el) return
+      el.focus()
+      // Re-essayer si quelque chose vole le focus (ex: re-render async d'un autre composant)
+      let attempts = 0
+      const interval = setInterval(() => {
+        attempts++
+        if (document.activeElement === el || attempts > 10) {
+          clearInterval(interval)
+          return
+        }
+        el.focus()
+      }, 50)
+    }
+  }))
 
   // Initialiser le contenu de l'éditeur
   useEffect(() => {
@@ -248,10 +270,6 @@ function SimpleRichEditor({
       event.preventDefault()
       if (onSubmit && value.trim()) {
         onSubmit()
-        // Remettre le focus automatiquement APRÈS que le contenu soit vidé
-        setTimeout(() => {
-          editorRef.current?.focus()
-        }, 150) // Délai plus long pour attendre le clearing du contenu
       }
     }
     // Shift+Enter = nouvelle ligne (comportement par défaut)
@@ -371,6 +389,6 @@ function SimpleRichEditor({
       />
     </div>
   )
-}
+})
 
 export default SimpleRichEditor

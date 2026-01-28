@@ -1,10 +1,11 @@
 import Dexie from 'dexie'
-import type { 
-  AcademicNote, 
-  Screenshot, 
-  ExtractedText, 
+import type {
+  AcademicNote,
+  Screenshot,
+  ExtractedText,
   Settings,
-  SyncStatus 
+  SyncStatus,
+  AIConfig
 } from '@/types/academic'
 
 class AcademicNotesDB extends Dexie {

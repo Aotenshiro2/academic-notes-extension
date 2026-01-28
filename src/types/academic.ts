@@ -3,6 +3,7 @@ export interface AcademicNote {
   title: string
   content: string
   summary?: string
+  keyPoints?: string[]
   url: string
   favicon?: string
   timestamp: number
@@ -92,9 +93,18 @@ export interface SyncStatus {
   apiKey?: string
 }
 
+export type AIProvider = 'openai' | 'anthropic' | 'gemini'
+
+export interface AIConfig {
+  provider: AIProvider
+  apiKey: string
+  model: string
+}
+
 export interface Settings {
   autoCapture: boolean
   aiSummaryEnabled: boolean
+  aiConfig?: AIConfig
   defaultTags: string[]
   journalSync: SyncStatus
   captureScreenshots: boolean
@@ -103,10 +113,11 @@ export interface Settings {
 }
 
 // Messages pour communication entre composants
-export type MessageType = 
+export type MessageType =
   | 'CAPTURE_CURRENT_PAGE'
-  | 'CAPTURE_SELECTION' 
+  | 'CAPTURE_SELECTION'
   | 'CAPTURE_SCREENSHOT'
+  | 'SMART_CAPTURE'
   | 'OPEN_SIDEBAR'
   | 'CLOSE_SIDEPANEL'
   | 'SAVE_NOTE'

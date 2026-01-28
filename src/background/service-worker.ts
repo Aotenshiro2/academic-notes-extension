@@ -88,43 +88,13 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   }
 })
 
-// Clic sur l'icône de l'extension - Toggle du panneau
+// Clic sur l'icône de l'extension - Ouvrir le sidepanel
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id) {
     try {
-      // Récupérer l'état actuel du panneau depuis le storage de session
-      const result = await chrome.storage.session.get(['sidePanelOpen'])
-      const isCurrentlyOpen = result.sidePanelOpen || false
-
-      if (isCurrentlyOpen) {
-        // Panneau ouvert → Fermer
-        // Méthode plus robuste : utiliser l'API sidePanel pour fermer
-        try {
-          // D'abord essayer d'envoyer un message pour fermer proprement
-          await chrome.runtime.sendMessage({ type: 'CLOSE_SIDEPANEL' })
-          // Petit délai pour permettre la fermeture propre
-          setTimeout(async () => {
-            await chrome.storage.session.set({ sidePanelOpen: false })
-          }, 100)
-        } catch (error) {
-          // Si le message échoue, mettre à jour directement l'état
-          console.log('Sidepanel already closed or unreachable')
-          await chrome.storage.session.set({ sidePanelOpen: false })
-        }
-      } else {
-        // Panneau fermé → Ouvrir
-        await chrome.sidePanel.open({ tabId: tab.id })
-        await chrome.storage.session.set({ sidePanelOpen: true })
-      }
+      await chrome.sidePanel.open({ tabId: tab.id })
     } catch (error) {
-      console.error('Error toggling sidepanel:', error)
-      // Fallback : essayer d'ouvrir le panneau
-      try {
-        await chrome.sidePanel.open({ tabId: tab.id })
-        await chrome.storage.session.set({ sidePanelOpen: true })
-      } catch (fallbackError) {
-        console.error('Fallback failed:', fallbackError)
-      }
+      console.error('Error opening sidepanel:', error)
     }
   }
 })
@@ -160,15 +130,23 @@ async function handleMessage(
         break
 
       case 'CAPTURE_SCREENSHOT':
-        if (tabId) {
+        // Get active tab if tabId not provided (sidepanel doesn't have sender.tab)
+        let screenshotTabId = tabId
+        if (!screenshotTabId) {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+          screenshotTabId = activeTab?.id
+        }
+        if (screenshotTabId) {
           // Si des options sont fournies, c'est pour le formulaire de note
           if (message.options) {
-            const result = await captureScreenshotForNote(tabId, message.options)
+            const result = await captureScreenshotForNote(screenshotTabId, message.options)
             sendResponse(result)
           } else {
-            const result = await takeScreenshot(tabId)
+            const result = await takeScreenshot(screenshotTabId)
             sendResponse(result)
           }
+        } else {
+          sendResponse({ success: false, error: 'Impossible de trouver l\'onglet actif' })
         }
         break
 
@@ -176,6 +154,21 @@ async function handleMessage(
         if (tabId) {
           await chrome.sidePanel.open({ tabId })
           sendResponse({ success: true })
+        }
+        break
+
+      case 'SMART_CAPTURE':
+        // Get current active tab if tabId not provided (sidepanel doesn't have sender.tab)
+        let smartCaptureTabId = tabId
+        if (!smartCaptureTabId) {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+          smartCaptureTabId = activeTab?.id
+        }
+        if (smartCaptureTabId) {
+          const result = await smartCapture(smartCaptureTabId)
+          sendResponse(result)
+        } else {
+          sendResponse({ success: false, error: 'Impossible de trouver l\'onglet actif' })
         }
         break
 
@@ -392,63 +385,109 @@ function extractMainContent() {
       'time[datetime]',
       '[datetime]'
     ]
-    
+
     for (const selector of pubDateSelectors) {
       const element = document.querySelector(selector)
       if (element) {
-        publishDate = element.getAttribute('content') || 
-                     element.getAttribute('datetime') || 
+        publishDate = element.getAttribute('content') ||
+                     element.getAttribute('datetime') ||
                      element.textContent || ''
         break
       }
     }
 
-    // Extraction du contenu principal
+    // Extraction du contenu principal - sélecteurs étendus pour blogs
     const contentSelectors = [
+      // Sélecteurs sémantiques standards
       'article',
       'main',
       '[role="main"]',
-      '.content',
+      // Classes communes de blog/CMS
       '.post-content',
       '.entry-content',
       '.article-content',
+      '.blog-content',
+      '.blog-post',
+      '.post-body',
+      '.post',
+      '.content',
+      '.main-content',
+      '.page-content',
+      '.story-content',
+      '.single-content',
+      // IDs communs
       '#content',
-      '.main-content'
+      '#main',
+      '#main-content',
+      '#post',
+      '#article',
+      '#post-content',
+      // Microdata
+      '[itemprop="articleBody"]',
+      '[itemprop="text"]',
+      // WordPress spécifique
+      '.wp-content',
+      '.the-content',
+      // Medium/Ghost
+      '.section-content',
+      '.post-full-content'
     ]
 
     let mainElement: Element | null = null
-    
+
     for (const selector of contentSelectors) {
       mainElement = document.querySelector(selector)
-      if (mainElement) break
+      if (mainElement && mainElement.textContent && mainElement.textContent.trim().length > 100) {
+        break
+      }
+      mainElement = null // Reset si le contenu est trop court
     }
 
     if (mainElement) {
       // Nettoyer le contenu (supprimer scripts, styles, nav, etc.)
       const clonedElement = mainElement.cloneNode(true) as Element
-      
+
       // Supprimer les éléments indésirables
       const unwantedSelectors = [
-        'script', 'style', 'nav', 'header', 'footer', 
-        '.ads', '.advertisement', '.social', '.share',
-        '[class*="ad"]', '[id*="ad"]'
+        'script', 'style', 'nav', 'header', 'footer', 'aside',
+        '.ads', '.advertisement', '.social', '.share', '.sidebar',
+        '.comments', '.comment', '.related', '.recommended',
+        '[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]'
       ]
-      
+
       unwantedSelectors.forEach(selector => {
-        clonedElement.querySelectorAll(selector).forEach(el => el.remove())
+        try {
+          clonedElement.querySelectorAll(selector).forEach(el => el.remove())
+        } catch { /* ignore invalid selectors */ }
       })
 
       content = clonedElement.textContent?.trim() || ''
-    } else {
-      // Fallback : extraire tout le body en excluant nav, header, footer
+    }
+
+    // Fallback robuste : utiliser document.body.innerText si rien trouvé
+    if (!content || content.length < 100) {
+      // Créer un clone du body pour nettoyer
       const bodyClone = document.body.cloneNode(true) as Element
-      bodyClone.querySelectorAll('script, style, nav, header, footer').forEach(el => el.remove())
-      content = bodyClone.textContent?.trim() || ''
+
+      // Supprimer les éléments non-textuels
+      bodyClone.querySelectorAll('script, style, nav, header, footer, aside, noscript, iframe, svg, img, video, audio').forEach(el => el.remove())
+
+      // Utiliser innerText pour un texte plus propre (respecte le CSS display:none)
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = bodyClone.innerHTML
+      document.body.appendChild(tempDiv)
+      content = tempDiv.innerText?.trim() || ''
+      tempDiv.remove()
+
+      // Si toujours vide, fallback absolu
+      if (!content || content.length < 50) {
+        content = document.body.innerText?.trim() || ''
+      }
     }
 
     // Limiter la taille du contenu
-    if (content.length > 10000) {
-      content = content.substring(0, 10000) + '...'
+    if (content.length > 15000) {
+      content = content.substring(0, 15000) + '...'
     }
 
     return {
@@ -463,9 +502,319 @@ function extractMainContent() {
       language
     }
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Erreur extraction contenu' 
+    // Fallback absolu en cas d'erreur
+    try {
+      return {
+        success: true,
+        title: document.title,
+        content: document.body.innerText?.substring(0, 15000) || '',
+        description: '',
+        author: '',
+        publishDate: '',
+        ogImage: '',
+        siteName: '',
+        language: 'fr'
+      }
+    } catch {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur extraction contenu'
+      }
+    }
+  }
+}
+
+// ---- CAPTURE INTELLIGENTE (MODE GRATUIT - HEURISTIQUES) ----
+
+// Fonction injectée pour extraire le contenu structuré par heuristiques
+function extractStructuredContent() {
+  try {
+    // 1. Résumé = meta description ou premier paragraphe significatif
+    const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute('content')
+    const metaOgDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
+
+    // Chercher le premier paragraphe significatif
+    const paragraphs = document.querySelectorAll('article p, main p, .content p, .post-content p, .entry-content p, p')
+    let firstSignificantP = ''
+    for (const p of paragraphs) {
+      const text = p.textContent?.trim() || ''
+      if (text.length > 80) {
+        firstSignificantP = text.slice(0, 400)
+        break
+      }
+    }
+
+    const summary = metaOgDesc || metaDesc || firstSignificantP || document.title
+
+    // 2. Points clés = titres H2 et H3
+    const headings = Array.from(document.querySelectorAll('article h2, article h3, main h2, main h3, .content h2, .content h3, h2, h3'))
+      .map(h => h.textContent?.trim())
+      .filter((text): text is string => !!text && text.length > 3 && text.length < 150)
+      .slice(0, 8)
+
+    // 3. Concepts = texte en gras/strong + liens importants
+    const bolds = Array.from(document.querySelectorAll('article strong, article b, main strong, main b, .content strong, .content b'))
+      .map(el => el.textContent?.trim())
+      .filter((t): t is string => !!t && t.length > 2 && t.length < 60)
+
+    const importantLinks = Array.from(document.querySelectorAll('article a, main a, .content a'))
+      .map(a => a.textContent?.trim())
+      .filter((t): t is string => !!t && t.length > 3 && t.length < 50 && !t.startsWith('http'))
+
+    const concepts = [...new Set([...bolds, ...importantLinks])].slice(0, 10)
+
+    // 4. Tags = meta keywords ou catégories/tags de la page
+    const metaKeywords = document.querySelector('meta[name="keywords"]')?.getAttribute('content')
+    let tags: string[] = []
+
+    if (metaKeywords) {
+      tags = metaKeywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k.length > 1 && k.length < 30)
+    }
+
+    // Chercher aussi les tags/catégories dans la page
+    if (tags.length === 0) {
+      const tagElements = document.querySelectorAll('.tag, .tags a, .category, .categories a, [rel="tag"]')
+      tags = Array.from(tagElements)
+        .map(el => el.textContent?.trim().toLowerCase())
+        .filter((t): t is string => !!t && t.length > 1 && t.length < 30)
+    }
+
+    tags = [...new Set(tags)].slice(0, 6)
+
+    // 5. Contenu principal
+    let content = ''
+    const contentSelectors = ['article', 'main', '[role="main"]', '.post-content', '.entry-content', '.content', '#content']
+
+    for (const selector of contentSelectors) {
+      const el = document.querySelector(selector)
+      if (el) {
+        const clone = el.cloneNode(true) as Element
+        clone.querySelectorAll('script, style, nav, aside, footer, .ads, .comments').forEach(e => e.remove())
+        content = clone.textContent?.trim() || ''
+        if (content.length > 100) break
+      }
+    }
+
+    if (!content || content.length < 100) {
+      content = document.body.innerText?.trim() || ''
+    }
+
+    // Limiter la taille
+    if (content.length > 10000) {
+      content = content.substring(0, 10000) + '...'
+    }
+
+    return {
+      success: true,
+      title: document.title,
+      content,
+      summary,
+      keyPoints: headings,
+      concepts,
+      tags,
+      description: metaOgDesc || metaDesc || '',
+      author: document.querySelector('meta[name="author"]')?.getAttribute('content') || '',
+      ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '',
+      siteName: document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') || ''
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erreur extraction'
+    }
+  }
+}
+
+async function smartCapture(tabId: number) {
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    const url = tab.url || ''
+    const isYouTube = url.includes('youtube.com/watch') || url.includes('youtu.be/')
+
+    let pageTitle = tab.title || 'Page sans titre'
+    let content = ''
+    let summary = ''
+    let keyPoints: string[] = []
+    let concepts: string[] = []
+    let tags: string[] = []
+    let description = ''
+    let author = ''
+    let ogImage = ''
+    let siteName = ''
+
+    if (isYouTube) {
+      // Pour YouTube, extraire la transcription/description
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: extractYouTubeContent
+        })
+        const ytData = results?.[0]?.result
+        if (ytData) {
+          pageTitle = ytData.title || pageTitle
+          author = ytData.author || ''
+
+          if (ytData.transcript) {
+            content = ytData.transcript
+            summary = `Vidéo de ${author}: ${pageTitle}`
+            keyPoints = ['Transcription disponible']
+          } else if (ytData.description) {
+            content = ytData.description
+            summary = ytData.description.slice(0, 300)
+            keyPoints = ['Pas de transcription - description extraite']
+          }
+        }
+      } catch (error) {
+        console.warn('YouTube extraction failed:', error)
+      }
+    }
+
+    // Extraction structurée par heuristiques pour les pages web
+    if (!content || content.length < 50) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: extractStructuredContent
+        })
+        const data = results?.[0]?.result
+
+        if (data?.success) {
+          pageTitle = data.title || pageTitle
+          content = data.content || ''
+          summary = data.summary || ''
+          keyPoints = data.keyPoints || []
+          concepts = data.concepts || []
+          tags = data.tags || []
+          description = data.description || ''
+          author = data.author || ''
+          ogImage = data.ogImage || ''
+          siteName = data.siteName || ''
+        }
+      } catch (error) {
+        console.warn('Structured extraction failed:', error)
+      }
+    }
+
+    // Dernier recours: extraction simple
+    if (!content || content.length < 50) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => ({
+            text: document.body?.innerText?.trim() || '',
+            title: document.title
+          })
+        })
+        const simple = results?.[0]?.result
+        if (simple?.text && simple.text.length > 50) {
+          content = simple.text.substring(0, 10000)
+          pageTitle = simple.title || pageTitle
+          summary = content.slice(0, 300)
+        }
+      } catch (error) {
+        console.warn('Simple extraction failed:', error)
+      }
+    }
+
+    if (!content || content.length < 50) {
+      return {
+        success: false,
+        error: 'Contenu insuffisant. Vérifiez que la page est bien chargée.'
+      }
+    }
+
+    let domain = ''
+    try {
+      domain = new URL(url).hostname.replace('www.', '')
+    } catch { /* ignore */ }
+
+    // Retourner les données structurées directement (pas besoin d'IA)
+    return {
+      success: true,
+      content,
+      pageTitle,
+      url,
+      favicon: tab.favIconUrl || '',
+      domain,
+      isYouTube,
+      contentType: detectContentType(url, pageTitle),
+      // Données structurées extraites par heuristiques
+      summary,
+      keyPoints,
+      concepts,
+      tags,
+      description,
+      author,
+      ogImage,
+      siteName
+    }
+  } catch (error) {
+    console.error('Error in smart capture:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erreur lors de la capture intelligente'
+    }
+  }
+}
+
+// YouTube-specific content extraction (injected into page)
+function extractYouTubeContent() {
+  try {
+    // Title
+    const titleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string') ||
+                    document.querySelector('#title h1')
+    const title = titleEl?.textContent?.trim() || document.title.replace(' - YouTube', '')
+
+    // Author
+    const channelEl = document.querySelector('#channel-name a') ||
+                      document.querySelector('.ytd-channel-name a')
+    const author = channelEl?.textContent?.trim() || ''
+
+    // Description
+    const descEl = document.querySelector('#description-inline-expander yt-formatted-string') ||
+                   document.querySelector('#description yt-formatted-string') ||
+                   document.querySelector('#description')
+    const description = descEl?.textContent?.trim() || ''
+
+    // Try transcript extraction from DOM
+    let transcript = ''
+
+    // Check if transcript panel is already open
+    const segments = document.querySelectorAll(
+      'ytd-transcript-segment-renderer .segment-text,' +
+      'ytd-transcript-segment-renderer yt-formatted-string'
+    )
+
+    if (segments.length > 0) {
+      transcript = Array.from(segments)
+        .map(el => el.textContent?.trim())
+        .filter(Boolean)
+        .join(' ')
+    }
+
+    // Also try captions window
+    if (!transcript) {
+      const captionElements = document.querySelectorAll('.captions-text, .ytp-caption-segment')
+      if (captionElements.length > 0) {
+        transcript = Array.from(captionElements)
+          .map(el => el.textContent?.trim())
+          .filter(Boolean)
+          .join(' ')
+      }
+    }
+
+    return {
+      title,
+      author,
+      description,
+      transcript: transcript || ''
+    }
+  } catch (error) {
+    return {
+      title: document.title,
+      author: '',
+      description: '',
+      transcript: ''
     }
   }
 }
