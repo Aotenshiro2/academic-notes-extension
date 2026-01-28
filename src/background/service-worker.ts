@@ -137,13 +137,12 @@ async function handleMessage(
           screenshotTabId = activeTab?.id
         }
         if (screenshotTabId) {
-          // Si des options sont fournies, c'est pour le formulaire de note
-          if (message.options) {
-            const result = await captureScreenshotForNote(screenshotTabId, message.options)
-            sendResponse(result)
-          } else {
-            const result = await takeScreenshot(screenshotTabId)
-            sendResponse(result)
+          try {
+            // Capturer et retourner le dataUrl directement (pour l'éditeur)
+            const dataUrl = await chrome.tabs.captureVisibleTab()
+            sendResponse({ success: true, dataUrl })
+          } catch (error) {
+            sendResponse({ success: false, error: 'Erreur capture d\'écran' })
           }
         } else {
           sendResponse({ success: false, error: 'Impossible de trouver l\'onglet actif' })
