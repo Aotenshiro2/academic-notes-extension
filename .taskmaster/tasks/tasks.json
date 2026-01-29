@@ -198,12 +198,13 @@
         "id": 17,
         "title": "Implémenter import JSON",
         "description": "Permettre l'import de notes depuis un fichier JSON",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
-        "details": "Fichier: DataMigration.tsx:277. Ajouter un input file pour sélectionner un JSON, valider la structure, merger avec les notes existantes (éviter les doublons par ID ou hash du contenu).",
+        "details": "CORRIGÉ: Import et Export implémentés dans DataMigration.tsx. L'export génère un fichier JSON avec toutes les notes. L'import valide la structure, détecte les doublons par ID, et répare les notes malformées.",
         "testStrategy": "Tester l'import d'un fichier exporté. Vérifier la gestion des doublons et des fichiers malformés.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-01-29T17:45:00.000Z"
       },
       {
         "id": 18,
@@ -495,9 +496,9 @@
     ],
     "metadata": {
       "version": "1.3.0",
-      "lastModified": "2026-01-29T17:30:00.000Z",
+      "lastModified": "2026-01-29T17:45:00.000Z",
       "taskCount": 42,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "master",
         "ux-reorganization"
