@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Pencil, Save, X } from 'lucide-react'
 import storage from '@/lib/storage'
+import { sanitizeHtml } from '@/lib/sanitize'
 import type { AcademicNote } from '@/types/academic'
 
 interface CurrentNoteViewProps {
@@ -58,7 +59,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
 
     try {
       setIsSaving(true)
-      const newContent = contentRef.current.innerHTML
+      const newContent = sanitizeHtml(contentRef.current.innerHTML)
       const updatedNote: AcademicNote = {
         ...note,
         content: newContent,
@@ -184,7 +185,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
               : 'cursor-pointer hover:bg-muted/30 p-3 -m-3'
             }
           `}
-          dangerouslySetInnerHTML={{ __html: note.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
         />
       </div>
 

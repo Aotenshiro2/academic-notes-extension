@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   BookOpen, 
   Plus, 
@@ -20,8 +20,9 @@ import {
   Maximize
 } from 'lucide-react'
 
-import SimpleRichEditor from '@/components/SimpleRichEditor'
+import SimpleRichEditor, { SimpleRichEditorHandle } from '@/components/SimpleRichEditor'
 import storage from '@/lib/storage'
+import { sanitizeHtml } from '@/lib/sanitize'
 import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function FullscreenApp() {
@@ -33,6 +34,7 @@ function FullscreenApp() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
+  const editorRef = useRef<SimpleRichEditorHandle>(null)
 
   // URL params pour récupérer l'ID de note
   useEffect(() => {
@@ -131,10 +133,11 @@ function FullscreenApp() {
         await loadData()
       }
       
-      // Vider l'éditeur après ajout avec délai pour ne pas interférer avec le focus
+      // Vider l'éditeur et refocus après ajout
+      setEditorContent('')
       setTimeout(() => {
-        setEditorContent('')
-      }, 100)
+        editorRef.current?.focus()
+      }, 0)
     } catch (error) {
       console.error('Error adding content:', error)
       alert('Erreur lors de l\'ajout du contenu')
@@ -362,9 +365,9 @@ function FullscreenApp() {
             {currentNote ? (
               <div className="p-8 max-w-4xl mx-auto">
                 <div className="prose prose-lg max-w-none">
-                  <div 
+                  <div
                     className="text-foreground leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: currentNote.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentNote.content) }}
                   />
                 </div>
               </div>
@@ -391,6 +394,7 @@ function FullscreenApp() {
         {/* Rich Editor bottom */}
         <div className="border-t border-border bg-background p-6">
           <SimpleRichEditor
+            ref={editorRef}
             value={editorContent}
             onChange={setEditorContent}
             placeholder={currentNoteId ? "Ajouter du contenu à cette note..." : "Commencer une nouvelle note de trading..."}

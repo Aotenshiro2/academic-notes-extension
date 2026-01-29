@@ -3,6 +3,7 @@ import { X, Save, Edit3, ExternalLink, Calendar, Tag, Hash, Globe, Trash2 } from
 import type { AcademicNote, ContentType } from '@/types/academic'
 import SimpleRichEditor from './SimpleRichEditor'
 import storage from '@/lib/storage'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 interface NoteDetailModalProps {
   note: AcademicNote | null
@@ -226,9 +227,9 @@ function NoteDetailModal({
               ) : (
                 <div className="prose max-w-none">
                   {note.content.includes('<img') || note.content.includes('<p>') || note.content.includes('<strong>') ? (
-                    <div 
+                    <div
                       className="text-gray-700 leading-relaxed rich-content-preview"
-                      dangerouslySetInnerHTML={{ __html: note.content }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
                     />
                   ) : (
                     <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">

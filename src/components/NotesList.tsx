@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import type { AcademicNote, ContentType } from '@/types/academic'
 import storage from '@/lib/storage'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 interface NotesListProps {
   notes: AcademicNote[]
@@ -96,10 +97,11 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
   const renderContent = (content: string) => {
     // Si le contenu contient du HTML (images), on le rend avec dangerouslySetInnerHTML
     if (content.includes('<img') || content.includes('</p>') || content.includes('<strong>')) {
+      const truncatedContent = content.length > 300 ? content.substring(0, 300) + '...' : content
       return (
-        <div 
+        <div
           className="text-sm text-foreground/80 leading-relaxed rich-content-preview"
-          dangerouslySetInnerHTML={{ __html: content.length > 300 ? content.substring(0, 300) + '...' : content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(truncatedContent) }}
         />
       )
     }

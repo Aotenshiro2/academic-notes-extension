@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@types/chrome": "^0.0.251",
+    "@types/dompurify": "^3.0.5",
     "clsx": "^2.0.0",
     "dexie": "^4.0.1",
+    "dompurify": "^3.3.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
     "lucide-react": "^0.292.0",

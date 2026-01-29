@@ -55,23 +55,5 @@
       },
       "description": "Quick capture current page"
     }
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/content/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    },
-    {
-      "resources": [
-        "src/fullscreen/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ]
+  }
 }
