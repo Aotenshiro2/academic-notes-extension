@@ -4,6 +4,8 @@ import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize }
 
 export interface SimpleRichEditorHandle {
   focus: () => void
+  scrollIntoView: (options?: ScrollIntoViewOptions) => void
+  getContent: () => string
 }
 
 interface SimpleRichEditorProps {
@@ -11,7 +13,7 @@ interface SimpleRichEditorProps {
   onChange: (content: string) => void
   placeholder?: string
   onInsertScreenshot?: () => Promise<string | null>
-  onSubmit?: () => void
+  onSubmit?: (content: string) => void
   className?: string
   currentPageInfo?: {
     url: string
@@ -36,6 +38,8 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
       const el = editorRef.current
       if (!el) return
       el.focus()
+      // Scroll into view to keep focus visible
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       // Re-essayer si quelque chose vole le focus (ex: re-render async d'un autre composant)
       let attempts = 0
       const interval = setInterval(() => {
@@ -45,7 +49,14 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
           return
         }
         el.focus()
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }, 50)
+    },
+    scrollIntoView: (options?: ScrollIntoViewOptions) => {
+      editorRef.current?.scrollIntoView(options || { behavior: 'smooth', block: 'nearest' })
+    },
+    getContent: () => {
+      return editorRef.current?.innerHTML || ''
     }
   }))
 
@@ -268,8 +279,11 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
     // Enter seul = sauvegarder la note
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      if (onSubmit && value.trim()) {
-        onSubmit()
+      // Lire le contenu directement depuis le DOM pour éviter les problèmes de stale closure
+      const currentContent = editorRef.current?.innerHTML || ''
+      if (onSubmit && currentContent.trim()) {
+        onChange(currentContent) // Forcer la sync du state
+        onSubmit(currentContent)
       }
     }
     // Shift+Enter = nouvelle ligne (comportement par défaut)
@@ -296,7 +310,7 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
       event.preventDefault()
       handleScreenshotInsert()
     }
-  }, [executeCommand, handleImageInsert, handleScreenshotInsert, onSubmit, value])
+  }, [executeCommand, handleImageInsert, handleScreenshotInsert, onSubmit, onChange])
 
   return (
     <div className={`simple-rich-editor ${className}`}>

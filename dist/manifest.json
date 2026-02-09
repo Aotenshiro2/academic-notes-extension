@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Trading Notes by AOKnowledge",
-  "version": "1.0.4",
-  "description": "Extensions de prise de notes pour Trader et Apprenti",
+  "version": "1.0.9",
+  "description": "Ne perdez plus jamais une analyse. Capturez vos insights trading en 1 clic avec screenshot et résumé auto.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -55,23 +55,5 @@
       },
       "description": "Quick capture current page"
     }
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/content/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    },
-    {
-      "resources": [
-        "src/fullscreen/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ]
+  }
 }

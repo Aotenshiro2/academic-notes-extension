@@ -451,7 +451,18 @@ function extractMainContent() {
         'script', 'style', 'nav', 'header', 'footer', 'aside',
         '.ads', '.advertisement', '.social', '.share', '.sidebar',
         '.comments', '.comment', '.related', '.recommended',
-        '[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]'
+        '[class*="ad-"]', '[class*="ads-"]', '[id*="ad-"]',
+        // YouTube-specific selectors
+        '#secondary', '#related', '#comments',
+        '.ytd-compact-video-renderer',
+        '.ytd-watch-next-secondary-results-renderer',
+        '[class*="ytp-endscreen"]',
+        '.ytd-item-section-renderer',
+        '.ytd-shelf-renderer',
+        '#playlist',
+        '.ytd-merch-shelf-renderer',
+        '.ytd-watch-flexy #secondary-inner',
+        '.ytd-watch-next-secondary-results-renderer'
       ]
 
       unwantedSelectors.forEach(selector => {
@@ -545,11 +556,74 @@ function extractStructuredContent() {
 
     const summary = metaOgDesc || metaDesc || firstSignificantP || document.title
 
-    // 2. Points clés = titres H2 et H3
-    const headings = Array.from(document.querySelectorAll('article h2, article h3, main h2, main h3, .content h2, .content h3, h2, h3'))
-      .map(h => h.textContent?.trim())
-      .filter((text): text is string => !!text && text.length > 3 && text.length < 150)
-      .slice(0, 8)
+    // 2. Points clés = titres H2/H3 du CONTENU PRINCIPAL UNIQUEMENT
+    // D'abord trouver le conteneur principal
+    const mainContainer = document.querySelector('article') ||
+                          document.querySelector('main') ||
+                          document.querySelector('[role="main"]') ||
+                          document.querySelector('.post-content') ||
+                          document.querySelector('.entry-content') ||
+                          document.querySelector('.article-content') ||
+                          document.querySelector('.blog-content') ||
+                          document.querySelector('#content')
+
+    // Liste noire complète des termes de sidebar/navigation/réseaux sociaux
+    const blacklistTerms = [
+      // Navigation
+      'related', 'comments', 'share', 'subscribe', 'newsletter',
+      'suivez', 'partager', 'also read', 'see also', 'à lire',
+      'menu', 'navigation', 'footer', 'header', 'sidebar',
+      'contact', 'about', 'à propos',
+      // Réseaux sociaux
+      'instagram', 'facebook', 'twitter', 'tiktok', 'linkedin', 'youtube',
+      'pinterest', 'snapchat', 'discord', 'whatsapp', 'telegram',
+      // Widgets sidebar
+      'publications recommandées', 'articles similaires', 'articles récents',
+      'recommended', 'popular posts', 'trending', 'recent posts',
+      'archives', 'catégories', 'categories', 'tags',
+      'recherche', 'search', 'widget'
+    ]
+
+    const isBlacklisted = (text: string): boolean => {
+      const lower = text.toLowerCase()
+      return blacklistTerms.some(term => lower.includes(term))
+    }
+
+    let headings: string[] = []
+
+    if (mainContainer) {
+      // Extraire H2/H3 SEULEMENT du conteneur principal avec filtre strict
+      headings = Array.from(mainContainer.querySelectorAll('h2, h3'))
+        .map(h => h.textContent?.trim())
+        .filter((text): text is string =>
+          !!text &&
+          text.length > 5 &&
+          text.length < 150 &&
+          !isBlacklisted(text)
+        )
+        .slice(0, 8)
+    }
+
+    // PAS DE FALLBACK GLOBAL SUR h2, h3 (ça capture la sidebar!)
+    // Si pas de headings, aller DIRECTEMENT aux paragraphes
+
+    if (headings.length === 0) {
+      // Extraire les premières phrases significatives des paragraphes du contenu principal
+      const contentParagraphs = (mainContainer || document).querySelectorAll('p')
+      headings = Array.from(contentParagraphs)
+        .map(p => p.textContent?.trim())
+        .filter((text): text is string =>
+          !!text &&
+          text.length > 80 &&
+          !isBlacklisted(text)
+        )
+        .slice(0, 5)
+        .map(text => {
+          // Prendre la première phrase significative
+          const firstSentence = text.match(/^[^.!?]+[.!?]/)?.[0]
+          return firstSentence?.trim() || text.slice(0, 120) + '...'
+        })
+    }
 
     // 3. Concepts = texte en gras/strong + liens importants
     const bolds = Array.from(document.querySelectorAll('article strong, article b, main strong, main b, .content strong, .content b'))
@@ -588,7 +662,18 @@ function extractStructuredContent() {
       const el = document.querySelector(selector)
       if (el) {
         const clone = el.cloneNode(true) as Element
-        clone.querySelectorAll('script, style, nav, aside, footer, .ads, .comments').forEach(e => e.remove())
+        // Remove unwanted elements including YouTube-specific ones
+        const unwantedSelectors = [
+          'script', 'style', 'nav', 'aside', 'footer', '.ads', '.comments',
+          // YouTube-specific
+          '#secondary', '#related', '.ytd-compact-video-renderer',
+          '.ytd-watch-next-secondary-results-renderer', '[class*="ytp-endscreen"]',
+          '.ytd-item-section-renderer', '.ytd-shelf-renderer', '#playlist',
+          '.ytd-merch-shelf-renderer'
+        ]
+        unwantedSelectors.forEach(sel => {
+          try { clone.querySelectorAll(sel).forEach(e => e.remove()) } catch {}
+        })
         content = clone.textContent?.trim() || ''
         if (content.length > 100) break
       }
@@ -652,24 +737,32 @@ async function smartCapture(tabId: number) {
         if (ytData) {
           pageTitle = ytData.title || pageTitle
           author = ytData.author || ''
+          description = ytData.description || ''
 
-          if (ytData.transcript) {
-            content = ytData.transcript
-            summary = `Vidéo de ${author}: ${pageTitle}`
-            keyPoints = ['Transcription disponible']
-          } else if (ytData.description) {
-            content = ytData.description
-            summary = ytData.description.slice(0, 300)
-            keyPoints = ['Pas de transcription - description extraite']
+          // Priorité des points clés:
+          // 1. Chapitres (timestamps dans description)
+          // 2. Points clés de la transcription (si disponible)
+          // 3. Points clés extraits de la description
+          if (ytData.chapters && ytData.chapters.length > 0) {
+            keyPoints = ytData.chapters.slice(0, 8)
+          } else if (ytData.transcriptKeyPoints && ytData.transcriptKeyPoints.length > 0) {
+            keyPoints = ytData.transcriptKeyPoints
+          } else if (ytData.descriptionKeyPoints && ytData.descriptionKeyPoints.length > 0) {
+            keyPoints = ytData.descriptionKeyPoints
           }
+
+          // Contenu = transcription ou description
+          content = ytData.transcript || ytData.description || ''
+          summary = author ? `Vidéo de ${author}: ${pageTitle}` : pageTitle
         }
       } catch (error) {
         console.warn('YouTube extraction failed:', error)
       }
     }
 
-    // Extraction structurée par heuristiques pour les pages web
-    if (!content || content.length < 50) {
+    // Extraction structurée par heuristiques pour les pages web (PAS pour YouTube)
+    // Car extractStructuredContent() capture les titres des vidéos recommandées
+    if (!isYouTube && (!content || content.length < 50)) {
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId },
@@ -694,8 +787,9 @@ async function smartCapture(tabId: number) {
       }
     }
 
-    // Dernier recours: extraction simple
-    if (!content || content.length < 50) {
+    // Dernier recours: extraction simple - MAIS PAS POUR YOUTUBE
+    // YouTube a une UI complexe, innerText capture des éléments d'interface
+    if (!isYouTube && (!content || content.length < 50)) {
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId },
@@ -715,7 +809,75 @@ async function smartCapture(tabId: number) {
       }
     }
 
-    if (!content || content.length < 50) {
+    // Pour YouTube, si content est toujours vide, utiliser les meta OG tags
+    if (isYouTube && (!content || content.length < 50)) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
+            const ogDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
+            const channelName = document.querySelector('link[itemprop="name"]')?.getAttribute('content') ||
+                               document.querySelector('#channel-name')?.textContent?.trim()
+            return { ogTitle, ogDesc, channelName }
+          }
+        })
+        const meta = results?.[0]?.result
+        if (meta) {
+          pageTitle = meta.ogTitle || pageTitle
+          description = meta.ogDesc || description
+          author = meta.channelName || author
+          content = description || pageTitle
+          summary = author
+            ? `Vidéo de ${author}: ${pageTitle}`
+            : `Vidéo YouTube: ${pageTitle}`
+        }
+      } catch (error) {
+        console.warn('YouTube meta extraction failed:', error)
+      }
+    }
+
+    // Si toujours pas de contenu pour YouTube, extraction robuste du titre
+    if (isYouTube && (!content || content.length < 50)) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            // Essayer plusieurs méthodes pour obtenir le titre
+            const docTitle = document.title
+            // Ne pas accepter "YouTube" seul
+            if (docTitle && docTitle !== 'YouTube' && docTitle.length > 8) {
+              return docTitle.replace(/\s*-\s*YouTube$/i, '').trim()
+            }
+            // Essayer og:title
+            const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
+            if (ogTitle) return ogTitle
+            // Essayer le h1
+            const h1 = document.querySelector('h1')?.textContent?.trim()
+            if (h1 && h1 !== 'YouTube' && h1.length > 3) return h1
+            return null
+          }
+        })
+        const extractedTitle = results?.[0]?.result
+        if (extractedTitle) {
+          pageTitle = extractedTitle
+          content = extractedTitle
+          summary = `Vidéo YouTube: ${extractedTitle}`
+        }
+      } catch (error) {
+        console.warn('YouTube title extraction failed:', error)
+      }
+    }
+
+    // Ultime fallback - si pageTitle est toujours "YouTube" ou vide
+    if (isYouTube && (!pageTitle || pageTitle === 'YouTube' || pageTitle === 'Page sans titre')) {
+      summary = 'Vidéo YouTube (titre non disponible - attendez le chargement complet)'
+      content = summary
+      pageTitle = 'Vidéo YouTube'
+    }
+
+    // Erreur seulement si pas YouTube et pas de contenu
+    if (!isYouTube && (!content || content.length < 50)) {
       return {
         success: false,
         error: 'Contenu insuffisant. Vérifiez que la page est bien chargée.'
@@ -759,10 +921,39 @@ async function smartCapture(tabId: number) {
 // YouTube-specific content extraction (injected into page)
 function extractYouTubeContent() {
   try {
-    // Title
+    // Title - multiple fallbacks pour être robuste
+    let title = ''
+
+    // 1. Essayer les éléments DOM spécifiques à YouTube
     const titleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string') ||
-                    document.querySelector('#title h1')
-    const title = titleEl?.textContent?.trim() || document.title.replace(' - YouTube', '')
+                    document.querySelector('#title h1') ||
+                    document.querySelector('h1.title') ||
+                    document.querySelector('[itemprop="name"]')
+    if (titleEl?.textContent?.trim()) {
+      title = titleEl.textContent.trim()
+    }
+
+    // 2. Fallback: meta og:title
+    if (!title) {
+      const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
+      if (ogTitle) {
+        title = ogTitle
+      }
+    }
+
+    // 3. Fallback: document.title (nettoyer " - YouTube")
+    if (!title) {
+      const docTitle = document.title
+      // Vérifier que ce n'est pas juste "YouTube"
+      if (docTitle && docTitle !== 'YouTube' && docTitle.length > 8) {
+        title = docTitle.replace(/\s*-\s*YouTube$/i, '').trim()
+      }
+    }
+
+    // 4. Si toujours vide, utiliser un placeholder
+    if (!title) {
+      title = ''
+    }
 
     // Author
     const channelEl = document.querySelector('#channel-name a') ||
@@ -802,18 +993,89 @@ function extractYouTubeContent() {
       }
     }
 
+    // Extract chapters/timestamps from description
+    const chapters: string[] = []
+    if (description) {
+      // Pattern: "0:00 Introduction" or "00:00 - Title" or "[0:00] Title" or "0:00:00 Title"
+      const timestampRegex = /(?:\[?\d{1,2}:\d{2}(?::\d{2})?\]?\s*[-–]?\s*)([^\n]+)/g
+      let match
+      while ((match = timestampRegex.exec(description)) !== null) {
+        const chapterTitle = match[1].trim()
+        if (chapterTitle.length > 3 && chapterTitle.length < 100) {
+          chapters.push(chapterTitle)
+        }
+      }
+    }
+
+    // Extract key points from transcript (significant sentences)
+    let transcriptKeyPoints: string[] = []
+    if (transcript && transcript.length > 200) {
+      // Split into sentences, filter significant ones
+      const sentences = transcript
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s =>
+          s.length > 40 &&
+          s.length < 200 &&
+          // Filter out common promotional phrases
+          !s.toLowerCase().includes('subscribe') &&
+          !s.toLowerCase().includes('like this video') &&
+          !s.toLowerCase().includes('click the bell') &&
+          !s.toLowerCase().includes('hit the like') &&
+          !s.toLowerCase().includes('leave a comment') &&
+          !s.toLowerCase().includes('check out my') &&
+          !s.toLowerCase().includes('link in the description') &&
+          !s.toLowerCase().includes('abonnez') &&
+          !s.toLowerCase().includes('likez')
+        )
+
+      // Take distributed samples from the transcript for better coverage
+      if (sentences.length > 0) {
+        const step = Math.max(1, Math.floor(sentences.length / 5))
+        for (let i = 0; i < sentences.length && transcriptKeyPoints.length < 5; i += step) {
+          transcriptKeyPoints.push(sentences[i].slice(0, 150))
+        }
+      }
+    }
+
+    // Generate key points from description if no transcript and no chapters
+    let descriptionKeyPoints: string[] = []
+    if (description && transcriptKeyPoints.length === 0 && chapters.length === 0) {
+      descriptionKeyPoints = description
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line =>
+          line.length > 30 &&
+          line.length < 150 &&
+          !line.startsWith('http') &&
+          !line.match(/^\d{1,2}:\d{2}/) && // Exclude timestamp lines
+          !line.toLowerCase().includes('subscribe') &&
+          !line.toLowerCase().includes('follow me') &&
+          !line.toLowerCase().includes('instagram') &&
+          !line.toLowerCase().includes('twitter') &&
+          !line.toLowerCase().includes('discord') &&
+          !line.toLowerCase().includes('patreon')
+        )
+        .slice(0, 5)
+    }
+
     return {
       title,
       author,
       description,
-      transcript: transcript || ''
+      transcript: transcript || '',
+      chapters,
+      transcriptKeyPoints,
+      descriptionKeyPoints
     }
   } catch (error) {
     return {
       title: document.title,
       author: '',
       description: '',
-      transcript: ''
+      transcript: '',
+      chapters: [],
+      transcriptKeyPoints: []
     }
   }
 }

@@ -1,15 +1,14 @@
 import React from 'react'
-import { Download, Maximize2, Clock, Plus, Settings } from 'lucide-react'
+import { Upload, Maximize2, Clock, Plus } from 'lucide-react'
 
 interface HeaderProps {
   onShowHistory?: () => void
-  onNewNote?: () => void
+  onHome?: () => void
   onFullscreen?: () => void
   onExportPDF?: () => void
-  onSettings?: () => void
 }
 
-function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF, onSettings }: HeaderProps) {
+function Header({ onShowHistory, onHome, onFullscreen, onExportPDF }: HeaderProps) {
   return (
     <div className="header-section px-4 py-3">
       <div className="flex items-center justify-between">
@@ -32,9 +31,9 @@ function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF, onSetting
             }`}
             title={onExportPDF ? "Exporter en PDF" : "Sélectionnez une note pour exporter"}
           >
-            <Download size={18} />
+            <Upload size={18} />
           </button>
-          
+
           <button
             onClick={onFullscreen}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -42,7 +41,7 @@ function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF, onSetting
           >
             <Maximize2 size={18} />
           </button>
-          
+
           <button
             onClick={onShowHistory}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -50,21 +49,13 @@ function Header({ onShowHistory, onNewNote, onFullscreen, onExportPDF, onSetting
           >
             <Clock size={18} />
           </button>
-          
-          <button
-            onClick={onNewNote}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Nouvelle note"
-          >
-            <Plus size={18} />
-          </button>
 
           <button
-            onClick={onSettings}
+            onClick={onHome}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Paramètres"
+            title="Nouvelle capture"
           >
-            <Settings size={18} />
+            <Plus size={18} />
           </button>
         </div>
       </div>

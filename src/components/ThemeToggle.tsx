@@ -3,7 +3,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 
 type Theme = 'light' | 'dark' | 'system'
 
-function ThemeToggle() {
+function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [theme, setTheme] = useState<Theme>('system')
   const [mounted, setMounted] = useState(false)
 
@@ -43,16 +43,18 @@ function ThemeToggle() {
     applyTheme(nextTheme)
   }
 
+  const iconSize = compact ? 14 : 16
+
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
-        return <Sun size={16} />
+        return <Sun size={iconSize} />
       case 'dark':
-        return <Moon size={16} />
+        return <Moon size={iconSize} />
       case 'system':
-        return <Monitor size={16} />
+        return <Monitor size={iconSize} />
       default:
-        return <Monitor size={16} />
+        return <Monitor size={iconSize} />
     }
   }
 
@@ -71,6 +73,18 @@ function ThemeToggle() {
 
   if (!mounted) {
     return null
+  }
+
+  if (compact) {
+    return (
+      <button
+        onClick={cycleTheme}
+        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+        title={`Thème: ${getThemeLabel()}`}
+      >
+        {getThemeIcon()}
+      </button>
+    )
   }
 
   return (

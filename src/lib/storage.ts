@@ -1,12 +1,89 @@
 import Dexie from 'dexie'
+import { stateSync } from './state-sync'
 import type {
   AcademicNote,
+  NoteMessage,
+  NoteMessageType,
   Screenshot,
   ExtractedText,
   Settings,
   SyncStatus,
   AIConfig
 } from '@/types/academic'
+
+/**
+ * Convert legacy HTML content to NoteMessage array
+ * Splits content on <br><br> separators and detects images
+ */
+function convertLegacyContentToMessages(content: string, noteTimestamp: number): NoteMessage[] {
+  if (!content || content.trim() === '') {
+    return []
+  }
+
+  const messages: NoteMessage[] = []
+
+  // Split on double line breaks (the legacy separator)
+  const segments = content.split(/<br\s*\/?>\s*<br\s*\/?>/gi)
+
+  segments.forEach((segment, index) => {
+    const trimmedSegment = segment.trim()
+    if (!trimmedSegment) return
+
+    // Check if this segment contains an image
+    const imgMatch = trimmedSegment.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)
+
+    if (imgMatch) {
+      // Extract image from segment
+      const imgSrc = imgMatch[1]
+      const altMatch = trimmedSegment.match(/alt=["']([^"']+)["']/i)
+      const alt = altMatch ? altMatch[1] : undefined
+
+      // If there's text before the image, add it as a separate message
+      const beforeImg = trimmedSegment.substring(0, imgMatch.index).trim()
+      if (beforeImg && beforeImg !== '<p>' && beforeImg !== '</p>') {
+        messages.push({
+          id: `${noteTimestamp}-${index}-text`,
+          type: 'text',
+          content: beforeImg,
+          timestamp: noteTimestamp + index
+        })
+      }
+
+      // Add the image as a message
+      messages.push({
+        id: `${noteTimestamp}-${index}-img`,
+        type: imgSrc.startsWith('data:') ? 'screenshot' : 'image',
+        content: imgSrc,
+        timestamp: noteTimestamp + index + 1,
+        metadata: alt ? { alt } : undefined
+      })
+
+      // If there's text after the image, add it as a separate message
+      const afterImg = trimmedSegment.substring((imgMatch.index || 0) + imgMatch[0].length).trim()
+      if (afterImg && afterImg !== '<p>' && afterImg !== '</p>' && afterImg.replace(/<[^>]*>/g, '').trim()) {
+        messages.push({
+          id: `${noteTimestamp}-${index}-text-after`,
+          type: 'text',
+          content: afterImg,
+          timestamp: noteTimestamp + index + 2
+        })
+      }
+    } else {
+      // Pure text segment
+      const cleanText = trimmedSegment.replace(/<[^>]*>/g, '').trim()
+      if (cleanText) {
+        messages.push({
+          id: `${noteTimestamp}-${index}`,
+          type: 'text',
+          content: trimmedSegment,
+          timestamp: noteTimestamp + index
+        })
+      }
+    }
+  })
+
+  return messages
+}
 
 class AcademicNotesDB extends Dexie {
   notes!: Dexie.Table<AcademicNote, string>
@@ -15,11 +92,26 @@ class AcademicNotesDB extends Dexie {
 
   constructor() {
     super('AcademicNotesDB')
-    
+
+    // Version 1: Original schema
     this.version(1).stores({
       notes: 'id, title, url, timestamp, type, *tags, *concepts',
       screenshots: 'id, noteId, url, timestamp',
       extracts: 'id, noteId, timestamp, source'
+    })
+
+    // Version 2: Add messages field for individual message support
+    this.version(2).stores({
+      notes: 'id, title, url, timestamp, type, *tags, *concepts',
+      screenshots: 'id, noteId, url, timestamp',
+      extracts: 'id, noteId, timestamp, source'
+    }).upgrade(tx => {
+      // Migrate existing notes to have messages array
+      return tx.table('notes').toCollection().modify((note: AcademicNote) => {
+        if (!note.messages && note.content) {
+          note.messages = convertLegacyContentToMessages(note.content, note.timestamp)
+        }
+      })
     })
   }
 }
@@ -45,7 +137,8 @@ const DEFAULT_SETTINGS: Settings = {
 // API du stockage
 export const storage = {
   // ---- NOTES ----
-  async saveNote(note: Omit<AcademicNote, 'id'> & { id?: string }): Promise<string> {
+  async saveNote(note: Omit<AcademicNote, 'id'> & { id?: string }, skipSync = false): Promise<string> {
+    const isNew = !note.id
     const id = note.id || crypto.randomUUID()
     const fullNote: AcademicNote = {
       ...note,
@@ -53,8 +146,18 @@ export const storage = {
       timestamp: note.timestamp || Date.now(),
       syncedAt: note.syncedAt
     }
-    
+
     await db.notes.put(fullNote)
+
+    // Broadcast sync event to other views
+    if (!skipSync) {
+      if (isNew) {
+        stateSync.noteCreated(id)
+      } else {
+        stateSync.noteUpdated(id)
+      }
+    }
+
     return id
   },
 
@@ -83,12 +186,17 @@ export const storage = {
       .toArray()
   },
 
-  async deleteNote(id: string): Promise<void> {
+  async deleteNote(id: string, skipSync = false): Promise<void> {
     await db.transaction('rw', [db.notes, db.screenshots, db.extracts], async () => {
       await db.notes.delete(id)
       await db.screenshots.where('noteId').equals(id).delete()
       await db.extracts.where('noteId').equals(id).delete()
     })
+
+    // Broadcast sync event to other views
+    if (!skipSync) {
+      stateSync.noteDeleted(id)
+    }
   },
 
   // ---- SCREENSHOTS ----
@@ -241,6 +349,125 @@ export const storage = {
         notes: recentNotes
       }
     }
+  },
+
+  // ---- MESSAGE HELPERS ----
+  /**
+   * Add a new message to an existing note
+   */
+  async addMessageToNote(
+    noteId: string,
+    message: Omit<NoteMessage, 'id' | 'timestamp'>
+  ): Promise<string | null> {
+    const note = await this.getNote(noteId)
+    if (!note) return null
+
+    const newMessage: NoteMessage = {
+      ...message,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      timestamp: Date.now()
+    }
+
+    // Initialize messages array if not present
+    const messages = note.messages || []
+    messages.push(newMessage)
+
+    // Also update legacy content for backward compatibility
+    const contentToAdd = message.type === 'text'
+      ? message.content
+      : `<img src="${message.content}" alt="${message.metadata?.alt || 'Image'}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
+
+    const updatedContent = note.content
+      ? `${note.content}<br><br>${contentToAdd}`
+      : contentToAdd
+
+    const updatedNote: AcademicNote = {
+      ...note,
+      messages,
+      content: updatedContent,
+      timestamp: Date.now()
+    }
+
+    await this.saveNote(updatedNote)
+    return newMessage.id
+  },
+
+  /**
+   * Update a specific message in a note
+   */
+  async updateMessage(
+    noteId: string,
+    messageId: string,
+    updates: Partial<Omit<NoteMessage, 'id'>>
+  ): Promise<boolean> {
+    const note = await this.getNote(noteId)
+    if (!note || !note.messages) return false
+
+    const messageIndex = note.messages.findIndex(m => m.id === messageId)
+    if (messageIndex === -1) return false
+
+    note.messages[messageIndex] = {
+      ...note.messages[messageIndex],
+      ...updates
+    }
+
+    // Rebuild legacy content from messages
+    note.content = this.messagesToHtml(note.messages)
+    note.timestamp = Date.now()
+
+    await this.saveNote(note)
+    return true
+  },
+
+  /**
+   * Delete a specific message from a note
+   */
+  async deleteMessage(noteId: string, messageId: string): Promise<boolean> {
+    const note = await this.getNote(noteId)
+    if (!note || !note.messages) return false
+
+    const messageIndex = note.messages.findIndex(m => m.id === messageId)
+    if (messageIndex === -1) return false
+
+    note.messages.splice(messageIndex, 1)
+
+    // Rebuild legacy content from remaining messages
+    note.content = this.messagesToHtml(note.messages)
+    note.timestamp = Date.now()
+
+    await this.saveNote(note)
+    return true
+  },
+
+  /**
+   * Convert messages array to HTML content (for backward compatibility)
+   */
+  messagesToHtml(messages: NoteMessage[]): string {
+    return messages
+      .map(msg => {
+        if (msg.type === 'text') {
+          return msg.content
+        } else {
+          const alt = msg.metadata?.alt || 'Image'
+          return `<img src="${msg.content}" alt="${alt}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
+        }
+      })
+      .join('<br><br>')
+  },
+
+  /**
+   * Ensure a note has messages array (migrate on-demand)
+   */
+  async ensureNoteHasMessages(noteId: string): Promise<AcademicNote | null> {
+    const note = await this.getNote(noteId)
+    if (!note) return null
+
+    if (!note.messages && note.content) {
+      note.messages = convertLegacyContentToMessages(note.content, note.timestamp)
+      await db.notes.put(note)
+    }
+
+    return note
   }
 }
 

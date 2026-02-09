@@ -118,7 +118,7 @@
   }
   
   .header-section {
-    @apply border-b border-border bg-card text-card-foreground;
+    @apply bg-card text-card-foreground;
   }
   
   .content-section {

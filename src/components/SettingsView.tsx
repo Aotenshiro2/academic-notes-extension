@@ -126,23 +126,23 @@ function SettingsView({
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
-      <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+      <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center">
         <Settings size={20} className="mr-2" />
         Configuration
       </h2>
       
       {/* Capture automatique */}
       <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Zap size={16} className="mr-2" />
           Capture automatique
         </h3>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">Capture automatique</p>
-              <p className="text-sm text-gray-600">Capturer automatiquement les pages visitées</p>
+              <p className="font-medium text-foreground">Capture automatique</p>
+              <p className="text-sm text-muted-foreground">Capturer automatiquement les pages visitées</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -151,14 +151,14 @@ function SettingsView({
                 onChange={(e) => handleToggle('autoCapture', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">Captures d'écran</p>
-              <p className="text-sm text-gray-600">Inclure des captures d'écran dans les notes</p>
+              <p className="font-medium text-foreground">Captures d'écran</p>
+              <p className="text-sm text-muted-foreground">Inclure des captures d'écran dans les notes</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -167,14 +167,14 @@ function SettingsView({
                 onChange={(e) => handleToggle('captureScreenshots', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">Extraction intelligente</p>
-              <p className="text-sm text-gray-600">Extraire uniquement le contenu principal</p>
+              <p className="font-medium text-foreground">Extraction intelligente</p>
+              <p className="text-sm text-muted-foreground">Extraire uniquement le contenu principal</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -183,7 +183,7 @@ function SettingsView({
                 onChange={(e) => handleToggle('extractMainContent', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
         </div>
@@ -191,16 +191,16 @@ function SettingsView({
 
       {/* IA et résumés */}
       <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Brain size={16} className="mr-2" />
           Intelligence artificielle
         </h3>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">Résumés automatiques</p>
-              <p className="text-sm text-gray-600">Générer des résumés avec l'IA locale (Chrome AI)</p>
+              <p className="font-medium text-foreground">Résumés automatiques</p>
+              <p className="text-sm text-muted-foreground">Générer des résumés avec l'IA locale (Chrome AI)</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -209,14 +209,14 @@ function SettingsView({
                 onChange={(e) => handleToggle('aiSummaryEnabled', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
 
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
             <div className="flex items-start space-x-2">
-              <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-700">
+              <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-700 dark:text-blue-300">
                 <p className="font-medium mb-1">Fonctionnalités IA disponibles :</p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Résumés automatiques du contenu</li>
@@ -231,16 +231,16 @@ function SettingsView({
           {/* Configuration API IA */}
           <div className="p-4 border rounded-lg space-y-3">
             <div className="flex items-center space-x-2 mb-2">
-              <Key size={16} className="text-gray-600" />
-              <p className="font-medium text-gray-900">Configuration API</p>
+              <Key size={16} className="text-muted-foreground" />
+              <p className="font-medium text-foreground">Configuration API</p>
             </div>
 
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Chrome AI sera utilisé automatiquement si disponible. Sinon, l'API externe configurée ci-dessous sera utilisée.
             </p>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fournisseur</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Fournisseur</label>
               <select
                 value={settings.aiConfig?.provider || 'openai'}
                 onChange={(e) => handleAIProviderChange(e.target.value as AIProvider)}
@@ -253,7 +253,7 @@ function SettingsView({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Clé API</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Clé API</label>
               <input
                 type="password"
                 value={settings.aiConfig?.apiKey || ''}
@@ -264,7 +264,7 @@ function SettingsView({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Modèle</label>
               <select
                 value={settings.aiConfig?.model || 'gpt-4o-mini'}
                 onChange={(e) => handleAIModelChange(e.target.value)}
@@ -286,7 +286,7 @@ function SettingsView({
                 <span>Tester</span>
               </button>
               {aiTestResult && (
-                <span className={`text-sm ${aiTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-sm ${aiTestResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {aiTestResult.message}
                 </span>
               )}
@@ -297,7 +297,7 @@ function SettingsView({
 
       {/* Synchronisation avec Journal d'Études */}
       <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <ArrowRight size={16} className="mr-2" />
           Journal d'Études
         </h3>
@@ -306,8 +306,8 @@ function SettingsView({
           <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="font-medium text-gray-900">Synchronisation automatique</p>
-                <p className="text-sm text-gray-600">Envoyer les notes vers Journal d'Études</p>
+                <p className="font-medium text-foreground">Synchronisation automatique</p>
+                <p className="text-sm text-muted-foreground">Envoyer les notes vers Journal d'Études</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -316,13 +316,13 @@ function SettingsView({
                   onChange={(e) => handleSyncSettingChange('syncEnabled', e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
             
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
                   URL de l'application
                 </label>
                 <div className="flex space-x-2">
@@ -344,7 +344,7 @@ function SettingsView({
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Notes en attente : {settings.journalSync.pendingNotes.length}
                 </span>
                 <button
@@ -357,7 +357,7 @@ function SettingsView({
               </div>
               
               {settings.journalSync.lastSync > 0 && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Dernière sync : {new Date(settings.journalSync.lastSync).toLocaleString('fr-FR')}
                 </p>
               )}
@@ -368,7 +368,7 @@ function SettingsView({
 
       {/* Import/Export */}
       <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <FileText size={16} className="mr-2" />
           Sauvegarde des données
         </h3>
@@ -376,18 +376,18 @@ function SettingsView({
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={onExport}
-            className="flex items-center justify-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex items-center justify-center space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
           >
-            <Download size={16} className="text-blue-600" />
-            <span className="text-blue-700 font-medium">Exporter</span>
+            <Upload size={16} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-blue-700 dark:text-blue-300 font-medium">Exporter</span>
           </button>
-          
+
           <button
             onClick={handleImportClick}
-            className="flex items-center justify-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+            className="flex items-center justify-center space-x-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
           >
-            <Upload size={16} className="text-green-600" />
-            <span className="text-green-700 font-medium">Importer</span>
+            <Download size={16} className="text-green-600 dark:text-green-400" />
+            <span className="text-green-700 dark:text-green-300 font-medium">Importer</span>
           </button>
         </div>
         
@@ -399,8 +399,8 @@ function SettingsView({
           className="hidden"
         />
         
-        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
+        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
             <strong>Note :</strong> L'export inclut toutes vos notes, captures et paramètres. 
             L'import remplacera les données existantes.
           </p>
@@ -409,14 +409,14 @@ function SettingsView({
 
       {/* Langues et préférences */}
       <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Globe size={16} className="mr-2" />
           Préférences
         </h3>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground/80 mb-1">
               Langue de l'interface
             </label>
             <select
@@ -430,7 +430,7 @@ function SettingsView({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Tags par défaut
             </label>
             <input
@@ -442,7 +442,7 @@ function SettingsView({
               className="input-field"
               placeholder="Séparer les tags par des virgules"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Ces tags seront automatiquement ajoutés à chaque nouvelle note
             </p>
           </div>

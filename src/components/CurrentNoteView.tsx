@@ -1,21 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Pencil, Save, X } from 'lucide-react'
+import { Pencil, Save, X, Sparkles, Loader2, LayoutList, FileText } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
+import ImageLightbox from './ImageLightbox'
+import MessageBlock from './MessageBlock'
 import type { AcademicNote } from '@/types/academic'
 
 interface CurrentNoteViewProps {
   noteId: string
   onNoteUpdate?: () => void
   refreshTrigger?: number // Pour forcer le rechargement quand App.tsx modifie la note
+  onSmartCapture?: () => void
+  isSmartCapturing?: boolean
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture, isSmartCapturing }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [originalContent, setOriginalContent] = useState('')
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'messages' | 'legacy'>('messages') // Toggle between message view and legacy
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Recharger la note quand noteId ou refreshTrigger change
@@ -31,15 +37,34 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const loadNote = async () => {
     try {
       setIsLoading(true)
+      // Use ensureNoteHasMessages to migrate on-demand if needed
+      const noteWithMessages = await storage.ensureNoteHasMessages(noteId)
+      setNote(noteWithMessages)
+    } catch (error) {
+      console.error('Error loading note:', error)
+      // Fallback to simple get
       const notes = await storage.getNotes(1000)
       const foundNote = notes.find(n => n.id === noteId)
       setNote(foundNote || null)
-    } catch (error) {
-      console.error('Error loading note:', error)
     } finally {
       setIsLoading(false)
     }
   }
+
+  // Handlers for MessageBlock
+  const handleUpdateMessage = useCallback(async (messageId: string, content: string) => {
+    if (!note) return
+    await storage.updateMessage(noteId, messageId, { content })
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, note, onNoteUpdate])
+
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    if (!note) return
+    await storage.deleteMessage(noteId, messageId)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, note, onNoteUpdate])
 
   // Activer le mode édition
   const startEditing = useCallback(() => {
@@ -52,6 +77,27 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
       }, 0)
     }
   }, [note])
+
+  // Handle clicks on content - intercept image clicks to open lightbox
+  const handleContentClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+
+    // If clicked on an image, open lightbox instead of triggering edit
+    if (target.tagName === 'IMG') {
+      e.stopPropagation()
+      e.preventDefault()
+      const imgSrc = (target as HTMLImageElement).src
+      if (imgSrc) {
+        setLightboxImage(imgSrc)
+      }
+      return
+    }
+
+    // Otherwise, start editing if not already editing
+    if (!isEditing) {
+      startEditing()
+    }
+  }, [isEditing, startEditing])
 
   // Sauvegarder les modifications
   const saveChanges = async () => {
@@ -136,70 +182,77 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
     <div className="space-y-4">
       {/* Header avec boutons de contrôle */}
       <div className="flex justify-end gap-1" data-edit-controls>
-        {!isEditing ? (
+        {onSmartCapture && (
           <button
-            onClick={startEditing}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-            title="Cliquer pour éditer cette note"
+            onClick={onSmartCapture}
+            disabled={isSmartCapturing}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+            title="Capturer et ajouter le contenu de cette page"
           >
-            <Pencil size={12} />
-            <span>Éditer</span>
+            {isSmartCapturing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            <span>{isSmartCapturing ? 'Capture...' : 'Capturer page'}</span>
           </button>
-        ) : (
-          <div className="flex items-center gap-1">
+        )}
+
+        {/* View mode toggle - only show if note has messages */}
+        {note.messages && note.messages.length > 0 && (
+          <button
+            onClick={() => setViewMode(v => v === 'messages' ? 'legacy' : 'messages')}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+            title={viewMode === 'messages' ? 'Vue complète' : 'Vue par messages'}
+          >
+            {viewMode === 'messages' ? <FileText size={12} /> : <LayoutList size={12} />}
+            <span>{viewMode === 'messages' ? 'Vue complète' : 'Messages'}</span>
+          </button>
+        )}
+
+        {/* Edit button only shown in legacy mode */}
+        {viewMode === 'legacy' && (
+          !isEditing ? (
             <button
-              onClick={saveChanges}
-              disabled={isSaving}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              onClick={startEditing}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+              title="Cliquer pour éditer cette note"
             >
-              <Save size={12} />
-              <span>{isSaving ? '...' : 'Sauver'}</span>
+              <Pencil size={12} />
+              <span>Éditer</span>
             </button>
-            <button
-              onClick={cancelEditing}
-              disabled={isSaving}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50 transition-colors"
-            >
-              <X size={12} />
-            </button>
-            <span className="text-xs text-muted-foreground ml-2">
-              Échap annuler · Ctrl+S sauver
-            </span>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={saveChanges}
+                disabled={isSaving}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                <Save size={12} />
+                <span>{isSaving ? '...' : 'Sauver'}</span>
+              </button>
+              <button
+                onClick={cancelEditing}
+                disabled={isSaving}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50 transition-colors"
+              >
+                <X size={12} />
+              </button>
+              <span className="text-xs text-muted-foreground ml-2">
+                Échap annuler · Ctrl+S sauver
+              </span>
+            </div>
+          )
         )}
       </div>
 
-      {/* Contenu de la note - édition inline */}
-      <div className="prose prose-sm max-w-none">
-        <div
-          ref={contentRef}
-          contentEditable={isEditing}
-          suppressContentEditableWarning={true}
-          onClick={!isEditing ? startEditing : undefined}
-          onKeyDown={isEditing ? handleKeyDown : undefined}
-          onBlur={isEditing ? handleBlur : undefined}
-          className={`
-            text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
-            ${isEditing
-              ? 'border-2 border-primary/40 bg-background p-3 focus:border-primary'
-              : 'cursor-pointer hover:bg-muted/30 p-3 -m-3'
-            }
-          `}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
-        />
-      </div>
-
-      {/* Résumé */}
+      {/* Résumé - EN HAUT avant le contenu */}
       {note.summary && (
-        <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <h3 className="text-sm font-semibold text-primary mb-2">Résumé IA</h3>
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <h3 className="text-sm font-semibold text-primary mb-2">Résumé</h3>
           <p className="text-sm text-foreground/90">{note.summary}</p>
         </div>
       )}
 
-      {/* Points clés */}
+      {/* Points clés - EN HAUT avant le contenu */}
       {note.keyPoints && note.keyPoints.length > 0 && (
-        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
           <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">Points clés</h3>
           <ul className="space-y-1.5">
             {note.keyPoints.map((point, index) => (
@@ -210,6 +263,52 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Contenu de la note */}
+      {viewMode === 'messages' && note.messages && note.messages.length > 0 ? (
+        /* Messages view - individual editable messages */
+        <div className="space-y-2 pl-6">
+          {note.messages.map(message => (
+            <MessageBlock
+              key={message.id}
+              message={message}
+              onUpdate={handleUpdateMessage}
+              onDelete={handleDeleteMessage}
+              onImageClick={setLightboxImage}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Legacy view - single HTML block */
+        <div className="prose prose-sm max-w-none">
+          <div
+            ref={contentRef}
+            contentEditable={isEditing}
+            suppressContentEditableWarning={true}
+            onClick={handleContentClick}
+            onKeyDown={isEditing ? handleKeyDown : undefined}
+            onBlur={isEditing ? handleBlur : undefined}
+            className={`
+              text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
+              ${isEditing
+                ? 'border-2 border-primary/40 bg-background p-3 focus:border-primary'
+                : 'cursor-pointer hover:bg-muted/30 p-3 -m-3'
+              }
+              [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80
+            `}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+          />
+        </div>
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage}
+          alt="Note image"
+          onClose={() => setLightboxImage(null)}
+        />
       )}
 
       {/* Concepts */}
@@ -250,10 +349,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
                 key={index}
                 src={screenshot.dataUrl}
                 alt={`Capture ${index + 1}`}
-                className="rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                className="rounded-lg border border-border cursor-zoom-in hover:opacity-80 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation()
-                  // TODO: Implémenter modal d'agrandissement
+                  setLightboxImage(screenshot.dataUrl)
                 }}
               />
             ))}

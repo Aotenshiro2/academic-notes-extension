@@ -1,7 +1,24 @@
+// Message types for individual note entries
+export type NoteMessageType = 'text' | 'image' | 'capture' | 'screenshot'
+
+export interface NoteMessage {
+  id: string
+  type: NoteMessageType
+  content: string
+  timestamp: number
+  metadata?: {
+    sourceUrl?: string
+    sourceTitle?: string
+    dimensions?: { width: number; height: number }
+    alt?: string
+  }
+}
+
 export interface AcademicNote {
   id: string
   title: string
-  content: string
+  content: string // Keep for backward compatibility with legacy notes
+  messages?: NoteMessage[] // NEW: Individual messages
   summary?: string
   keyPoints?: string[]
   url: string

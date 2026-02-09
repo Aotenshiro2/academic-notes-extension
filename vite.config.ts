@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import replace from '@rollup/plugin-replace'
 import { resolve } from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Remplacer les URLs CDN externes pour conformité Chrome Web Store Manifest V3
+    // jsPDF inclut une référence à pdfobject CDN qu'on n'utilise pas
+    replace({
+      preventAssignment: true,
+      values: {
+        'https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js': '',
+      },
+    }),
+  ],
   build: {
     outDir: 'dist',
     rollupOptions: {

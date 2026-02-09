@@ -286,6 +286,131 @@ Ajouter la possibilite de transcrire l'audio des videos YouTube/web pendant la c
 
 ---
 
+## Changelog v1.0.6 - Corrections UI/UX ✅
+
+### Implémenté le 30/01/2026
+
+#### Screenshot dans capture intelligente ✅
+- `handleSmartCapture` capture maintenant un screenshot via `chrome.tabs.captureVisibleTab()`
+- Le screenshot est inclus dans le contenu de la note
+- Résumé et points clés ne sont plus dupliqués dans le contenu (affichés via blocs séparés)
+
+#### Icônes Export/Import corrigées ✅
+- **Header:** Icône Export PDF changée de `Download` vers `Upload` (flèche sortante)
+- **Settings:** Export = `Upload`, Import = `Download` (sens logique)
+
+#### Résumé repositionné en haut ✅
+- Dans `CurrentNoteView.tsx`, les blocs Résumé et Points clés sont maintenant affichés AVANT le contenu éditable
+- Meilleure lisibilité immédiate des informations extraites
+
+#### Bouton + retourne à l'accueil ✅
+- `handleNewNote` remplacé par `handleGoHome` qui fait `setCurrentNoteId(null)`
+- Permet de revenir à `EmptyNoteView` facilement
+- Tooltip changé en "Nouvelle capture"
+
+#### Bouton "Capturer page" dans note ouverte ✅
+- Nouvelle fonction `handleSmartCaptureToCurrentNote` pour ajouter une capture à une note existante
+- Bouton avec icône Sparkles dans `CurrentNoteView`
+- Ajoute le contenu capturé (résumé, points clés, screenshot) à la fin de la note
+
+**Fichiers modifiés:**
+- `src/sidepanel/App.tsx`
+- `src/components/Header.tsx`
+- `src/components/SettingsView.tsx`
+- `src/components/CurrentNoteView.tsx`
+
+---
+
+## Changelog v1.0.7 - Fix Scroll Historique + Chrome Web Store ✅
+
+### Implémenté le 30/01/2026
+
+#### Fix scroll dans panneau historique ✅
+- **Problème:** Impossible de faire défiler la liste des notes dans l'historique
+- **Cause:** Le conteneur parent avait `h-full` mais pas `flex flex-col`, donc `flex-1 overflow-y-auto` ne fonctionnait pas
+- **Solution:** Ajout de `flex flex-col` au conteneur principal
+
+**Fichier modifié:** `src/components/HistoryDropdown.tsx` (ligne 118)
+
+#### Description Chrome Web Store mise à jour ✅
+
+**Description courte (manifest.json):**
+> Ne perdez plus jamais une analyse. Capturez vos insights trading en 1 clic avec screenshot et résumé auto.
+
+**Justification permission "scripting" (pour soumission):**
+> This extension uses the scripting permission to extract page content when the user initiates a "Smart Capture" action. The script reads the page's text content, metadata (title, description, author, Open Graph tags), and structure to create a summarized note. No data is sent to external servers - all extracted content is stored locally in the browser using IndexedDB. The scripting permission is only executed on user demand (click on capture button), never automatically.
+
+**Description longue Chrome Web Store:**
+```
+🎯 TRADING NOTES - Votre mémoire de trader, amplifiée
+
+Vous passez des heures à analyser des graphiques, lire des articles, regarder des vidéos... mais combien d'insights précieux avez-vous oubliés ?
+
+Trading Notes capture et organise automatiquement vos recherches pour que vous puissiez vous concentrer sur ce qui compte : devenir un meilleur trader.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ FONCTIONNALITÉS CLÉS
+
+📸 Capture Intelligente en 1 clic
+• Screenshot automatique de la page
+• Extraction des points clés
+• Résumé généré instantanément
+• Fonctionne sur TradingView, YouTube, articles, forums...
+
+📝 Prise de Notes Fluide
+• Éditeur riche intégré (gras, listes, liens)
+• Ajoutez vos annotations personnelles
+• Combinez plusieurs captures dans une même note
+
+🔍 Retrouvez Tout Instantanément
+• Historique complet de vos captures
+• Recherche par tags et concepts
+• Toutes vos notes accessibles en sidebar
+
+📤 Export & Sauvegarde
+• Export PDF de vos notes
+• Sauvegarde JSON de toutes vos données
+• Vos données restent sur VOTRE navigateur
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 CAS D'USAGE
+
+• Sauvegarder une analyse TradingView prometteuse
+• Capturer les points clés d'une vidéo YouTube de formation
+• Archiver un setup de trading repéré sur Twitter/X
+• Documenter votre journal de trading quotidien
+• Conserver les leçons de vos trades (gagnants ET perdants)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ RACCOURCIS CLAVIER
+
+• Ctrl+Shift+A : Ouvrir/fermer le panneau
+• Ctrl+Shift+C : Capture rapide
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔒 RESPECT DE VOTRE VIE PRIVÉE
+
+• Aucune donnée envoyée à des serveurs externes
+• Tout reste stocké localement dans Chrome
+• Pas de compte requis, pas de tracking
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Développé par AOKnowledge pour les traders qui veulent progresser.
+
+Des questions ? Rejoignez notre communauté sur Skool.
+```
+
+**Fichiers modifiés:**
+- `public/manifest.json`
+- `package.json`
+
+---
+
 ## Objectifs v1.5 - UX et Page Fullscreen
 
 ### 18. Refonte de la page Fullscreen

@@ -114,9 +114,9 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
       <div className="fixed inset-0 bg-black/20" onClick={onClose} />
       
       {/* Dropdown panel */}
-      <div 
+      <div
         ref={dropdownRef}
-        className="absolute top-0 right-0 w-80 h-full bg-background border-l border-border shadow-xl animate-slide-in"
+        className="absolute top-0 right-0 w-80 h-full bg-background border-l border-border shadow-xl animate-slide-in flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">

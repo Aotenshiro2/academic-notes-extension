@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { 
-  BookOpen, 
-  Plus, 
-  Search, 
-  Settings, 
-  Download, 
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Settings,
+  Download,
   Upload,
   Camera,
   FileText,
@@ -17,11 +17,15 @@ import {
   X,
   ExternalLink,
   SidebarClose,
-  Maximize
+  Maximize,
+  Trash2,
+  Check
 } from 'lucide-react'
 
 import SimpleRichEditor, { SimpleRichEditorHandle } from '@/components/SimpleRichEditor'
+import ImageLightbox from '@/components/ImageLightbox'
 import storage from '@/lib/storage'
+import { stateSync } from '@/lib/state-sync'
 import { sanitizeHtml } from '@/lib/sanitize'
 import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
 
@@ -35,6 +39,16 @@ function FullscreenApp() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
   const editorRef = useRef<SimpleRichEditorHandle>(null)
+  const noteDisplayRef = useRef<HTMLDivElement>(null) // Ref pour la zone d'affichage des notes
+  const contentEditableRef = useRef<HTMLDivElement>(null) // Ref pour le contenu éditable
+
+  // États pour l'édition
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState('')
+  const [isEditingContent, setIsEditingContent] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   // URL params pour récupérer l'ID de note
   useEffect(() => {
@@ -43,9 +57,21 @@ function FullscreenApp() {
     if (noteIdFromUrl) {
       setCurrentNoteId(noteIdFromUrl)
     }
-    
+
     loadData()
     loadCurrentPageInfo()
+
+    // Listen to sync events from other views (sidepanel, etc.)
+    const unsubscribeSync = stateSync.subscribe((message) => {
+      // Reload data when notes are modified in another view
+      if (message.source !== 'fullscreen') {
+        loadData()
+      }
+    })
+
+    return () => {
+      unsubscribeSync()
+    }
   }, [])
 
   // Charger les informations de la page courante (onglet actif)
@@ -137,7 +163,11 @@ function FullscreenApp() {
       setEditorContent('')
       setTimeout(() => {
         editorRef.current?.focus()
-      }, 0)
+        // Scroller la zone d'affichage des notes vers le bas
+        if (noteDisplayRef.current) {
+          noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
+        }
+      }, 100)
     } catch (error) {
       console.error('Error adding content:', error)
       alert('Erreur lors de l\'ajout du contenu')
@@ -208,6 +238,128 @@ function FullscreenApp() {
     }
   }
 
+  // Supprimer une note
+  const handleDeleteNote = async () => {
+    if (!currentNoteId) return
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.')) {
+      try {
+        await storage.deleteNote(currentNoteId)
+        setCurrentNoteId(null)
+        await loadData()
+        stateSync.broadcast({ type: 'NOTE_DELETED', noteId: currentNoteId, source: 'fullscreen' })
+      } catch (error) {
+        console.error('Error deleting note:', error)
+        alert('Erreur lors de la suppression de la note')
+      }
+    }
+  }
+
+  // Commencer l'édition du titre
+  const startEditingTitle = () => {
+    if (currentNote) {
+      setEditedTitle(currentNote.title)
+      setIsEditingTitle(true)
+      setTimeout(() => titleInputRef.current?.focus(), 50)
+    }
+  }
+
+  // Sauvegarder le titre
+  const saveTitle = async () => {
+    if (!currentNoteId || !currentNote) return
+    const newTitle = editedTitle.trim()
+    if (!newTitle) {
+      setIsEditingTitle(false)
+      return
+    }
+    try {
+      const updatedNote = { ...currentNote, title: newTitle }
+      await storage.saveNote(updatedNote)
+      setIsEditingTitle(false)
+      await loadData()
+      stateSync.broadcast({ type: 'NOTE_UPDATED', noteId: currentNoteId, source: 'fullscreen' })
+    } catch (error) {
+      console.error('Error saving title:', error)
+      alert('Erreur lors de la sauvegarde du titre')
+    }
+  }
+
+  // Calculer currentNote avant les callbacks qui l'utilisent
+  const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
+
+  // Commencer l'édition du contenu
+  const startEditingContent = useCallback(() => {
+    if (currentNote) {
+      setEditedContent(currentNote.content)
+      setIsEditingContent(true)
+      setTimeout(() => {
+        contentEditableRef.current?.focus()
+      }, 0)
+    }
+  }, [currentNote])
+
+  // Sauvegarder le contenu
+  const saveContent = useCallback(async () => {
+    if (!currentNoteId || !currentNote) return
+    try {
+      const newContent = contentEditableRef.current
+        ? sanitizeHtml(contentEditableRef.current.innerHTML)
+        : editedContent
+      const updatedNote = { ...currentNote, content: newContent, timestamp: Date.now() }
+      await storage.saveNote(updatedNote)
+      setIsEditingContent(false)
+      await loadData()
+      stateSync.broadcast({ type: 'NOTE_UPDATED', noteId: currentNoteId, source: 'fullscreen' })
+    } catch (error) {
+      console.error('Error saving content:', error)
+      alert('Erreur lors de la sauvegarde du contenu')
+    }
+  }, [currentNoteId, currentNote, editedContent])
+
+  // Handler de clic sur le contenu
+  const handleContentClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+
+    // Si clic sur une image, ouvrir le lightbox
+    if (target.tagName === 'IMG') {
+      e.stopPropagation()
+      e.preventDefault()
+      const imgSrc = (target as HTMLImageElement).src
+      if (imgSrc) {
+        setLightboxImage(imgSrc)
+      }
+      return
+    }
+
+    // Sinon, activer le mode édition
+    if (!isEditingContent) {
+      startEditingContent()
+    }
+  }, [isEditingContent, startEditingContent])
+
+  // Handler de clavier pour le contenu
+  const handleContentKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setIsEditingContent(false)
+    }
+    if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      saveContent()
+    }
+  }, [saveContent])
+
+  // Handler de blur pour sauvegarde automatique
+  const handleContentBlur = useCallback((e: React.FocusEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement
+    // Ne pas sauvegarder si on clique sur les boutons de contrôle
+    if (relatedTarget?.closest('[data-edit-controls]')) {
+      return
+    }
+    if (isEditingContent) {
+      saveContent()
+    }
+  }, [isEditingContent, saveContent])
+
   // Filtrer les notes selon la recherche
   const filteredNotes = notes.filter(note => 
     !searchQuery || 
@@ -215,8 +367,6 @@ function FullscreenApp() {
     note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   )
-
-  const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
   if (isLoading) {
     return (
@@ -309,10 +459,51 @@ function FullscreenApp() {
             )}
             
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                {currentNote ? currentNote.title : 'Trading Notes - Vue Étendue'}
-              </h2>
-              {currentNote && (
+              {currentNote ? (
+                isEditingTitle ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onBlur={saveTitle}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveTitle()
+                        if (e.key === 'Escape') setIsEditingTitle(false)
+                      }}
+                      className="text-lg font-semibold bg-transparent border-b-2 border-primary outline-none text-foreground min-w-[200px]"
+                    />
+                    <button
+                      onClick={saveTitle}
+                      className="p-1 text-primary hover:bg-primary/10 rounded"
+                      title="Sauvegarder"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button
+                      onClick={() => setIsEditingTitle(false)}
+                      className="p-1 text-muted-foreground hover:bg-muted rounded"
+                      title="Annuler"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <h2
+                    className="text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                    onClick={startEditingTitle}
+                    title="Cliquer pour modifier le titre"
+                  >
+                    {currentNote.title}
+                  </h2>
+                )
+              ) : (
+                <h2 className="text-lg font-semibold text-foreground">
+                  Trading Notes - Vue Étendue
+                </h2>
+              )}
+              {currentNote && !isEditingTitle && (
                 <p className="text-sm text-muted-foreground">
                   Modifié le {new Date(currentNote.timestamp).toLocaleDateString('fr-FR')} à {new Date(currentNote.timestamp).toLocaleTimeString('fr-FR')}
                 </p>
@@ -320,7 +511,19 @@ function FullscreenApp() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2" data-edit-controls>
+            {currentNote && (
+              <>
+                <button
+                  onClick={handleDeleteNote}
+                  className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-md transition-colors"
+                  title="Supprimer la note"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <div className="w-px h-6 bg-border mx-1"></div>
+              </>
+            )}
             <button
               onClick={() => {/* TODO: Export */}}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -361,12 +564,53 @@ function FullscreenApp() {
         {/* Contenu principal */}
         <div className="flex-1 flex">
           {/* Zone d'affichage de note */}
-          <div className="flex-1 overflow-y-auto">
+          <div ref={noteDisplayRef} className="flex-1 overflow-y-auto">
             {currentNote ? (
               <div className="p-8 max-w-4xl mx-auto">
+                {/* Boutons de contrôle en mode édition */}
+                {isEditingContent && (
+                  <div className="mb-4 flex items-center justify-between" data-edit-controls>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Mode édition</span>
+                      <span className="text-xs text-muted-foreground">
+                        Échap annuler · Ctrl+S sauver
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={saveContent}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                      >
+                        <Check size={16} />
+                        <span>Sauvegarder</span>
+                      </button>
+                      <button
+                        onClick={() => setIsEditingContent(false)}
+                        className="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors flex items-center space-x-2"
+                      >
+                        <X size={16} />
+                        <span>Annuler</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="prose prose-lg max-w-none">
                   <div
-                    className="text-foreground leading-relaxed"
+                    ref={contentEditableRef}
+                    contentEditable={isEditingContent}
+                    suppressContentEditableWarning={true}
+                    onClick={handleContentClick}
+                    onKeyDown={isEditingContent ? handleContentKeyDown : undefined}
+                    onBlur={isEditingContent ? handleContentBlur : undefined}
+                    className={`
+                      text-foreground leading-relaxed rounded-lg transition-all outline-none
+                      ${isEditingContent
+                        ? 'border-2 border-primary/40 bg-background p-4 focus:border-primary min-h-[300px]'
+                        : 'cursor-pointer hover:bg-muted/30 p-4 -m-4'
+                      }
+                      [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80
+                    `}
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentNote.content) }}
                   />
                 </div>
@@ -421,6 +665,15 @@ function FullscreenApp() {
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage}
+          alt="Note image"
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   )
 }
