@@ -403,4 +403,50 @@
   .simple-rich-editor .toolbar button:active {
     background-color: #e5e7eb;
   }
+
+  /* CaptureInput Styles */
+  .capture-input [contenteditable="true"] {
+    outline: none;
+  }
+
+  .capture-input [contenteditable="true"]:empty:before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  .capture-input [contenteditable="true"] img {
+    max-width: 100%;
+    height: auto;
+    margin: 8px 0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+  }
+
+  .capture-input [contenteditable="true"] img:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+
+  .capture-input [contenteditable="true"] p {
+    margin: 4px 0;
+  }
+
+  .capture-input [contenteditable="true"] p:first-child {
+    margin-top: 0;
+  }
+
+  .capture-input [contenteditable="true"] p:last-child {
+    margin-bottom: 0;
+  }
+
+  .capture-input [contenteditable="true"] ul,
+  .capture-input [contenteditable="true"] ol {
+    margin: 4px 0;
+    padding-left: 20px;
+  }
+
+  .capture-input [contenteditable="true"] li {
+    margin: 2px 0;
+  }
 }

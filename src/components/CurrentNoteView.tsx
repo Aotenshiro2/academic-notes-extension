@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Pencil, Save, X, Sparkles, Loader2, LayoutList, FileText } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -9,30 +8,19 @@ import type { AcademicNote } from '@/types/academic'
 interface CurrentNoteViewProps {
   noteId: string
   onNoteUpdate?: () => void
-  refreshTrigger?: number // Pour forcer le rechargement quand App.tsx modifie la note
-  onSmartCapture?: () => void
-  isSmartCapturing?: boolean
+  refreshTrigger?: number
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture, isSmartCapturing }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [originalContent, setOriginalContent] = useState('')
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'messages' | 'legacy'>('messages') // Toggle between message view and legacy
-  const contentRef = useRef<HTMLDivElement>(null)
 
   // Recharger la note quand noteId ou refreshTrigger change
   useEffect(() => {
     loadNote()
   }, [noteId, refreshTrigger])
 
-  // Réinitialiser le mode édition quand on change de note
-  useEffect(() => {
-    setIsEditing(false)
-  }, [noteId])
 
   const loadNote = async () => {
     try {
@@ -66,96 +54,6 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
-  // Activer le mode édition
-  const startEditing = useCallback(() => {
-    if (note) {
-      setOriginalContent(note.content)
-      setIsEditing(true)
-      // Focus sur le contenu après le rendu
-      setTimeout(() => {
-        contentRef.current?.focus()
-      }, 0)
-    }
-  }, [note])
-
-  // Handle clicks on content - intercept image clicks to open lightbox
-  const handleContentClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-
-    // If clicked on an image, open lightbox instead of triggering edit
-    if (target.tagName === 'IMG') {
-      e.stopPropagation()
-      e.preventDefault()
-      const imgSrc = (target as HTMLImageElement).src
-      if (imgSrc) {
-        setLightboxImage(imgSrc)
-      }
-      return
-    }
-
-    // Otherwise, start editing if not already editing
-    if (!isEditing) {
-      startEditing()
-    }
-  }, [isEditing, startEditing])
-
-  // Sauvegarder les modifications
-  const saveChanges = async () => {
-    if (!note || !contentRef.current) return
-
-    try {
-      setIsSaving(true)
-      const newContent = sanitizeHtml(contentRef.current.innerHTML)
-      const updatedNote: AcademicNote = {
-        ...note,
-        content: newContent,
-        timestamp: Date.now()
-      }
-      await storage.saveNote(updatedNote)
-      setNote(updatedNote)
-      setIsEditing(false)
-      onNoteUpdate?.()
-    } catch (error) {
-      console.error('Error saving note:', error)
-      alert('Erreur lors de la sauvegarde')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // Annuler l'édition
-  const cancelEditing = useCallback(() => {
-    if (contentRef.current && note) {
-      contentRef.current.innerHTML = originalContent
-    }
-    setIsEditing(false)
-  }, [originalContent, note])
-
-  // Gérer les touches clavier
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      cancelEditing()
-    }
-    if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault()
-      saveChanges()
-    }
-  }, [cancelEditing])
-
-  // Sauvegarde au blur (clic en dehors) - seulement si on est en mode édition
-  const handleBlur = useCallback((e: React.FocusEvent) => {
-    // Vérifier si le clic est sur un bouton de contrôle
-    const relatedTarget = e.relatedTarget as HTMLElement
-    if (relatedTarget?.closest('[data-edit-controls]')) {
-      return // Ne pas sauvegarder si on clique sur les boutons
-    }
-
-    if (isEditing) {
-      saveChanges()
-    }
-  }, [isEditing])
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -180,69 +78,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
 
   return (
     <div className="space-y-4">
-      {/* Header avec boutons de contrôle */}
-      <div className="flex justify-end gap-1" data-edit-controls>
-        {onSmartCapture && (
-          <button
-            onClick={onSmartCapture}
-            disabled={isSmartCapturing}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
-            title="Capturer et ajouter le contenu de cette page"
-          >
-            {isSmartCapturing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            <span>{isSmartCapturing ? 'Capture...' : 'Capturer page'}</span>
-          </button>
-        )}
-
-        {/* View mode toggle - only show if note has messages */}
-        {note.messages && note.messages.length > 0 && (
-          <button
-            onClick={() => setViewMode(v => v === 'messages' ? 'legacy' : 'messages')}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-            title={viewMode === 'messages' ? 'Vue complète' : 'Vue par messages'}
-          >
-            {viewMode === 'messages' ? <FileText size={12} /> : <LayoutList size={12} />}
-            <span>{viewMode === 'messages' ? 'Vue complète' : 'Messages'}</span>
-          </button>
-        )}
-
-        {/* Edit button only shown in legacy mode */}
-        {viewMode === 'legacy' && (
-          !isEditing ? (
-            <button
-              onClick={startEditing}
-              className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-              title="Cliquer pour éditer cette note"
-            >
-              <Pencil size={12} />
-              <span>Éditer</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={saveChanges}
-                disabled={isSaving}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                <Save size={12} />
-                <span>{isSaving ? '...' : 'Sauver'}</span>
-              </button>
-              <button
-                onClick={cancelEditing}
-                disabled={isSaving}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50 transition-colors"
-              >
-                <X size={12} />
-              </button>
-              <span className="text-xs text-muted-foreground ml-2">
-                Échap annuler · Ctrl+S sauver
-              </span>
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Résumé - EN HAUT avant le contenu */}
+      {/* Résumé */}
       {note.summary && (
         <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
           <h3 className="text-sm font-semibold text-primary mb-2">Résumé</h3>
@@ -252,8 +88,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
 
       {/* Points clés - EN HAUT avant le contenu */}
       {note.keyPoints && note.keyPoints.length > 0 && (
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
-          <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">Points clés</h3>
+        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+          <h3 className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2">Points clés</h3>
           <ul className="space-y-1.5">
             {note.keyPoints.map((point, index) => (
               <li key={index} className="flex items-start gap-2 text-sm text-foreground/90">
@@ -265,10 +101,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
         </div>
       )}
 
-      {/* Contenu de la note */}
-      {viewMode === 'messages' && note.messages && note.messages.length > 0 ? (
-        /* Messages view - individual editable messages */
-        <div className="space-y-2 pl-6">
+      {/* Contenu de la note — blocs messages */}
+      {note.messages && note.messages.length > 0 ? (
+        <div className="space-y-3">
           {note.messages.map(message => (
             <MessageBlock
               key={message.id}
@@ -279,28 +114,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
             />
           ))}
         </div>
-      ) : (
-        /* Legacy view - single HTML block */
+      ) : note.content ? (
+        /* Fallback pour anciennes notes sans messages */
         <div className="prose prose-sm max-w-none">
           <div
-            ref={contentRef}
-            contentEditable={isEditing}
-            suppressContentEditableWarning={true}
-            onClick={handleContentClick}
-            onKeyDown={isEditing ? handleKeyDown : undefined}
-            onBlur={isEditing ? handleBlur : undefined}
-            className={`
-              text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
-              ${isEditing
-                ? 'border-2 border-primary/40 bg-background p-3 focus:border-primary'
-                : 'cursor-pointer hover:bg-muted/30 p-3 -m-3'
-              }
-              [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80
-            `}
+            className="text-foreground/90 leading-relaxed p-3 [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Image Lightbox */}
       {lightboxImage && (
@@ -313,15 +135,18 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, onSmartCapture,
 
       {/* Concepts */}
       {note.concepts.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {note.concepts.map((concept, index) => (
-            <span
-              key={index}
-              className="px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/30 rounded-full"
-            >
-              {concept}
-            </span>
-          ))}
+        <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+          <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">Concepts</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {note.concepts.map((concept, index) => (
+              <span
+                key={index}
+                className="px-2 py-0.5 text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-full"
+              >
+                {concept}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

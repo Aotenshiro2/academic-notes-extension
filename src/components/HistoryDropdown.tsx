@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { X, FileText, Clock, Edit3, Check, XCircle, Trash2 } from 'lucide-react'
+import ConfirmDialog from './ConfirmDialog'
 import storage from '@/lib/storage'
+import { formatCompactDate } from '@/lib/date-utils'
 import type { AcademicNote } from '@/types/academic'
 
 interface HistoryDropdownProps {
@@ -16,9 +18,12 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if (deleteConfirmId) return
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         onClose()
       }
@@ -31,25 +36,15 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, deleteConfirmId])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDeleteConfirmId(null)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (diffInDays === 0) {
-      return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    } else if (diffInDays === 1) {
-      return 'Hier'
-    } else if (diffInDays < 7) {
-      return `${diffInDays} jours`
-    } else {
-      return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-    }
-  }
 
   const truncateTitle = (title: string, maxLength = 50) => {
     return title.length > maxLength ? title.slice(0, maxLength) + '...' : title
@@ -96,15 +91,22 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
     }
   }
 
-  const handleDeleteNote = async (noteId: string, event: React.MouseEvent) => {
+  const handleDeleteNote = (noteId: string, event: React.MouseEvent) => {
     event.stopPropagation()
-    if (confirm('Supprimer cette note ?')) {
-      try {
-        await storage.deleteNote(noteId)
-        onNotesUpdate?.()
-      } catch (error) {
-        console.error('Error deleting note:', error)
-      }
+    setDeleteConfirmId(noteId)
+  }
+
+  const confirmDeleteNote = async () => {
+    if (!deleteConfirmId) return
+    setIsDeleting(true)
+    try {
+      await storage.deleteNote(deleteConfirmId)
+      onNotesUpdate?.()
+    } catch (error) {
+      console.error('Error deleting note:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeleteConfirmId(null)
     }
   }
 
@@ -127,6 +129,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
           <button
             onClick={onClose}
             className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+            aria-label="Fermer l'historique"
           >
             <X size={18} />
           </button>
@@ -144,9 +147,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
             </div>
           ) : (
             <div className="space-y-1">
-              {notes
-                .sort((a, b) => b.timestamp - a.timestamp) // Trier par date décroissante
-                .map((note) => (
+              {notes.map((note) => (
                   <button
                     key={note.id}
                     onClick={() => {
@@ -182,6 +183,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                                 onClick={(e) => { e.stopPropagation(); saveTitle(note.id); }}
                                 className="p-1 text-green-600 hover:text-green-700 rounded transition-colors"
                                 title="Sauvegarder"
+                                aria-label="Sauvegarder le titre"
                               >
                                 <Check size={12} />
                               </button>
@@ -189,6 +191,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                                 onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
                                 className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
                                 title="Annuler"
+                                aria-label="Annuler la modification"
                               >
                                 <XCircle size={12} />
                               </button>
@@ -202,6 +205,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                                 onClick={(e) => startEditingTitle(note, e)}
                                 className="p-1 text-muted-foreground hover:text-primary rounded transition-colors opacity-0 group-hover:opacity-100"
                                 title="Modifier le titre"
+                                aria-label="Modifier le titre"
                               >
                                 <Edit3 size={12} />
                               </button>
@@ -209,6 +213,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                                 onClick={(e) => handleDeleteNote(note.id, e)}
                                 className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors opacity-0 group-hover:opacity-100"
                                 title="Supprimer la note"
+                                aria-label="Supprimer la note"
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -216,7 +221,7 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(note.timestamp)} • {note.metadata.domain}
+                          {formatCompactDate(note.timestamp)} • {note.metadata.domain}
                         </p>
                         {note.tags.length > 0 && (
                           <div className="flex space-x-1 mt-2">
@@ -250,6 +255,15 @@ function HistoryDropdown({ isOpen, onClose, notes, currentNoteId, onSelectNote, 
           </p>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        onConfirm={confirmDeleteNote}
+        onCancel={() => setDeleteConfirmId(null)}
+        title="Supprimer la note"
+        message="Cette action est irréversible."
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

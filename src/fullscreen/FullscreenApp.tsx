@@ -1,33 +1,31 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   BookOpen,
   Plus,
   Search,
-  Settings,
   Download,
-  Upload,
-  Camera,
-  FileText,
-  Video,
-  Globe,
-  Filter,
-  BarChart3,
-  ArrowRight,
+  Loader2,
   Menu,
   X,
   ExternalLink,
   SidebarClose,
   Maximize,
   Trash2,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react'
 
-import SimpleRichEditor, { SimpleRichEditorHandle } from '@/components/SimpleRichEditor'
+import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import TabPicker from '@/components/TabPicker'
+import CurrentNoteView from '@/components/CurrentNoteView'
 import ImageLightbox from '@/components/ImageLightbox'
+import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import storage from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
-import { sanitizeHtml } from '@/lib/sanitize'
-import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
+import { exportNoteToPDF } from '@/lib/pdf-export'
+import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
+import type { AcademicNote, Settings as SettingsType } from '@/types/academic'
 
 function FullscreenApp() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
@@ -38,17 +36,44 @@ function FullscreenApp() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
-  const editorRef = useRef<SimpleRichEditorHandle>(null)
-  const noteDisplayRef = useRef<HTMLDivElement>(null) // Ref pour la zone d'affichage des notes
-  const contentEditableRef = useRef<HTMLDivElement>(null) // Ref pour le contenu éditable
+  const editorRef = useRef<CaptureInputHandle>(null)
+  const noteDisplayRef = useRef<HTMLDivElement>(null)
 
-  // États pour l'édition
+  // États pour l'édition du titre
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
-  const [isEditingContent, setIsEditingContent] = useState(false)
-  const [editedContent, setEditedContent] = useState('')
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [deleteConfirmNoteId, setDeleteConfirmNoteId] = useState<string | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+
+  // Smart capture
+  const [isSmartCapturing, setIsSmartCapturing] = useState(false)
+  const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
+  const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
+
+  // Tab Picker (pour capturer depuis un autre onglet en fullscreen)
+  const [tabPickerConfig, setTabPickerConfig] = useState<{
+    isOpen: boolean
+    onSelect: (tabId: number) => void
+    onCancel: () => void
+    title?: string
+    description?: string
+  } | null>(null)
+
+  const selectTab = (title?: string, description?: string): Promise<number | null> => {
+    return new Promise((resolve) => {
+      setTabPickerConfig({
+        isOpen: true,
+        onSelect: (tabId: number) => { setTabPickerConfig(null); resolve(tabId) },
+        onCancel: () => { setTabPickerConfig(null); resolve(null) },
+        title,
+        description
+      })
+    })
+  }
 
   // URL params pour récupérer l'ID de note
   useEffect(() => {
@@ -63,9 +88,11 @@ function FullscreenApp() {
 
     // Listen to sync events from other views (sidepanel, etc.)
     const unsubscribeSync = stateSync.subscribe((message) => {
-      // Reload data when notes are modified in another view
       if (message.source !== 'fullscreen') {
         loadData()
+        if (message.noteId) {
+          setNoteRefreshTrigger(Date.now())
+        }
       }
     })
 
@@ -74,7 +101,6 @@ function FullscreenApp() {
     }
   }, [])
 
-  // Charger les informations de la page courante (onglet actif)
   async function loadCurrentPageInfo() {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -94,7 +120,7 @@ function FullscreenApp() {
     try {
       setIsLoading(true)
       const [loadedNotes, loadedSettings] = await Promise.all([
-        storage.getNotes(1000), // Charger toutes les notes pour la fullscreen
+        storage.getNotes(1000),
         storage.getSettings()
       ])
       setNotes(loadedNotes)
@@ -106,12 +132,12 @@ function FullscreenApp() {
     }
   }
 
-  // Fonction pour ajouter du contenu à la note courante
+  // Fonction pour ajouter du contenu — même logique que sidepanel
   const handleAddContent = async (content: string, noteId: string | null) => {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const currentTab = tabs[0]
-      
+
       let domain = ''
       try {
         if (currentTab?.url) {
@@ -122,17 +148,13 @@ function FullscreenApp() {
       }
 
       if (noteId) {
-        // Ajouter à une note existante
-        const existingNote = notes.find(n => n.id === noteId)
-        if (existingNote) {
-          const updatedNote = {
-            ...existingNote,
-            content: existingNote.content + '<br><br>' + content,
-            timestamp: Date.now()
-          }
-          await storage.saveNote(updatedNote)
-          await loadData()
-        }
+        // Ajouter à une note existante via addMessageToNote (met à jour BOTH messages[] ET content)
+        await storage.addMessageToNote(noteId, {
+          type: 'text',
+          content: content
+        })
+        await loadData()
+        setNoteRefreshTrigger(Date.now())
       } else {
         // Créer une nouvelle note
         const newNoteId = Date.now().toString()
@@ -157,13 +179,12 @@ function FullscreenApp() {
         await storage.saveNote(newNote)
         setCurrentNoteId(newNoteId)
         await loadData()
+        setNoteRefreshTrigger(Date.now())
       }
-      
-      // Vider l'éditeur et refocus après ajout
+
       setEditorContent('')
       setTimeout(() => {
         editorRef.current?.focus()
-        // Scroller la zone d'affichage des notes vers le bas
         if (noteDisplayRef.current) {
           noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
         }
@@ -174,16 +195,158 @@ function FullscreenApp() {
     }
   }
 
-  // Fonction pour prendre une capture d'écran
+  // Capture d'écran — avec Tab Picker en fullscreen
   const handleScreenshot = async (): Promise<string | null> => {
     try {
+      const targetTabId = await selectTab('Capture d\'écran', 'Choisissez la page à capturer')
+      if (!targetTabId) return null
+
       const response = await chrome.runtime.sendMessage({
-        type: 'CAPTURE_SCREENSHOT'
+        type: 'CAPTURE_SCREENSHOT',
+        payload: { targetTabId }
       })
       return response?.dataUrl || null
     } catch (error) {
       console.error('Error taking screenshot:', error)
       return null
+    }
+  }
+
+  // Capture intelligente — nouvelle note (avec Tab Picker en fullscreen)
+  const handleSmartCapture = async () => {
+    setSmartCaptureError(null)
+
+    try {
+      // Sélectionner l'onglet cible via le Tab Picker
+      const targetTabId = await selectTab('Capture intelligente', 'Choisissez la page à analyser')
+      if (!targetTabId) return
+
+      setIsSmartCapturing(true)
+
+      // Extraction du contenu depuis l'onglet cible
+      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: targetTabId })
+      if (!result?.success) {
+        throw new Error(result?.error || 'Extraction échouée')
+      }
+
+      // Screenshot ciblé via le service worker (switch d'onglet temporaire)
+      let screenshotDataUrl = ''
+      try {
+        const screenshotResult = await chrome.runtime.sendMessage({
+          type: 'CAPTURE_SCREENSHOT',
+          payload: { targetTabId }
+        })
+        screenshotDataUrl = screenshotResult?.dataUrl || ''
+      } catch (screenshotError) {
+        console.warn('Screenshot capture failed:', screenshotError)
+      }
+
+      const newNoteId = Date.now().toString()
+      let noteContent = ''
+      if (screenshotDataUrl) {
+        noteContent += `<p><img src="${screenshotDataUrl}" alt="Capture de la page" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
+      }
+      noteContent += '<p></p><p><em>Mes notes:</em></p><p></p>'
+
+      const newNote: AcademicNote = {
+        id: newNoteId,
+        title: result.pageTitle.slice(0, 80) + (result.pageTitle.length > 80 ? '...' : ''),
+        content: noteContent,
+        summary: result.summary || '',
+        keyPoints: result.keyPoints || [],
+        url: result.url,
+        favicon: result.favicon,
+        timestamp: Date.now(),
+        type: result.contentType || 'webpage',
+        tags: result.tags || [],
+        concepts: result.concepts || [],
+        screenshots: [],
+        metadata: {
+          domain: result.domain,
+          title: result.pageTitle,
+          author: result.author,
+          description: result.description,
+          ogImage: result.ogImage,
+          siteName: result.siteName,
+          language: 'fr'
+        }
+      }
+
+      await storage.saveNote(newNote)
+      setCurrentNoteId(newNoteId)
+      setEditorContent('')
+      await loadData()
+    } catch (error) {
+      console.error('Smart capture error:', error)
+      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture intelligente')
+    } finally {
+      setIsSmartCapturing(false)
+    }
+  }
+
+  // Capture intelligente — ajouter à la note courante (avec Tab Picker + addMessageToNote)
+  const handleSmartCaptureToCurrentNote = async () => {
+    if (!currentNoteId) return
+    setSmartCaptureError(null)
+
+    try {
+      // Sélectionner l'onglet cible via le Tab Picker
+      const targetTabId = await selectTab('Capture intelligente', 'Choisissez la page à analyser')
+      if (!targetTabId) return
+
+      setIsSmartCapturing(true)
+
+      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: targetTabId })
+      if (!result?.success) {
+        throw new Error(result?.error || 'Extraction échouée')
+      }
+
+      // Construire le contenu texte (résumé + points clés)
+      let textContent = `<hr><p><strong>--- Capture: ${result.pageTitle} ---</strong></p>`
+      if (result.summary) {
+        textContent += `<p><strong>Résumé:</strong> ${result.summary}</p>`
+      }
+      if (result.keyPoints?.length > 0) {
+        textContent += '<p><strong>Points clés:</strong></p><ul>'
+        result.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
+        textContent += '</ul>'
+      }
+
+      // Ajouter comme message (met à jour messages[] ET content)
+      await storage.addMessageToNote(currentNoteId, {
+        type: 'text',
+        content: textContent
+      })
+
+      // Screenshot ciblé via le service worker
+      try {
+        const screenshotResult = await chrome.runtime.sendMessage({
+          type: 'CAPTURE_SCREENSHOT',
+          payload: { targetTabId }
+        })
+        if (screenshotResult?.dataUrl) {
+          await storage.addMessageToNote(currentNoteId, {
+            type: 'image',
+            content: screenshotResult.dataUrl,
+            metadata: { alt: 'Capture de la page' }
+          })
+        }
+      } catch (e) {
+        console.warn('Screenshot capture failed:', e)
+      }
+
+      await loadData()
+      setNoteRefreshTrigger(Date.now())
+      setTimeout(() => {
+        if (noteDisplayRef.current) {
+          noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
+        }
+      }, 100)
+    } catch (error) {
+      console.error('Smart capture to current note error:', error)
+      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture')
+    } finally {
+      setIsSmartCapturing(false)
     }
   }
 
@@ -195,26 +358,17 @@ function FullscreenApp() {
   // Retourner au sidepanel
   const handleBackToSidepanel = async () => {
     try {
-      // Obtenir tous les onglets pour trouver un onglet normal (pas extension)
       const allTabs = await chrome.tabs.query({ currentWindow: true })
-      
-      // Trouver le premier onglet qui n'est pas une extension
-      const normalTab = allTabs.find(tab => 
+      const normalTab = allTabs.find(tab =>
         tab.url && !tab.url.startsWith('chrome-extension://')
       )
-      
+
       if (normalTab?.id) {
-        // Ouvrir le sidepanel sur un onglet normal
         await chrome.sidePanel.open({ tabId: normalTab.id })
         await chrome.storage.session.set({ sidePanelOpen: true })
-        
-        // Activer cet onglet
         await chrome.tabs.update(normalTab.id, { active: true })
-        
-        // Fermer cet onglet fullscreen
         window.close()
       } else {
-        // Si pas d'onglet normal, créer un nouvel onglet
         const newTab = await chrome.tabs.create({ url: 'chrome://newtab/' })
         if (newTab.id) {
           await chrome.sidePanel.open({ tabId: newTab.id })
@@ -224,7 +378,6 @@ function FullscreenApp() {
       }
     } catch (error) {
       console.error('Error returning to sidepanel:', error)
-      // Fallback: au moins fermer cet onglet
       window.close()
     }
   }
@@ -238,23 +391,31 @@ function FullscreenApp() {
     }
   }
 
-  // Supprimer une note
-  const handleDeleteNote = async () => {
-    if (!currentNoteId) return
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.')) {
-      try {
-        await storage.deleteNote(currentNoteId)
+  // Supprimer une note (depuis header ou sidebar)
+  const handleDeleteNote = (noteId?: string) => {
+    const id = noteId || currentNoteId
+    if (!id) return
+    setDeleteConfirmNoteId(id)
+  }
+
+  const confirmDeleteNote = async () => {
+    if (!deleteConfirmNoteId) return
+    setIsDeleting(true)
+    try {
+      await storage.deleteNote(deleteConfirmNoteId)
+      if (deleteConfirmNoteId === currentNoteId) {
         setCurrentNoteId(null)
-        await loadData()
-        stateSync.broadcast({ type: 'NOTE_DELETED', noteId: currentNoteId, source: 'fullscreen' })
-      } catch (error) {
-        console.error('Error deleting note:', error)
-        alert('Erreur lors de la suppression de la note')
       }
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting note:', error)
+    } finally {
+      setIsDeleting(false)
+      setDeleteConfirmNoteId(null)
     }
   }
 
-  // Commencer l'édition du titre
+  // Édition du titre
   const startEditingTitle = () => {
     if (currentNote) {
       setEditedTitle(currentNote.title)
@@ -263,7 +424,6 @@ function FullscreenApp() {
     }
   }
 
-  // Sauvegarder le titre
   const saveTitle = async () => {
     if (!currentNoteId || !currentNote) return
     const newTitle = editedTitle.trim()
@@ -276,93 +436,29 @@ function FullscreenApp() {
       await storage.saveNote(updatedNote)
       setIsEditingTitle(false)
       await loadData()
-      stateSync.broadcast({ type: 'NOTE_UPDATED', noteId: currentNoteId, source: 'fullscreen' })
     } catch (error) {
       console.error('Error saving title:', error)
-      alert('Erreur lors de la sauvegarde du titre')
     }
   }
 
-  // Calculer currentNote avant les callbacks qui l'utilisent
+  // Calculer currentNote
   const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
-  // Commencer l'édition du contenu
-  const startEditingContent = useCallback(() => {
-    if (currentNote) {
-      setEditedContent(currentNote.content)
-      setIsEditingContent(true)
-      setTimeout(() => {
-        contentEditableRef.current?.focus()
-      }, 0)
-    }
-  }, [currentNote])
-
-  // Sauvegarder le contenu
-  const saveContent = useCallback(async () => {
-    if (!currentNoteId || !currentNote) return
+  const handleExportPDF = async () => {
+    if (!currentNote) return
+    setIsExporting(true)
     try {
-      const newContent = contentEditableRef.current
-        ? sanitizeHtml(contentEditableRef.current.innerHTML)
-        : editedContent
-      const updatedNote = { ...currentNote, content: newContent, timestamp: Date.now() }
-      await storage.saveNote(updatedNote)
-      setIsEditingContent(false)
-      await loadData()
-      stateSync.broadcast({ type: 'NOTE_UPDATED', noteId: currentNoteId, source: 'fullscreen' })
+      await exportNoteToPDF(currentNote)
     } catch (error) {
-      console.error('Error saving content:', error)
-      alert('Erreur lors de la sauvegarde du contenu')
+      console.error('Error exporting PDF:', error)
+    } finally {
+      setIsExporting(false)
     }
-  }, [currentNoteId, currentNote, editedContent])
-
-  // Handler de clic sur le contenu
-  const handleContentClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-
-    // Si clic sur une image, ouvrir le lightbox
-    if (target.tagName === 'IMG') {
-      e.stopPropagation()
-      e.preventDefault()
-      const imgSrc = (target as HTMLImageElement).src
-      if (imgSrc) {
-        setLightboxImage(imgSrc)
-      }
-      return
-    }
-
-    // Sinon, activer le mode édition
-    if (!isEditingContent) {
-      startEditingContent()
-    }
-  }, [isEditingContent, startEditingContent])
-
-  // Handler de clavier pour le contenu
-  const handleContentKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      setIsEditingContent(false)
-    }
-    if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault()
-      saveContent()
-    }
-  }, [saveContent])
-
-  // Handler de blur pour sauvegarde automatique
-  const handleContentBlur = useCallback((e: React.FocusEvent) => {
-    const relatedTarget = e.relatedTarget as HTMLElement
-    // Ne pas sauvegarder si on clique sur les boutons de contrôle
-    if (relatedTarget?.closest('[data-edit-controls]')) {
-      return
-    }
-    if (isEditingContent) {
-      saveContent()
-    }
-  }, [isEditingContent, saveContent])
+  }
 
   // Filtrer les notes selon la recherche
-  const filteredNotes = notes.filter(note => 
-    !searchQuery || 
+  const filteredNotes = notes.filter(note =>
+    !searchQuery ||
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -389,11 +485,12 @@ function FullscreenApp() {
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1 rounded-md hover:bg-muted"
+              aria-label="Fermer la sidebar"
             >
               <X size={16} />
             </button>
           </div>
-          
+
           {/* Recherche */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
@@ -411,31 +508,44 @@ function FullscreenApp() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
             <button
-              onClick={() => setCurrentNoteId(Date.now().toString())}
+              onClick={() => setCurrentNoteId(null)}
               className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border mb-2"
             >
               <Plus size={16} className="text-muted-foreground" />
               <span className="text-muted-foreground">Nouvelle note</span>
             </button>
-            
+
             {filteredNotes.map((note) => (
               <button
                 key={note.id}
                 onClick={() => setCurrentNoteId(note.id)}
-                className={`w-full text-left p-3 rounded-lg transition-colors mb-1 ${
-                  currentNoteId === note.id 
-                    ? 'bg-primary/10 border-primary/20 border' 
+                className={`group w-full text-left p-3 rounded-lg transition-colors mb-1 ${
+                  currentNoteId === note.id
+                    ? 'bg-primary/10 border-primary/20 border'
                     : 'hover:bg-muted/50'
                 }`}
               >
-                <div className="font-medium text-foreground text-sm line-clamp-1 mb-1">
-                  {note.title}
-                </div>
-                <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                  {note.content.replace(/<[^>]*>/g, '').slice(0, 100)}...
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(note.timestamp).toLocaleDateString('fr-FR')}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm line-clamp-1 mb-1">
+                      {note.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                      {note.content.replace(/<[^>]*>/g, '').slice(0, 100)}...
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatCompactDate(note.timestamp)}
+                    </div>
+                  </div>
+                  <span
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id) }}
+                    className="p-1 mt-0.5 text-muted-foreground hover:text-destructive rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                    title="Supprimer"
+                    aria-label="Supprimer la note"
+                  >
+                    <Trash2 size={14} />
+                  </span>
                 </div>
               </button>
             ))}
@@ -453,11 +563,12 @@ function FullscreenApp() {
                 onClick={() => setSidebarOpen(true)}
                 className="p-2 rounded-md hover:bg-muted"
                 title="Ouvrir la sidebar"
+                aria-label="Ouvrir la sidebar"
               >
                 <Menu size={16} />
               </button>
             )}
-            
+
             <div>
               {currentNote ? (
                 isEditingTitle ? (
@@ -478,6 +589,7 @@ function FullscreenApp() {
                       onClick={saveTitle}
                       className="p-1 text-primary hover:bg-primary/10 rounded"
                       title="Sauvegarder"
+                      aria-label="Sauvegarder le titre"
                     >
                       <Check size={16} />
                     </button>
@@ -485,6 +597,7 @@ function FullscreenApp() {
                       onClick={() => setIsEditingTitle(false)}
                       className="p-1 text-muted-foreground hover:bg-muted rounded"
                       title="Annuler"
+                      aria-label="Annuler la modification"
                     >
                       <X size={16} />
                     </button>
@@ -505,19 +618,20 @@ function FullscreenApp() {
               )}
               {currentNote && !isEditingTitle && (
                 <p className="text-sm text-muted-foreground">
-                  Modifié le {new Date(currentNote.timestamp).toLocaleDateString('fr-FR')} à {new Date(currentNote.timestamp).toLocaleTimeString('fr-FR')}
+                  Modifié {formatSmartDate(currentNote.timestamp)}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center space-x-2" data-edit-controls>
+          <div className="flex items-center space-x-2">
             {currentNote && (
               <>
                 <button
-                  onClick={handleDeleteNote}
+                  onClick={() => handleDeleteNote()}
                   className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-md transition-colors"
                   title="Supprimer la note"
+                  aria-label="Supprimer la note"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -525,31 +639,49 @@ function FullscreenApp() {
               </>
             )}
             <button
-              onClick={() => {/* TODO: Export */}}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Exporter"
+              onClick={handleExportPDF}
+              disabled={!currentNote || isExporting}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isExporting ? "Export en cours..." : "Exporter en PDF"}
+              aria-label="Exporter en PDF"
             >
-              <Download size={18} />
+              {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
             </button>
-            
+
+            <button
+              onClick={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
+              disabled={!currentNote}
+              className={`p-2 rounded-md transition-colors ${
+                currentNote
+                  ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-500/10'
+                  : 'text-muted-foreground/40 cursor-not-allowed'
+              }`}
+              title={currentNote ? "Analyser avec une IA" : "Sélectionnez une note pour analyser"}
+              aria-label="Analyser avec une IA"
+            >
+              <Sparkles size={18} />
+            </button>
+
             <button
               onClick={handleNativeFullscreen}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
               title="Activer plein écran natif"
+              aria-label="Plein écran"
             >
               <Maximize size={18} />
             </button>
-            
+
             <button
               onClick={handleOpenWebsite}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
               title="Ouvrir Journal d'Études"
+              aria-label="Ouvrir Journal d'Études"
             >
               <ExternalLink size={18} />
             </button>
-            
+
             <div className="w-px h-6 bg-border mx-2"></div>
-            
+
             <button
               onClick={handleBackToSidepanel}
               className="px-3 py-2 text-sm bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-md transition-colors flex items-center space-x-2"
@@ -562,107 +694,58 @@ function FullscreenApp() {
         </div>
 
         {/* Contenu principal */}
-        <div className="flex-1 flex">
-          {/* Zone d'affichage de note */}
+        <div className="flex-1 flex min-h-0">
           <div ref={noteDisplayRef} className="flex-1 overflow-y-auto">
             {currentNote ? (
               <div className="p-8 max-w-4xl mx-auto">
-                {/* Boutons de contrôle en mode édition */}
-                {isEditingContent && (
-                  <div className="mb-4 flex items-center justify-between" data-edit-controls>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Mode édition</span>
-                      <span className="text-xs text-muted-foreground">
-                        Échap annuler · Ctrl+S sauver
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={saveContent}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center space-x-2"
-                      >
-                        <Check size={16} />
-                        <span>Sauvegarder</span>
-                      </button>
-                      <button
-                        onClick={() => setIsEditingContent(false)}
-                        className="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors flex items-center space-x-2"
-                      >
-                        <X size={16} />
-                        <span>Annuler</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="prose prose-lg max-w-none">
-                  <div
-                    ref={contentEditableRef}
-                    contentEditable={isEditingContent}
-                    suppressContentEditableWarning={true}
-                    onClick={handleContentClick}
-                    onKeyDown={isEditingContent ? handleContentKeyDown : undefined}
-                    onBlur={isEditingContent ? handleContentBlur : undefined}
-                    className={`
-                      text-foreground leading-relaxed rounded-lg transition-all outline-none
-                      ${isEditingContent
-                        ? 'border-2 border-primary/40 bg-background p-4 focus:border-primary min-h-[300px]'
-                        : 'cursor-pointer hover:bg-muted/30 p-4 -m-4'
-                      }
-                      [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80
-                    `}
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentNote.content) }}
-                  />
-                </div>
+                <CurrentNoteView
+                  noteId={currentNoteId!}
+                  onNoteUpdate={loadData}
+                  refreshTrigger={noteRefreshTrigger}
+                />
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <BookOpen size={64} className="text-muted-foreground mb-6" />
-                <h3 className="text-2xl font-semibold text-foreground mb-4">
-                  Bienvenue dans Trading Notes
-                </h3>
-                <p className="text-muted-foreground max-w-md mb-6">
-                  Sélectionnez une note dans la sidebar ou créez-en une nouvelle pour commencer.
-                </p>
-                <button
-                  onClick={() => setCurrentNoteId(Date.now().toString())}
-                  className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Créer une nouvelle note
-                </button>
+                {isSmartCapturing ? (
+                  <div className="text-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
+                    <p className="text-muted-foreground">Analyse de la page en cours...</p>
+                  </div>
+                ) : (
+                  <>
+                    <BookOpen size={64} className="text-muted-foreground mb-6" />
+                    <h3 className="text-2xl font-semibold text-foreground mb-4">
+                      Bienvenue dans Trading Notes
+                    </h3>
+                    <p className="text-muted-foreground max-w-md mb-6">
+                      Sélectionnez une note dans la sidebar ou écrivez dans la zone ci-dessous.
+                    </p>
+                    {smartCaptureError && (
+                      <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md">
+                        <p className="text-sm text-destructive">{smartCaptureError}</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Rich Editor bottom */}
-        <div className="border-t border-border bg-background p-6">
-          <SimpleRichEditor
+        {/* Hub de capture */}
+        <div className="border-t border-border bg-background px-6 py-3">
+          <CaptureInput
             ref={editorRef}
             value={editorContent}
             onChange={setEditorContent}
-            placeholder={currentNoteId ? "Ajouter du contenu à cette note..." : "Commencer une nouvelle note de trading..."}
+            placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
             onInsertScreenshot={handleScreenshot}
-            onSubmit={() => handleAddContent(editorContent, currentNoteId)}
+            onSubmit={(content) => handleAddContent(content, currentNoteId)}
+            onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
+            isSmartCapturing={isSmartCapturing}
             currentPageInfo={currentPageInfo || undefined}
             className="w-full max-w-4xl mx-auto"
           />
-          
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-4 max-w-4xl mx-auto">
-            <button
-              onClick={() => handleAddContent(editorContent, currentNoteId)}
-              disabled={!editorContent.trim()}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-            >
-              {currentNoteId ? 'Ajouter à la note' : 'Créer nouvelle note'}
-            </button>
-            
-            <div className="text-sm text-muted-foreground">
-              <kbd className="bg-muted px-2 py-1 rounded text-xs">⏎</kbd> pour sauvegarder, 
-              <kbd className="bg-muted px-2 py-1 rounded text-xs ml-2">⇧⏎</kbd> pour nouvelle ligne
-            </div>
-          </div>
         </div>
       </div>
 
@@ -672,6 +755,35 @@ function FullscreenApp() {
           src={lightboxImage}
           alt="Note image"
           onClose={() => setLightboxImage(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmNoteId}
+        onConfirm={confirmDeleteNote}
+        onCancel={() => setDeleteConfirmNoteId(null)}
+        title="Supprimer la note"
+        message="Cette action est irréversible."
+        isLoading={isDeleting}
+      />
+
+      {/* Tab Picker pour la capture ciblée depuis fullscreen */}
+      {tabPickerConfig && (
+        <TabPicker
+          isOpen={tabPickerConfig.isOpen}
+          onSelect={tabPickerConfig.onSelect}
+          onCancel={tabPickerConfig.onCancel}
+          title={tabPickerConfig.title}
+          description={tabPickerConfig.description}
+        />
+      )}
+
+      {/* Dialog d'analyse AI */}
+      {currentNote && (
+        <AnalyzeNoteDialog
+          isOpen={showAnalyzeDialog}
+          onClose={() => setShowAnalyzeDialog(false)}
+          note={currentNote}
         />
       )}
     </div>

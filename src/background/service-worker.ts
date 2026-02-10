@@ -112,7 +112,8 @@ async function handleMessage(
   sendResponse: (response: any) => void
 ) {
   try {
-    const tabId = sender.tab?.id || message.tabId
+    // Le tabId explicite a priorité (pour le ciblage depuis fullscreen)
+    const tabId = message.tabId || sender.tab?.id
 
     switch (message.type) {
       case 'CAPTURE_CURRENT_PAGE':
@@ -129,25 +130,59 @@ async function handleMessage(
         }
         break
 
-      case 'CAPTURE_SCREENSHOT':
-        // Get active tab if tabId not provided (sidepanel doesn't have sender.tab)
-        let screenshotTabId = tabId
-        if (!screenshotTabId) {
-          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-          screenshotTabId = activeTab?.id
-        }
-        if (screenshotTabId) {
+      case 'CAPTURE_SCREENSHOT': {
+        const targetTabId = message.payload?.targetTabId
+
+        if (targetTabId) {
+          // Capture ciblée : activer l'onglet cible, capturer, revenir
           try {
-            // Capturer et retourner le dataUrl directement (pour l'éditeur)
-            const dataUrl = await chrome.tabs.captureVisibleTab()
+            const senderTab = sender.tab
+            const targetTab = await chrome.tabs.get(targetTabId)
+            const windowId = targetTab.windowId
+
+            // Activer l'onglet cible
+            await chrome.tabs.update(targetTabId, { active: true })
+            await chrome.windows.update(windowId, { focused: true })
+
+            // Attendre que l'onglet soit rendu
+            await new Promise(resolve => setTimeout(resolve, 350))
+
+            // Capturer l'onglet visible dans cette fenêtre
+            const dataUrl = await chrome.tabs.captureVisibleTab(windowId)
+
+            // Revenir à l'onglet appelant (fullscreen)
+            if (senderTab?.id) {
+              await chrome.tabs.update(senderTab.id, { active: true })
+              if (senderTab.windowId !== windowId) {
+                await chrome.windows.update(senderTab.windowId, { focused: true })
+              }
+            }
+
             sendResponse({ success: true, dataUrl })
           } catch (error) {
-            sendResponse({ success: false, error: 'Erreur capture d\'écran' })
+            console.error('Targeted screenshot failed:', error)
+            sendResponse({ success: false, error: 'Erreur capture d\'écran ciblée' })
           }
         } else {
-          sendResponse({ success: false, error: 'Impossible de trouver l\'onglet actif' })
+          // Comportement original : capturer l'onglet actif
+          let screenshotTabId = tabId
+          if (!screenshotTabId) {
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            screenshotTabId = activeTab?.id
+          }
+          if (screenshotTabId) {
+            try {
+              const dataUrl = await chrome.tabs.captureVisibleTab()
+              sendResponse({ success: true, dataUrl })
+            } catch (error) {
+              sendResponse({ success: false, error: 'Erreur capture d\'écran' })
+            }
+          } else {
+            sendResponse({ success: false, error: 'Impossible de trouver l\'onglet actif' })
+          }
         }
         break
+      }
 
       case 'OPEN_SIDEBAR':
         if (tabId) {

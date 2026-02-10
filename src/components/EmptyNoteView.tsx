@@ -1,27 +1,17 @@
 import React from 'react'
-import { BookOpen, Camera, History, Sparkles } from 'lucide-react'
+import { BookOpen, Camera, History, Sparkles, Loader2 } from 'lucide-react'
+import { formatSmartDate } from '@/lib/date-utils'
 import type { AcademicNote } from '@/types/academic'
 
 interface EmptyNoteViewProps {
   onCapturePage?: () => void
   onSmartCapture?: () => void
+  isCapturing?: boolean
   lastNote?: AcademicNote
   onSelectNote?: (id: string) => void
 }
 
-// Fonction pour formater le temps relatif
-function formatTimeAgo(timestamp: number): string {
-  const now = Date.now()
-  const diffInSeconds = Math.floor((now - timestamp) / 1000)
-
-  if (diffInSeconds < 60) return "À l'instant"
-  if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)} min`
-  if (diffInSeconds < 86400) return `Il y a ${Math.floor(diffInSeconds / 3600)}h`
-  if (diffInSeconds < 172800) return 'Hier'
-  return `Il y a ${Math.floor(diffInSeconds / 86400)} jours`
-}
-
-function EmptyNoteView({ onCapturePage, onSmartCapture, lastNote, onSelectNote }: EmptyNoteViewProps) {
+function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, lastNote, onSelectNote }: EmptyNoteViewProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-12">
       {/* Salutation */}
@@ -59,13 +49,17 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, lastNote, onSelectNote }
         {onCapturePage && (
           <button
             onClick={onCapturePage}
-            className="w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors"
+            disabled={isCapturing}
+            className="w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Camera size={20} className="text-green-600 dark:text-green-400" />
+              {isCapturing
+                ? <Loader2 size={20} className="text-green-600 dark:text-green-400 animate-spin" />
+                : <Camera size={20} className="text-green-600 dark:text-green-400" />
+              }
             </div>
             <div>
-              <div className="font-medium text-foreground">Capturer cette page</div>
+              <div className="font-medium text-foreground">{isCapturing ? 'Capture en cours...' : 'Capturer cette page'}</div>
               <div className="text-sm text-muted-foreground">Screenshot + titre et URL</div>
             </div>
           </button>
@@ -83,19 +77,12 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, lastNote, onSelectNote }
             <div className="flex-1 min-w-0">
               <div className="font-medium text-foreground truncate">{lastNote.title}</div>
               <div className="text-sm text-muted-foreground">
-                {formatTimeAgo(lastNote.timestamp)}
+                {formatSmartDate(lastNote.timestamp)}
                 {lastNote.metadata?.domain && ` • ${lastNote.metadata.domain}`}
               </div>
             </div>
           </button>
         )}
-      </div>
-
-      {/* Message d'aide */}
-      <div className="mt-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          💡 Écrivez directement dans la zone en bas pour créer une note
-        </p>
       </div>
     </div>
   )

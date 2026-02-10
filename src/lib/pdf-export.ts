@@ -93,7 +93,7 @@ function sanitizeTextForPdf(text: string): string {
 
   // Appliquer les remplacements connus
   for (const [unicode, ascii] of replacements) {
-    result = result.replaceAll(unicode, ascii)
+    result = result.split(unicode).join(ascii)
   }
 
   // Supprimer les autres caractères non-Latin-1 (codes > 255)

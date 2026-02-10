@@ -398,7 +398,7 @@ function enableContentSelection() {
 // Initialisation du content script
 function init() {
   // Content script initialisé
-  
+
   // Attendre que la page soit entièrement chargée
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

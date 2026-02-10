@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Pencil, Save, X, Trash2, GripVertical } from 'lucide-react'
+import { Save, X, Trash2, GripVertical } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
+import { formatSmartDate } from '@/lib/date-utils'
 import type { NoteMessage } from '@/types/academic'
 
 interface MessageBlockProps {
@@ -103,6 +104,7 @@ function MessageBlock({
             onClick={handleDelete}
             className="absolute top-2 right-2 p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
             title="Supprimer cette image"
+            aria-label="Supprimer cette image"
           >
             <Trash2 size={14} />
           </button>
@@ -110,7 +112,7 @@ function MessageBlock({
 
         {/* Timestamp */}
         <div className="text-xs text-muted-foreground mt-1">
-          {new Date(message.timestamp).toLocaleString('fr-FR')}
+          {formatSmartDate(message.timestamp)}
         </div>
       </div>
     )
@@ -125,6 +127,7 @@ function MessageBlock({
           <button
             className="p-1 text-muted-foreground hover:text-foreground rounded"
             title="Glisser pour réorganiser"
+            aria-label="Réorganiser"
           >
             <GripVertical size={14} />
           </button>
@@ -181,7 +184,7 @@ function MessageBlock({
       {/* Timestamp (shown on hover when not editing) */}
       {!isEditing && (
         <div className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {new Date(message.timestamp).toLocaleString('fr-FR')}
+          {formatSmartDate(message.timestamp)}
         </div>
       )}
     </div>

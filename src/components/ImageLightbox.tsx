@@ -55,6 +55,7 @@ function ImageLightbox({ src, alt = 'Image', onClose }: ImageLightboxProps) {
           onClick={() => setScale(s => Math.max(s - 0.25, 0.5))}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
           title="Zoom out (-)"
+          aria-label="Zoom arrière"
         >
           <ZoomOut size={20} />
         </button>
@@ -65,6 +66,7 @@ function ImageLightbox({ src, alt = 'Image', onClose }: ImageLightboxProps) {
           onClick={() => setScale(s => Math.min(s + 0.25, 3))}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
           title="Zoom in (+)"
+          aria-label="Zoom avant"
         >
           <ZoomIn size={20} />
         </button>
@@ -73,6 +75,7 @@ function ImageLightbox({ src, alt = 'Image', onClose }: ImageLightboxProps) {
           onClick={handleDownload}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
           title="Download"
+          aria-label="Télécharger l'image"
         >
           <Download size={20} />
         </button>
@@ -80,6 +83,7 @@ function ImageLightbox({ src, alt = 'Image', onClose }: ImageLightboxProps) {
           onClick={onClose}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
           title="Close (Esc)"
+          aria-label="Fermer"
         >
           <X size={20} />
         </button>

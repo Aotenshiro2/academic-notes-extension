@@ -81,6 +81,7 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
         onClick={cycleTheme}
         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
         title={`Thème: ${getThemeLabel()}`}
+        aria-label={`Changer le thème (${getThemeLabel()})`}
       >
         {getThemeIcon()}
       </button>

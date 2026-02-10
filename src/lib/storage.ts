@@ -166,8 +166,9 @@ export const storage = {
   },
 
   async getNotes(limit = 50, offset = 0): Promise<AcademicNote[]> {
+    // Tri par ID (= date de création) pour un ordre chronologique stable
     return await db.notes
-      .orderBy('timestamp')
+      .orderBy('id')
       .reverse()
       .offset(offset)
       .limit(limit)

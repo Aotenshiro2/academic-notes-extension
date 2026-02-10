@@ -1,20 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
-  BookOpen,
-  Plus,
-  Search,
   Settings,
-  Download,
-  Upload,
-  Camera,
-  FileText,
-  Video,
-  Globe,
-  Filter,
-  BarChart3,
-  ArrowRight,
   ArrowLeft,
-  Sparkles,
   Loader2,
   Mail,
   Star
@@ -23,10 +10,10 @@ import {
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import EmptyNoteView from '@/components/EmptyNoteView'
-import SimpleRichEditor, { type SimpleRichEditorHandle } from '@/components/SimpleRichEditor'
+import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
 import HistoryDropdown from '@/components/HistoryDropdown'
+import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import SkoolBanner from '@/components/SkoolBanner'
-import DataMigration from '@/components/DataMigration'
 import SettingsView from '@/components/SettingsView'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -43,14 +30,16 @@ function App() {
   const [notes, setNotes] = useState<AcademicNote[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [showMigration, setShowMigration] = useState(false)
   const [editorContent, setEditorContent] = useState('')
-  const editorRef = useRef<SimpleRichEditorHandle>(null)
+  const editorRef = useRef<CaptureInputHandle>(null)
   const noteDisplayRef = useRef<HTMLDivElement>(null) // Ref pour la zone d'affichage des notes
   const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
   const [isSmartCapturing, setIsSmartCapturing] = useState(false)
   const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
   const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false)
+  const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
 
   // Charger les données initiales
   useEffect(() => {
@@ -220,6 +209,7 @@ function App() {
 
   // Fonction pour capturer la page actuelle et créer une note avec screenshot
   const handleCapturePage = async () => {
+    setIsCapturing(true)
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const currentTab = tabs[0]
@@ -282,6 +272,8 @@ function App() {
     } catch (error) {
       console.error('Error capturing page:', error)
       alert('Erreur lors de la capture de la page')
+    } finally {
+      setIsCapturing(false)
     }
   }
 
@@ -381,46 +373,45 @@ function App() {
         throw new Error(result?.error || 'Extraction échouée')
       }
 
-      // Capturer screenshot
-      let screenshotDataUrl = ''
+      // Construire le contenu texte (résumé + points clés)
+      let textContent = `<hr><p><strong>--- Capture: ${result.pageTitle} ---</strong></p>`
+      if (result.summary) {
+        textContent += `<p><strong>Résumé:</strong> ${result.summary}</p>`
+      }
+      if (result.keyPoints?.length > 0) {
+        textContent += '<p><strong>Points clés:</strong></p><ul>'
+        result.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
+        textContent += '</ul>'
+      }
+
+      // Ajouter comme message (met à jour messages[] ET content)
+      await storage.addMessageToNote(currentNoteId, {
+        type: 'text',
+        content: textContent
+      })
+
+      // Capturer et ajouter le screenshot comme message image séparé
       try {
-        screenshotDataUrl = await chrome.tabs.captureVisibleTab()
+        const screenshotDataUrl = await chrome.tabs.captureVisibleTab()
+        if (screenshotDataUrl) {
+          await storage.addMessageToNote(currentNoteId, {
+            type: 'image',
+            content: screenshotDataUrl,
+            metadata: { alt: 'Capture de la page' }
+          })
+        }
       } catch (e) {
         console.warn('Screenshot capture failed:', e)
       }
 
-      // Construire le contenu à ajouter
-      let addedContent = `<hr><p><strong>--- Capture: ${result.pageTitle} ---</strong></p>`
-      if (result.summary) {
-        addedContent += `<p><strong>Résumé:</strong> ${result.summary}</p>`
-      }
-      if (result.keyPoints?.length > 0) {
-        addedContent += '<p><strong>Points clés:</strong></p><ul>'
-        result.keyPoints.forEach((p: string) => addedContent += `<li>${p}</li>`)
-        addedContent += '</ul>'
-      }
-      if (screenshotDataUrl) {
-        addedContent += `<p><img src="${screenshotDataUrl}" alt="Capture de la page" style="max-width:100%; border-radius:8px;"/></p>`
-      }
-
-      // Ajouter à la note existante (chercher depuis DB pour éviter race condition)
-      const currentNote = await storage.getNote(currentNoteId)
-      if (currentNote) {
-        const updatedNote = {
-          ...currentNote,
-          content: currentNote.content + addedContent,
-          timestamp: Date.now()
+      await loadData()
+      setNoteRefreshTrigger(Date.now())
+      // Scroller vers le bas pour voir le nouveau contenu
+      setTimeout(() => {
+        if (noteDisplayRef.current) {
+          noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
         }
-        await storage.saveNote(updatedNote)
-        await loadData()
-        setNoteRefreshTrigger(Date.now())
-        // Scroller vers le bas pour voir le nouveau contenu
-        setTimeout(() => {
-          if (noteDisplayRef.current) {
-            noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
-          }
-        }, 100)
-      }
+      }, 100)
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture')
@@ -432,11 +423,14 @@ function App() {
   // Fonction pour exporter la note courante en PDF
   const handleExportPDF = async () => {
     if (!currentNote) return
+    setIsExporting(true)
     try {
       await exportNoteToPDF(currentNote)
     } catch (error) {
       console.error('Error exporting PDF:', error)
       alert('Erreur lors de l\'export PDF')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -489,19 +483,9 @@ function App() {
         onHome={handleGoHome}
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}
+        onAnalyze={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
+        isExporting={isExporting}
       />
-
-      {/* Accès temporaire à la migration - TODO: À retirer après migration */}
-      {notes.length === 0 && (
-        <div className="border-b border-border px-4 py-2">
-          <button
-            onClick={() => setShowMigration(!showMigration)}
-            className="text-sm text-primary hover:text-primary/80"
-          >
-            🔄 Récupérer les anciennes notes
-          </button>
-        </div>
-      )}
 
       {/* Zone principale - Note courante (style Claude) */}
       <main className="content-section flex flex-col">
@@ -515,6 +499,7 @@ function App() {
                   onClick={() => setShowSettings(false)}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                   title="Retour"
+                  aria-label="Retour"
                 >
                   <ArrowLeft size={18} />
                 </button>
@@ -555,15 +540,11 @@ function App() {
                 }}
               />
             </div>
-          ) : showMigration ? (
-            <DataMigration />
           ) : currentNoteId ? (
             <CurrentNoteView
               noteId={currentNoteId}
               onNoteUpdate={loadData}
               refreshTrigger={noteRefreshTrigger}
-              onSmartCapture={handleSmartCaptureToCurrentNote}
-              isSmartCapturing={isSmartCapturing}
             />
           ) : (
             <>
@@ -584,7 +565,11 @@ function App() {
                 <EmptyNoteView
                   onCapturePage={handleCapturePage}
                   onSmartCapture={handleSmartCapture}
-                  lastNote={notes.length > 0 ? notes[0] : undefined}
+                  isCapturing={isCapturing}
+                  lastNote={notes.length > 0
+                    ? notes.reduce((latest, n) => n.timestamp > latest.timestamp ? n : latest)
+                    : undefined
+                  }
                   onSelectNote={setCurrentNoteId}
                 />
               )}
@@ -592,52 +577,31 @@ function App() {
           )}
         </div>
         
-        {/* Rich Editor bottom fixe (style Claude avec fonctionnalités) */}
-        {!showMigration && (
-          <div className="bg-background px-4 pt-4 pb-1">
-            <SimpleRichEditor
-              ref={editorRef}
-              value={editorContent}
-              onChange={setEditorContent}
-              placeholder={currentNoteId ? "Ajouter du contenu à cette note..." : "Commencer une nouvelle note de trading..."}
-              onInsertScreenshot={handleScreenshot}
-              onSubmit={(content) => handleAddContent(content, currentNoteId)}
-              currentPageInfo={currentPageInfo || undefined}
-              className="w-full"
-            />
-            
-            {/* Actions rapides */}
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => {
-                    const content = editorRef.current?.getContent?.() || editorContent
-                    handleAddContent(content, currentNoteId)
-                  }}
-                  disabled={!editorContent.trim()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-                >
-                  {currentNoteId ? 'Ajouter' : 'Créer note'}
-                </button>
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs">⏎</kbd> pour sauvegarder, 
-                <kbd className="bg-muted px-1.5 py-0.5 rounded text-xs ml-1">⇧⏎</kbd> pour nouvelle ligne
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Hub de capture */}
+        <div className="bg-background px-4 pt-3 pb-1">
+          <CaptureInput
+            ref={editorRef}
+            value={editorContent}
+            onChange={setEditorContent}
+            placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
+            onInsertScreenshot={handleScreenshot}
+            onSubmit={(content) => handleAddContent(content, currentNoteId)}
+            onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
+            isSmartCapturing={isSmartCapturing}
+            currentPageInfo={currentPageInfo || undefined}
+            className="w-full"
+          />
+        </div>
 
         {/* Footer utilitaire */}
-        {!showMigration && (
-          <div className="px-4 pb-2 flex items-center justify-between">
+        <div className="px-4 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground/60 select-none">v{chrome.runtime.getManifest().version}</span>
               <span className="text-muted-foreground/30">|</span>
               <button
                 className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground hover:text-foreground rounded transition-colors select-none"
                 title="Langue : Français"
+                aria-label="Langue : Français"
               >
                 <span>🇫🇷</span>
                 <span>FR</span>
@@ -649,6 +613,7 @@ function App() {
                 onClick={() => chrome.tabs.create({ url: 'mailto:brice.d@aoknowledge.com' })}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 title="Nous contacter"
+                aria-label="Nous contacter"
               >
                 <Mail size={14} />
               </button>
@@ -656,6 +621,7 @@ function App() {
                 onClick={() => chrome.tabs.create({ url: 'https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews' })}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 title="Évaluez-nous"
+                aria-label="Évaluez-nous"
               >
                 <Star size={14} />
               </button>
@@ -663,12 +629,12 @@ function App() {
                 onClick={() => setShowSettings(!showSettings)}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 title="Paramètres"
+                aria-label="Paramètres"
               >
                 <Settings size={14} />
               </button>
             </div>
-          </div>
-        )}
+        </div>
       </main>
 
       {/* Dropdown historique des notes */}
@@ -680,6 +646,15 @@ function App() {
         onSelectNote={setCurrentNoteId}
         onNotesUpdate={loadData}
       />
+
+      {/* Dialog d'analyse AI */}
+      {currentNote && (
+        <AnalyzeNoteDialog
+          isOpen={showAnalyzeDialog}
+          onClose={() => setShowAnalyzeDialog(false)}
+          note={currentNote}
+        />
+      )}
     </div>
   )
 }
