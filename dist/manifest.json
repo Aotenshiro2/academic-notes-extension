@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trading Notes by AOKnowledge",
-  "version": "1.0.9",
+  "version": "1.2.4",
   "description": "Ne perdez plus jamais une analyse. Capturez vos insights trading en 1 clic avec screenshot et résumé auto.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -50,8 +50,7 @@
     },
     "quick-capture": {
       "suggested_key": {
-        "default": "Ctrl+Shift+C",
-        "mac": "Command+Shift+C"
+        "default": "Alt+Shift+C"
       },
       "description": "Quick capture current page"
     }
