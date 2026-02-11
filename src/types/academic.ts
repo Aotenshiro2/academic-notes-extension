@@ -112,6 +112,8 @@ export interface SyncStatus {
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini'
 
+export type AnalysisProvider = 'chatgpt' | 'claude' | 'gemini' | 'perplexity' | 'grok'
+
 export interface AIConfig {
   provider: AIProvider
   apiKey: string
@@ -122,6 +124,7 @@ export interface Settings {
   autoCapture: boolean
   aiSummaryEnabled: boolean
   aiConfig?: AIConfig
+  analysisProvider?: AnalysisProvider
   defaultTags: string[]
   journalSync: SyncStatus
   captureScreenshots: boolean

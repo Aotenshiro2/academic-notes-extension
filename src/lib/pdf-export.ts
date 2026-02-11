@@ -455,3 +455,136 @@ export async function exportNoteToPDF(note: AcademicNote): Promise<void> {
 
   pdf.save(`${safeName}-${dateFile}.pdf`)
 }
+
+/**
+ * Génère un PDF neutre en mémoire pour l'analyse IA.
+ * Pas de branding, pas de footer. Contenu fidèle à la note brute.
+ * Retourne un Blob — rien n'est téléchargé.
+ */
+export async function generateAnalysisPdfBlob(note: AcademicNote): Promise<Blob> {
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 15
+  const contentWidth = pageWidth - margin * 2
+  let yPos = margin
+
+  const lineHeight = 5
+  const paragraphSpacing = 3
+
+  function checkNewPage(neededHeight: number): void {
+    if (yPos + neededHeight > pageHeight - margin) {
+      pdf.addPage()
+      yPos = margin
+    }
+  }
+
+  // --- En-tête minimal ---
+  pdf.setFontSize(16)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setTextColor(0, 0, 0)
+  const sanitizedTitle = sanitizeTextForPdf(note.title || 'Note sans titre')
+  const titleLines = pdf.splitTextToSize(sanitizedTitle, contentWidth)
+  pdf.text(titleLines, margin, yPos + 6)
+  yPos += titleLines.length * 7 + 3
+
+  pdf.setFontSize(9)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setTextColor(120, 120, 120)
+  const dateStr = new Date(note.timestamp).toLocaleDateString('fr-FR', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
+  pdf.text(dateStr, margin, yPos)
+  yPos += 4
+
+  if (note.url) {
+    const rawUrl = note.url.length > 80 ? note.url.substring(0, 80) + '...' : note.url
+    pdf.setTextColor(60, 120, 200)
+    pdf.text(sanitizeTextForPdf(rawUrl), margin, yPos)
+    yPos += 4
+  }
+
+  // Séparation
+  yPos += 2
+  pdf.setDrawColor(200, 200, 200)
+  pdf.line(margin, yPos, pageWidth - margin, yPos)
+  yPos += 6
+
+  // --- Contenu brut (ordre strict texte → image → texte → image) ---
+  pdf.setTextColor(0, 0, 0)
+  pdf.setFontSize(11)
+
+  const blocks = parseHtmlContent(note.content)
+
+  for (const block of blocks) {
+    switch (block.type) {
+      case 'text': {
+        const fontStyle = block.bold && block.italic ? 'bolditalic' :
+                          block.bold ? 'bold' :
+                          block.italic ? 'italic' : 'normal'
+        pdf.setFont('helvetica', fontStyle)
+        pdf.setFontSize(11)
+        const sanitizedContent = sanitizeTextForPdf(block.content)
+        const lines = pdf.splitTextToSize(sanitizedContent, contentWidth)
+        for (const line of lines) {
+          checkNewPage(lineHeight)
+          pdf.text(line, margin, yPos)
+          yPos += lineHeight
+        }
+        break
+      }
+      case 'heading': {
+        const fontSize = block.level === 1 ? 16 : block.level === 2 ? 14 : 12
+        const headingHeight = fontSize * 0.5 + 3
+        checkNewPage(headingHeight)
+        yPos += 2
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(fontSize)
+        pdf.text(sanitizeTextForPdf(block.content), margin, yPos)
+        yPos += headingHeight
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(11)
+        break
+      }
+      case 'linebreak': {
+        yPos += paragraphSpacing
+        break
+      }
+      case 'image': {
+        try {
+          const img = await loadImage(block.content)
+          let imgData = block.content
+          if (!block.content.startsWith('data:')) {
+            try { imgData = await imageToBase64(img) } catch { imgData = block.content }
+          }
+          const aspectRatio = img.naturalHeight / img.naturalWidth
+          let imgWidth = Math.min(contentWidth, 160)
+          let imgHeight = imgWidth * aspectRatio
+          const maxImgHeight = pageHeight - margin * 2 - 10
+          if (imgHeight > maxImgHeight) {
+            imgHeight = maxImgHeight
+            imgWidth = imgHeight / aspectRatio
+          }
+          if (imgHeight > pageHeight - yPos - margin) {
+            pdf.addPage()
+            yPos = margin
+          }
+          pdf.addImage(imgData, 'JPEG', margin, yPos, imgWidth, imgHeight)
+          yPos += imgHeight + 5
+        } catch (error) {
+          console.warn('Could not load image for analysis PDF:', block.content, error)
+          checkNewPage(lineHeight)
+          pdf.setTextColor(150, 150, 150)
+          pdf.setFont('helvetica', 'italic')
+          pdf.text('[Image non disponible]', margin, yPos)
+          pdf.setTextColor(0, 0, 0)
+          pdf.setFont('helvetica', 'normal')
+          yPos += lineHeight
+        }
+        break
+      }
+    }
+  }
+
+  return pdf.output('blob')
+}

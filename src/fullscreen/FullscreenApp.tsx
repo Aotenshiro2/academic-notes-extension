@@ -784,6 +784,7 @@ function FullscreenApp() {
           isOpen={showAnalyzeDialog}
           onClose={() => setShowAnalyzeDialog(false)}
           note={currentNote}
+          defaultProvider={settings?.analysisProvider}
         />
       )}
     </div>

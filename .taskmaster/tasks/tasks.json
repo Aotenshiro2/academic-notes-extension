@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Corrections post-review Chrome Store",
         "description": "Mettre à jour la documentation pour refléter les permissions actuelles après suppression de 'scripting'",
         "status": "done",
@@ -14,7 +14,7 @@
         "updatedAt": "2026-01-21T15:20:00.000Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Tests manuels sur différents sites",
         "description": "Tester l'extension sur différents types de contenus web pour valider la stabilité",
         "status": "done",
@@ -26,7 +26,7 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Validation sync Journal d'Études",
         "description": "Tester et valider la fonctionnalité de synchronisation avec l'application Journal d'Études",
         "status": "deferred",
@@ -38,20 +38,21 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Documentation utilisateur",
         "description": "Créer une documentation complète pour les utilisateurs de l'extension",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
-          1
+          "1"
         ],
         "details": "Créer: guide d'installation, guide d'utilisation avec screenshots, FAQ, liste des raccourcis clavier, guide de dépannage. Format: pages markdown ou site web simple.",
         "testStrategy": "Faire relire la documentation par un utilisateur non-technique pour valider la clarté.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-10T08:55:31.553Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Optimisations UX (ancienne tâche)",
         "description": "CANCELLED: Remplacée par les micro-tâches #15-33 pour une meilleure granularité",
         "status": "cancelled",
@@ -63,7 +64,7 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Configurer tests automatisés Vitest",
         "description": "Mettre en place une suite de tests unitaires avec Vitest",
         "status": "pending",
@@ -74,7 +75,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Amélioration extraction de contenu",
         "description": "Améliorer l'extraction de contenu pour différents types de pages",
         "status": "pending",
@@ -85,7 +86,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Documentation AI Processing",
         "description": "MERGED avec #14: Documenter et tester les fonctionnalités AI avec Chrome AI",
         "status": "cancelled",
@@ -97,33 +98,33 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Assets marketing Chrome Web Store",
         "description": "Préparer les assets visuels pour la page Chrome Web Store",
         "status": "pending",
         "priority": "medium",
         "dependencies": [
-          1
+          "1"
         ],
         "details": "Créer: screenshots de l'extension en action (1280x800), icône promotionnelle (440x280), bannière marquee (1400x560), description détaillée, liste des fonctionnalités clés.",
         "testStrategy": "Vérifier que tous les assets respectent les guidelines Chrome Web Store.",
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "CI/CD GitHub Actions",
         "description": "Configurer l'intégration continue avec GitHub Actions",
         "status": "pending",
         "priority": "low",
         "dependencies": [
-          6
+          "6"
         ],
         "details": "Créer workflows GitHub Actions pour: lint et type-check sur chaque PR, build automatique, tests automatiques, création de release avec zip. Ajouter badges au README.",
         "testStrategy": "Créer une PR de test et vérifier que tous les workflows s'exécutent correctement.",
         "subtasks": []
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Capture améliorée avec screenshot",
         "description": "Ajouter un screenshot automatique lors de la capture de page",
         "status": "done",
@@ -135,7 +136,7 @@
         "updatedAt": "2026-01-21T15:25:00.000Z"
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Carte conversation récente sur l'écran d'accueil",
         "description": "Afficher la dernière conversation sur l'écran d'accueil pour un accès rapide",
         "status": "done",
@@ -147,55 +148,59 @@
         "updatedAt": "2026-01-21T15:25:00.000Z"
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Extraction de description de page (v1.3)",
         "description": "Extraire la méta-description ou premiers paragraphes lors de la capture",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [
-          11
+          "11"
         ],
         "details": "Utiliser message passing avec le content-script existant pour extraire la description. Éviter la permission 'scripting' qui peut causer un rejet Chrome Store. Extraire: meta description, og:description, ou premiers paragraphes.",
         "testStrategy": "Tester sur différents types de pages. Vérifier que la description est pertinente.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-10T08:55:31.547Z"
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Bouton Analyse IA (v1.4)",
         "description": "Ajouter un bouton pour exporter les notes vers ChatGPT/Claude/Gemini. Inclut la documentation AI Processing (ex-tâche #8).",
-        "status": "pending",
+        "status": "done",
         "priority": "low",
         "dependencies": [
-          13
+          "13"
         ],
         "details": "Ajouter un bouton 'Analyser avec IA' dans les notes. Ouvre un nouvel onglet dans le navigateur avec le contenu pré-rempli. Support: ChatGPT, Claude, Gemini. Configuration du service préféré dans les settings. Prompt personnalisable. Référence: YouTube Summary extension. INCLUT: documentation des prérequis Chrome AI, fallback graceful si Chrome AI indisponible.",
         "testStrategy": "Tester l'ouverture de chaque service IA. Vérifier que le contenu est correctement formaté.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-11T11:29:52.574Z"
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Implémenter modal screenshot (lightbox)",
         "description": "Ajouter une modal lightbox pour agrandir les screenshots dans les notes",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "Fichier: CurrentNoteView.tsx:255. Implémenter une modal qui s'ouvre au clic sur un screenshot pour l'afficher en grand. Utiliser un composant modal existant ou créer un simple overlay avec l'image centrée. Fermeture au clic en dehors ou touche Escape.",
         "testStrategy": "Tester l'ouverture/fermeture de la modal. Vérifier le comportement sur différentes tailles d'écran.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:32.345Z"
       },
       {
-        "id": 16,
+        "id": "16",
         "title": "Implémenter bouton Export dans Fullscreen",
         "description": "Ajouter le bouton d'export dans la vue Fullscreen",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "Fichier: FullscreenApp.tsx:322. Le bouton export existe dans le sidepanel mais manque dans la vue fullscreen. Réutiliser la logique d'export existante (JSON, Markdown).",
         "testStrategy": "Tester l'export JSON et Markdown depuis la vue fullscreen.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:30:13.862Z"
       },
       {
-        "id": 17,
+        "id": "17",
         "title": "Implémenter import JSON",
         "description": "Permettre l'import de notes depuis un fichier JSON",
         "status": "done",
@@ -207,51 +212,55 @@
         "updatedAt": "2026-01-29T17:45:00.000Z"
       },
       {
-        "id": 18,
+        "id": "18",
         "title": "Désactiver visuellement boutons Camera/Paperclip/Smile",
         "description": "Désactiver et griser les boutons non implémentés dans la zone de saisie",
-        "status": "pending",
+        "status": "cancelled",
         "priority": "high",
         "dependencies": [],
         "details": "Fichier: BottomInputArea.tsx:65-83. Les boutons Camera, Paperclip et Smile ne font rien actuellement. Ajouter disabled={true}, opacity-50, cursor-not-allowed. Optionnel: ajouter un tooltip 'Prochainement'.",
         "testStrategy": "Vérifier visuellement que les boutons sont grisés et non cliquables.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:33.163Z"
       },
       {
-        "id": 19,
+        "id": "19",
         "title": "Remplacer '...' par spinner sur bouton Save",
         "description": "Afficher un spinner animé pendant la sauvegarde au lieu de '...'",
-        "status": "pending",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: CurrentNoteView.tsx:155. Utiliser un composant Loader de lucide-react ou un spinner CSS. Maintenir la taille du bouton pour éviter le layout shift.",
         "testStrategy": "Déclencher une sauvegarde et vérifier que le spinner s'affiche.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:33.171Z"
       },
       {
-        "id": 20,
+        "id": "20",
         "title": "Ajouter cursor-not-allowed sur boutons désactivés",
         "description": "Améliorer le feedback visuel des boutons désactivés dans le Header",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: Header.tsx. Ajouter cursor-not-allowed via className quand disabled={true}. Vérifier tous les boutons du header.",
         "testStrategy": "Vérifier le curseur sur les boutons désactivés.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:52:30.182Z"
       },
       {
-        "id": 21,
+        "id": "21",
         "title": "Persister fermeture SkoolBanner dans localStorage",
         "description": "Mémoriser la fermeture du banner Skool pour ne plus l'afficher",
-        "status": "pending",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: SkoolBanner.tsx:16. Sauvegarder un flag dans localStorage quand l'utilisateur ferme le banner. Au mount, vérifier ce flag et ne pas afficher si déjà fermé.",
         "testStrategy": "Fermer le banner, recharger l'extension, vérifier qu'il ne réapparaît pas.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:51:58.300Z"
       },
       {
-        "id": 22,
+        "id": "22",
         "title": "Ajouter aria-labels aux boutons icône",
         "description": "Améliorer l'accessibilité en ajoutant des aria-labels descriptifs",
         "status": "pending",
@@ -262,40 +271,43 @@
         "subtasks": []
       },
       {
-        "id": 23,
+        "id": "23",
         "title": "État actif sur boutons formatage (gras/italique)",
         "description": "Indiquer visuellement quand un style de formatage est actif",
-        "status": "pending",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: SimpleRichEditor.tsx. Détecter l'état actuel du formatage (queryCommandState) et ajouter une classe CSS active (bg-blue-100 ou border-blue-500) sur les boutons Bold et Italic.",
         "testStrategy": "Sélectionner du texte en gras, vérifier que le bouton Bold est visuellement actif.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:33.175Z"
       },
       {
-        "id": 24,
+        "id": "24",
         "title": "Indicateur visuel note active dans historique",
         "description": "Mettre en évidence la note actuellement sélectionnée dans le dropdown historique",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: HistoryDropdown.tsx. Comparer l'ID de la note courante avec chaque item de la liste. Ajouter un style différent (bg-blue-50, border-left) pour la note active.",
         "testStrategy": "Ouvrir le dropdown historique et vérifier que la note active est visuellement distincte.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:32.369Z"
       },
       {
-        "id": 25,
+        "id": "25",
         "title": "Remplacer emoji 💡 par icône Lucide",
         "description": "Utiliser une icône cohérente au lieu d'un emoji",
-        "status": "pending",
+        "status": "done",
         "priority": "low",
         "dependencies": [],
         "details": "Fichier: EmptyNoteView.tsx:97. Remplacer 💡 par <Lightbulb /> de lucide-react. Ajuster la taille et la couleur pour maintenir la cohérence visuelle.",
         "testStrategy": "Vérifier visuellement que l'icône s'affiche correctement.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:52:30.185Z"
       },
       {
-        "id": 26,
+        "id": "26",
         "title": "Uniformiser styles des sections (Summary/KeyPoints/Concepts)",
         "description": "Harmoniser l'apparence des sections générées par l'IA",
         "status": "pending",
@@ -306,51 +318,55 @@
         "subtasks": []
       },
       {
-        "id": 27,
+        "id": "27",
         "title": "Uniformiser tailles d'icônes dans Settings",
         "description": "Utiliser une taille d'icône cohérente dans toute la page Settings",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: SettingsView.tsx. Vérifier toutes les icônes et utiliser une taille cohérente (size={20} ou className='w-5 h-5'). Créer une constante ICON_SIZE si nécessaire.",
         "testStrategy": "Parcourir la page Settings et vérifier visuellement la cohérence des icônes.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-10T08:55:31.508Z"
       },
       {
-        "id": 28,
+        "id": "28",
         "title": "Cacher bouton Sync Journal (non implémenté)",
         "description": "Masquer le bouton de sync Journal d'Études jusqu'à implémentation",
-        "status": "pending",
+        "status": "cancelled",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: SettingsView.tsx:517. Ajouter une condition pour cacher ce bouton (ex: {false && <Button>...}</Button>}) ou supprimer temporairement. Laisser un commentaire TODO.",
         "testStrategy": "Vérifier que le bouton n'apparaît plus dans les settings.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:51:58.305Z"
       },
       {
-        "id": 29,
+        "id": "29",
         "title": "Confirmation suppression avec modal custom",
         "description": "Remplacer window.confirm par une modal personnalisée pour la suppression",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: HistoryDropdown.tsx:99. Créer ou réutiliser un composant ConfirmModal avec: titre, message, boutons Annuler/Supprimer (rouge). Le browser confirm() est moche et bloquant.",
         "testStrategy": "Tenter de supprimer une note et vérifier que la modal custom s'affiche.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:30:13.865Z"
       },
       {
-        "id": 30,
+        "id": "30",
         "title": "Limite caractères sur titre de note",
         "description": "Tronquer les titres trop longs dans l'historique avec ellipsis",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: HistoryDropdown.tsx. Utiliser CSS truncate (text-overflow: ellipsis, overflow: hidden, white-space: nowrap) ou JS slice(0, 50) + '...' sur les titres > 50 caractères.",
         "testStrategy": "Créer une note avec un très long titre et vérifier le rendu dans l'historique.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:27:32.375Z"
       },
       {
-        "id": 31,
+        "id": "31",
         "title": "Améliorer formatage date/heure",
         "description": "Afficher l'heure exacte pour les notes récentes (aujourd'hui)",
         "status": "pending",
@@ -361,7 +377,7 @@
         "subtasks": []
       },
       {
-        "id": 32,
+        "id": "32",
         "title": "Loading state sur tous les boutons async",
         "description": "Ajouter un indicateur de chargement sur toutes les actions asynchrones",
         "status": "pending",
@@ -372,18 +388,19 @@
         "subtasks": []
       },
       {
-        "id": 33,
+        "id": "33",
         "title": "Retirer UI migration temporaire",
         "description": "Supprimer le composant/message de migration de données obsolète",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: App.tsx:457. Si le composant de migration n'est plus nécessaire (migration terminée), le supprimer complètement. Sinon, ajouter une condition pour le cacher après la migration.",
         "testStrategy": "Vérifier que l'UI de migration n'apparaît plus pour les utilisateurs existants.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-09T21:30:13.857Z"
       },
       {
-        "id": 34,
+        "id": "34",
         "title": "Dictée vocale Whisper",
         "description": "[v1.4] Transcription audio locale via @xenova/transformers (Whisper-tiny)",
         "status": "deferred",
@@ -395,13 +412,13 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 35,
+        "id": "35",
         "title": "Transcription vidéo automatique",
         "description": "[v1.4] Transcrire audio des vidéos YouTube/web pendant capture",
         "status": "deferred",
         "priority": "low",
         "dependencies": [
-          34
+          "34"
         ],
         "details": "Fonctionnalité future. Lors de la capture d'une page avec vidéo, proposer d'extraire et transcrire l'audio. Utilise Whisper (voir tâche #34). Source: PRD:257-286",
         "testStrategy": "Tester sur des vidéos YouTube de différentes durées.",
@@ -409,19 +426,19 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 36,
+        "id": "36",
         "title": "Refonte page Fullscreen",
         "description": "[v1.5] Layout sidebar + navigation clavier + filtrage avancé",
-        "status": "deferred",
+        "status": "done",
         "priority": "low",
         "dependencies": [],
         "details": "Fonctionnalité future. Refonte complète de la page fullscreen: sidebar avec liste des notes, navigation clavier (j/k, flèches), filtrage par date/tag/recherche, vue détail à droite. Source: PRD:290-310",
         "testStrategy": "Tester la navigation clavier et le filtrage avec de nombreuses notes.",
         "subtasks": [],
-        "updatedAt": "2026-01-29T16:00:00.000Z"
+        "updatedAt": "2026-02-10T08:55:37.638Z"
       },
       {
-        "id": 37,
+        "id": "37",
         "title": "Amélioration mise en forme",
         "description": "[v1.5] Toolbar visible, titres H1-H3, listes, code blocks",
         "status": "deferred",
@@ -433,21 +450,21 @@
         "updatedAt": "2026-01-29T16:00:00.000Z"
       },
       {
-        "id": 38,
-        "title": "Analyse IA externe (ChatGPT/Claude/Gemini)",
-        "description": "[v1.4] Export vers ChatGPT/Claude/Gemini avec prompt personnalisable",
-        "status": "deferred",
-        "priority": "low",
+        "id": "38",
+        "title": "V1: Pipeline Note → PDF → ChatGPT",
+        "description": "L'extension devient un préprocesseur de contexte pour ChatGPT. Cas texte: injection ?q=. Cas images: PDF in-memory + upload automatique via chrome.scripting + DataTransfer.",
+        "status": "pending",
+        "priority": "high",
         "dependencies": [
-          14
+          "14"
         ],
-        "details": "Fonctionnalité future avancée. Extension de la tâche #14 avec: sauvegarde des prompts favoris, historique des analyses, intégration plus profonde avec les APIs si disponibles. Source: PRD:144-154",
-        "testStrategy": "Tester l'export vers chaque service avec différents prompts.",
+        "details": "ChatGPT only. Scope: détection présence image, génération PDF in-memory (Blob) fidèle à la note brute, injection texte via ?q= (cas texte seul), upload automatique PDF via chrome.scripting + DataTransfer API (cas images), fallbacks UX robustes. Aucune API, aucun login, aucun multi-provider, aucun historique.",
+        "testStrategy": "Test texte seul (prompt pré-rempli), test avec image (PDF uploadé), test fallback (message + download), vérifier que rien ne va dans Downloads.",
         "subtasks": [],
-        "updatedAt": "2026-01-29T16:00:00.000Z"
+        "updatedAt": "2026-02-11T12:00:00.000Z"
       },
       {
-        "id": 39,
+        "id": "39",
         "title": "BUG CRITIQUE: Corriger XSS dangerouslySetInnerHTML",
         "description": "Sécuriser les usages de dangerouslySetInnerHTML contre les attaques XSS",
         "status": "done",
@@ -459,7 +476,7 @@
         "updatedAt": "2026-01-29T17:15:00.000Z"
       },
       {
-        "id": 40,
+        "id": "40",
         "title": "BUG: Corriger web_accessible_resources",
         "description": "Vérifier et corriger la configuration web_accessible_resources dans manifest.json",
         "status": "done",
@@ -471,18 +488,19 @@
         "updatedAt": "2026-01-29T17:30:00.000Z"
       },
       {
-        "id": 41,
+        "id": "41",
         "title": "BUG: Corriger Promise non gérée journal-sync",
         "description": "Ajouter la gestion d'erreur sur les Promises dans journal-sync.ts",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "Fichier: journal-sync.ts. Identifier les Promises sans .catch() ou try/catch et ajouter une gestion d'erreur appropriée. Logger les erreurs pour le debugging.",
         "testStrategy": "Simuler une erreur réseau et vérifier que l'erreur est gérée gracieusement.",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-10T08:55:31.541Z"
       },
       {
-        "id": 42,
+        "id": "42",
         "title": "BUG UX: Auto-focus éditeur après envoi",
         "description": "Remettre le focus sur l'éditeur après l'envoi d'un message",
         "status": "done",
@@ -495,13 +513,12 @@
       }
     ],
     "metadata": {
-      "version": "1.3.0",
-      "lastModified": "2026-01-29T17:45:00.000Z",
+      "version": "1.0.0",
+      "lastModified": "2026-02-11T11:29:52.575Z",
       "taskCount": 42,
-      "completedCount": 9,
+      "completedCount": 22,
       "tags": [
-        "master",
-        "ux-reorganization"
+        "master"
       ]
     }
   }

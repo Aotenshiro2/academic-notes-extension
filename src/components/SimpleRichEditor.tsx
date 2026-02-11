@@ -290,23 +290,23 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
     else if (event.key === 'Enter' && event.shiftKey) {
       // Laisser le comportement par défaut se produire (nouvelle ligne)
     }
-    // Ctrl+B : Gras
-    else if (event.ctrlKey && event.key === 'b') {
+    // Ctrl/Cmd+B : Gras
+    else if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
       event.preventDefault()
       executeCommand('bold')
     }
-    // Ctrl+I : Italique
-    else if (event.ctrlKey && event.key === 'i') {
+    // Ctrl/Cmd+I : Italique
+    else if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
       event.preventDefault()
       executeCommand('italic')
     }
-    // Ctrl+Shift+I : Insérer image
-    else if (event.ctrlKey && event.shiftKey && event.key === 'I') {
+    // Ctrl/Cmd+Shift+I : Insérer image
+    else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'I') {
       event.preventDefault()
       handleImageInsert()
     }
-    // Ctrl+Shift+S : Screenshot
-    else if (event.ctrlKey && event.shiftKey && event.key === 'S') {
+    // Ctrl/Cmd+Shift+S : Screenshot
+    else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'S') {
       event.preventDefault()
       handleScreenshotInsert()
     }

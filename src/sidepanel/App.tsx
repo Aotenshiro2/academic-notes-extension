@@ -4,7 +4,9 @@ import {
   ArrowLeft,
   Loader2,
   Mail,
-  Star
+  Star,
+  BookOpen,
+  User
 } from 'lucide-react'
 
 import Header from '@/components/Header'
@@ -598,17 +600,28 @@ function App() {
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground/60 select-none">v{chrome.runtime.getManifest().version}</span>
               <span className="text-muted-foreground/30">|</span>
-              <button
-                className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground hover:text-foreground rounded transition-colors select-none"
+              <span
+                className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground/60 select-none"
                 title="Langue : Français"
-                aria-label="Langue : Français"
               >
-                <span>🇫🇷</span>
-                <span>FR</span>
-              </button>
+                <svg width="14" height="10" viewBox="0 0 3 2" className="rounded-[1px] flex-shrink-0">
+                  <rect width="1" height="2" x="0" fill="#002395"/>
+                  <rect width="1" height="2" x="1" fill="#fff"/>
+                  <rect width="1" height="2" x="2" fill="#ED2939"/>
+                </svg>
+                FR
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle compact />
+              <button
+                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/guide/index.html') })}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                title="Guide"
+                aria-label="Guide"
+              >
+                <BookOpen size={14} />
+              </button>
               <button
                 onClick={() => chrome.tabs.create({ url: 'mailto:brice.d@aoknowledge.com' })}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
@@ -624,6 +637,14 @@ function App() {
                 aria-label="Évaluez-nous"
               >
                 <Star size={14} />
+              </button>
+              <button
+                disabled
+                className="p-1.5 text-muted-foreground/40 cursor-not-allowed rounded-md"
+                title="Compte (bientôt)"
+                aria-label="Compte (bientôt)"
+              >
+                <User size={14} />
               </button>
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -653,6 +674,7 @@ function App() {
           isOpen={showAnalyzeDialog}
           onClose={() => setShowAnalyzeDialog(false)}
           note={currentNote}
+          defaultProvider={settings?.analysisProvider}
         />
       )}
     </div>

@@ -288,22 +288,22 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         onChange(currentContent)
         onSubmit(currentContent)
       }
-    } else if (event.ctrlKey && event.key === 'b') {
+    } else if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
       event.preventDefault()
       document.execCommand('bold')
       handleInput()
-    } else if (event.ctrlKey && event.key === 'i') {
+    } else if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
       event.preventDefault()
       document.execCommand('italic')
       handleInput()
-    } else if (event.ctrlKey && event.key === 'u') {
+    } else if ((event.ctrlKey || event.metaKey) && event.key === 'u') {
       event.preventDefault()
       document.execCommand('underline')
       handleInput()
-    } else if (event.ctrlKey && event.shiftKey && event.key === 'I') {
+    } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'I') {
       event.preventDefault()
       handleImageInsert()
-    } else if (event.ctrlKey && event.shiftKey && event.key === 'S') {
+    } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'S') {
       event.preventDefault()
       handleScreenshotInsert()
     }

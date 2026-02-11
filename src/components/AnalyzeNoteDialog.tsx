@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon } from 'lucide-react'
-import type { AcademicNote } from '@/types/academic'
+import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download } from 'lucide-react'
+import type { AcademicNote, AnalysisProvider } from '@/types/academic'
 import { formatSmartDate } from '@/lib/date-utils'
+import { generateAnalysisPdfBlob } from '@/lib/pdf-export'
+import { openProviderWithContent } from '@/lib/provider-injector'
+import { PROVIDERS, PROVIDER_LIST } from '@/lib/analysis-providers'
 
 interface AnalyzeNoteDialogProps {
   isOpen: boolean
   onClose: () => void
   note: AcademicNote
+  defaultProvider?: AnalysisProvider
 }
 
 type PromptType = 'neutral' | 'pedagogical' | 'action' | 'custom'
+type SendStatus = 'idle' | 'loading' | 'success' | 'fallback'
 
 const PROMPTS: Record<Exclude<PromptType, 'custom'>, string> = {
   neutral: `Voici une note prise pendant un apprentissage ou une analyse.
@@ -116,11 +121,12 @@ function noteToPlainText(note: AcademicNote): string {
   return parts.join('\n')
 }
 
-function AnalyzeNoteDialog({ isOpen, onClose, note }: AnalyzeNoteDialogProps) {
+function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' }: AnalyzeNoteDialogProps) {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptType>('neutral')
   const [customPrompt, setCustomPrompt] = useState('')
-  const [sent, setSent] = useState(false)
-  const [usedFallback, setUsedFallback] = useState(false)
+  const [provider, setProvider] = useState<AnalysisProvider>(defaultProvider)
+  const [status, setStatus] = useState<SendStatus>('idle')
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
@@ -129,17 +135,25 @@ function AnalyzeNoteDialog({ isOpen, onClose, note }: AnalyzeNoteDialogProps) {
   useEffect(() => {
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown)
-      setSent(false)
-      setUsedFallback(false)
+      setStatus('idle')
+      setPdfBlob(null)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen, handleKeyDown])
 
+  // Sync provider with settings when dialog opens
+  useEffect(() => {
+    if (isOpen) setProvider(defaultProvider)
+  }, [isOpen, defaultProvider])
+
   if (!isOpen) return null
 
+  const providerConfig = PROVIDERS[provider]
+
   // Detect if note contains images
-  const hasImages = note.messages?.some(m => m.type === 'image') ||
-    (note.content && /<img\s/i.test(note.content))
+  const hasImages = note.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
+    (note.content && /<img\s/i.test(note.content)) ||
+    (note.screenshots && note.screenshots.length > 0)
 
   const getPromptText = (): string => {
     if (selectedPrompt === 'custom') return customPrompt.trim()
@@ -156,32 +170,71 @@ function AnalyzeNoteDialog({ isOpen, onClose, note }: AnalyzeNoteDialogProps) {
     return `${promptText}\n\n---\n\n${noteText}`
   }
 
-  const handleOpenChatGPT = async () => {
+  const handleAnalyze = async () => {
     const fullPrompt = buildFullPrompt()
     if (!fullPrompt.trim()) return
 
+    setStatus('loading')
+
     try {
-      // Always copy to clipboard as backup
+      // Toujours copier le prompt en backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // Use ?q= if prompt is short enough for URL
-      const encoded = encodeURIComponent(fullPrompt)
-      if (encoded.length < 7000) {
-        window.open(`https://chatgpt.com/?q=${encoded}`, '_blank')
-        setUsedFallback(false)
-      } else {
-        // Fallback: open ChatGPT without pre-fill, user will paste
-        window.open('https://chatgpt.com/', '_blank')
-        setUsedFallback(true)
-      }
+      if (hasImages) {
+        // Chemin PDF : générer blob + injecter
+        const blob = await generateAnalysisPdfBlob(note)
+        setPdfBlob(blob)
 
-      setSent(true)
+        const arrayBuffer = await blob.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i])
+        }
+        const base64 = btoa(binary)
+
+        const safeName = (note.title || 'note')
+          .replace(/[^a-zA-Z0-9\u00C0-\u024F\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .substring(0, 40)
+
+        const result = await openProviderWithContent({
+          provider: providerConfig,
+          pdfBase64: base64,
+          fileName: `${safeName}.pdf`,
+          promptText: fullPrompt,
+        })
+
+        setStatus(result.pdfUploaded ? 'success' : 'fallback')
+      } else {
+        // Chemin texte : prefill URL ou injection DOM
+        await openProviderWithContent({
+          provider: providerConfig,
+          pdfBase64: null,
+          fileName: '',
+          promptText: fullPrompt,
+        })
+
+        setStatus('success')
+      }
     } catch (error) {
-      console.error('Error:', error)
+      console.error(`Error sending to ${providerConfig.label}:`, error)
+      setStatus('fallback')
     }
   }
 
+  const handleDownloadPdf = () => {
+    if (!pdfBlob) return
+    const url = URL.createObjectURL(pdfBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${note.title || 'note'}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const promptDisabled = selectedPrompt === 'custom' && !customPrompt.trim()
+  const isLoading = status === 'loading'
 
   const PROMPT_OPTIONS: { type: PromptType; label: string; subtitle: string; icon: typeof MessageSquare }[] = [
     { type: 'neutral', label: 'Analyse neutre', subtitle: 'Clarifier, zones floues, pistes de réflexion', icon: MessageSquare },
@@ -219,11 +272,12 @@ function AnalyzeNoteDialog({ isOpen, onClose, note }: AnalyzeNoteDialogProps) {
               <button
                 key={type}
                 onClick={() => setSelectedPrompt(type)}
+                disabled={isLoading}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
                   selectedPrompt === type
                     ? 'bg-purple-500/5 border-purple-500/20'
                     : 'border-border hover:bg-muted/50'
-                }`}
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Icon size={18} className={selectedPrompt === type ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground'} />
                 <div>
@@ -241,53 +295,113 @@ function AnalyzeNoteDialog({ isOpen, onClose, note }: AnalyzeNoteDialogProps) {
                 className="w-full mt-2 p-3 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/40 resize-none"
                 rows={3}
                 autoFocus
+                disabled={isLoading}
               />
             )}
           </div>
 
-          {/* Image callout */}
-          {hasImages && (
-            <div className="mx-5 mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
-              <ImageIcon size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Images — mode assisté (V0). Glissez les images dans ChatGPT après l'ouverture.
+          {/* Provider selector */}
+          <div className="px-5 mt-4">
+            <div className="flex items-center gap-3">
+              <label htmlFor="provider-select" className="text-xs text-muted-foreground whitespace-nowrap">
+                Provider :
+              </label>
+              <select
+                id="provider-select"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as AnalysisProvider)}
+                disabled={isLoading}
+                className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {PROVIDER_LIST.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Image info callout */}
+          {hasImages && status === 'idle' && (
+            <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
+              <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-purple-700 dark:text-purple-300">
+                Images détectées — un PDF sera généré et envoyé automatiquement.
               </p>
             </div>
           )}
 
-          {/* ChatGPT button */}
+          {/* Action button */}
           <div className="p-5 pt-4">
             <button
-              onClick={handleOpenChatGPT}
-              disabled={promptDisabled || sent}
+              onClick={handleAnalyze}
+              disabled={promptDisabled || status !== 'idle'}
               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed ${
-                sent
+                status === 'success'
                   ? 'bg-green-500/10 border-green-500/20'
-                  : promptDisabled
-                    ? 'opacity-40 bg-green-500/10 border-green-500/20'
-                    : 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20'
+                  : status === 'fallback'
+                    ? 'bg-amber-500/10 border-amber-500/20'
+                    : promptDisabled
+                      ? 'opacity-40 bg-muted border-border'
+                      : 'bg-purple-500/10 hover:bg-purple-500/15 border-purple-500/20'
               }`}
             >
-              {sent ? (
+              {status === 'loading' && (
+                <>
+                  <Loader2 size={16} className="text-purple-600 dark:text-purple-400 animate-spin" />
+                  <span className="text-purple-600 dark:text-purple-400">Préparation du contexte...</span>
+                </>
+              )}
+              {status === 'idle' && (
+                <>
+                  <ExternalLink size={16} className="text-purple-600 dark:text-purple-400" />
+                  <span className="text-purple-600 dark:text-purple-400">Analyser</span>
+                </>
+              )}
+              {status === 'success' && (
                 <>
                   <Check size={16} className="text-green-600 dark:text-green-400" />
-                  <span className="text-green-600 dark:text-green-400">Ouvert dans ChatGPT</span>
+                  <span className="text-green-600 dark:text-green-400">
+                    {hasImages ? 'PDF envoyé' : 'Envoyé'}
+                  </span>
                 </>
-              ) : (
+              )}
+              {status === 'fallback' && (
                 <>
-                  <ExternalLink size={16} className="text-green-600 dark:text-green-400" />
-                  <span className="text-green-600 dark:text-green-400">Ouvrir dans ChatGPT</span>
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+                  <span className="text-amber-600 dark:text-amber-400">Ouvert</span>
                 </>
               )}
             </button>
           </div>
 
-          {/* Feedback after sending */}
-          {sent && usedFallback && (
-            <div className="mx-5 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-2">
-              <Copy size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                Le prompt est trop long pour le pré-remplissage. Il a été copié — collez avec <kbd className="px-1 py-0.5 bg-blue-500/10 rounded text-[10px] font-mono">Ctrl+V</kbd>.
+          {/* Fallback feedback */}
+          {status === 'fallback' && (
+            <div className="mx-5 mb-4 space-y-2">
+              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
+                <Copy size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Le prompt a été copié — collez avec <kbd className="px-1 py-0.5 bg-amber-500/10 rounded text-[10px] font-mono">Ctrl+V</kbd>.
+                  {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
+                </p>
+              </div>
+              {pdfBlob && (
+                <button
+                  onClick={handleDownloadPdf}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium transition-colors"
+                >
+                  <Download size={14} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">Télécharger le PDF</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Success feedback */}
+          {status === 'success' && (
+            <div className="mx-5 mb-4 p-3 bg-green-500/5 border border-green-500/20 rounded-lg flex items-center gap-2">
+              <Copy size={14} className="text-green-600 dark:text-green-400 flex-shrink-0" />
+              <p className="text-xs text-green-700 dark:text-green-300">
+                Le prompt a aussi été copié dans le presse-papier.
               </p>
             </div>
           )}

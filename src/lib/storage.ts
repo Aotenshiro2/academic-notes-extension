@@ -122,6 +122,7 @@ const db = new AcademicNotesDB()
 const DEFAULT_SETTINGS: Settings = {
   autoCapture: false,
   aiSummaryEnabled: true,
+  analysisProvider: 'chatgpt',
   defaultTags: [],
   journalSync: {
     lastSync: 0,
