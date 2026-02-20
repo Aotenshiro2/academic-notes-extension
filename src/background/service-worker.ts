@@ -797,7 +797,8 @@ async function smartCapture(tabId: number) {
             description: data.description || '',
             author: data.author || '',
             ogImage: data.ogImage || '',
-            siteName: data.siteName || ''
+            siteName: data.siteName || '',
+            extras: data.extras || {}
           }
         }
       } catch (e) {

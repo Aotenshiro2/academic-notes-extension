@@ -325,6 +325,18 @@ function FullscreenApp() {
         content: textContent
       })
 
+      // Images extraites par la stratégie (ex: post Skool)
+      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
+      if (extractedImages?.length) {
+        for (const img of extractedImages) {
+          await storage.addMessageToNote(currentNoteId, {
+            type: 'image',
+            content: img.src,
+            metadata: { alt: img.alt, sourceUrl: result.url }
+          })
+        }
+      }
+
       // Screenshot ciblé via le service worker
       try {
         const screenshotResult = await chrome.runtime.sendMessage({

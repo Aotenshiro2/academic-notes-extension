@@ -14,104 +14,98 @@ function extractSkool(): SiteExtractResult {
       document.querySelector(`a[href="${currentPath}/"]`)
 
     // -----------------------------------------------------------------------
-    // BODY ELEMENT DETECTION — LCA + cascade de fallbacks
+    // POST CARD DETECTION — structural sibling pattern (no .ql-editor)
+    //
+    // En remontant depuis postTitleLink, le premier ancêtre qui a des
+    // frères/sœurs de même tag = un élément répété = une card du feed.
+    // Ce container est borné au post actif — pas de débordement possible.
     // -----------------------------------------------------------------------
-    let bodyEl: Element | null = null
+    let postCard: Element | null = null
 
-    // === MÉTHODE 1 : LCA (Lowest Common Ancestor) ===
-    //
-    // L'éditeur du même post card que le lien titre partage un ancêtre
-    // PLUS PROFOND (plus bas dans l'arbre DOM) que les éditeurs d'autres cards.
-    // Cette méthode est agnostique à la position relative (avant ou après le lien).
-    //
-    // Exemple :
-    //   body → feed → post-card-nawel → .ql-editor-nawel   LCA = post-card-nawel (profond ✓)
-    //   body → feed → post-card-celia → .ql-editor-celia    LCA = feed (peu profond ✗)
-    //
     if (postTitleLink) {
-      const allEditors = Array.from(document.querySelectorAll('.ql-editor'))
-
-      // Mapper chaque ancêtre du lien titre à sa distance depuis le lien
-      // (0 = parent direct, 1 = grand-parent, 2 = arrière-grand-parent, ...)
-      const titleAncestors = new Map<Element, number>()
-      let cur: Element | null = postTitleLink.parentElement
-      let dist = 0
-      while (cur && cur !== document.documentElement) {
-        titleAncestors.set(cur, dist)
-        cur = cur.parentElement
-        dist++
-      }
-
-      // Trouver l'éditeur dont le LCA avec le lien titre est le plus bas dans l'arbre
-      // = distance la plus grande depuis le lien = même post card
-      let bestEditor: Element | null = null
-      let bestDist = -1
-
-      for (const editor of allEditors) {
-        let edCur: Element | null = editor.parentElement
-        while (edCur && edCur !== document.documentElement) {
-          const d = titleAncestors.get(edCur)
-          if (d !== undefined) {
-            if (d > bestDist) {
-              bestDist = d
-              bestEditor = editor
+      let el: Element | null = postTitleLink.parentElement
+      for (let i = 0; i < 25 && el && el !== document.body; i++) {
+        const parent = el.parentElement
+        if (parent && parent !== document.body) {
+          const sameTagSiblings = Array.from(parent.children)
+            .filter(c => c.tagName === el!.tagName && c !== el)
+          if (sameTagSiblings.length >= 1) {
+            const text = el.textContent?.trim() || ''
+            if (text.length > 100) {
+              postCard = el
+              break
             }
-            break
           }
-          edCur = edCur.parentElement
         }
+        el = el?.parentElement ?? null
       }
-
-      if (bestEditor) bodyEl = bestEditor
-    }
-
-    // === MÉTHODE 2 : dialog/modal ===
-    let postContainer: Element | null = null
-    if (!bodyEl) {
-      postContainer =
-        document.querySelector('[role="dialog"]') ||
-        document.querySelector('[data-testid*="post-detail"]') ||
-        document.querySelector('[class*="PostDetail"]') ||
-        document.querySelector('[class*="post-detail"]') ||
-        document.querySelector('[data-testid="post-modal"]') ||
-        document.querySelector('[class*="PostModal"]') ||
-        null
-      if (postContainer) {
-        bodyEl = postContainer.querySelector('.ql-editor') || null
-      }
-    }
-
-    // === MÉTHODE 3 : un seul .ql-editor sur la page ===
-    if (!bodyEl) {
-      const allEditors = document.querySelectorAll('.ql-editor')
-      if (allEditors.length === 1) {
-        bodyEl = allEditors[0]
-      }
-    }
-
-    // === MÉTHODE 4 : autres sélecteurs CSS ===
-    const searchScope = (postContainer || document.body) as HTMLElement
-    if (!bodyEl) {
-      bodyEl =
-        searchScope.querySelector('[class*="richtext"]') ||
-        searchScope.querySelector('[class*="RichText"]') ||
-        searchScope.querySelector('[contenteditable="false"]') ||
-        searchScope.querySelector('[data-testid="post-content"]') ||
-        searchScope.querySelector('.post-content') ||
-        null
     }
 
     // -----------------------------------------------------------------------
-    // Clone + nettoyage de bodyEl
+    // Content extraction from bounded post card
     // -----------------------------------------------------------------------
     let bodyText2 = ''
     let bodyHtml = ''
 
-    if (bodyEl) {
-      const clone = bodyEl.cloneNode(true) as HTMLElement
+    // -----------------------------------------------------------------------
+    // Images du post — collectées depuis le DOM live (avant le clone)
+    // -----------------------------------------------------------------------
+    const AVATAR_SCOPE =
+      '[class*="comment"], [class*="Comment"], ' +
+      '[class*="reply"], [class*="Reply"], ' +
+      '[class*="reaction"], [class*="Reaction"], ' +
+      '[class*="avatar"], [class*="Avatar"], ' +
+      '[class*="author"], [class*="Author"], ' +
+      '[class*="member"], [class*="Member"], ' +
+      '[class*="sidebar"], [class*="Sidebar"], ' +
+      '[class*="topbar"], [class*="Topbar"], ' +
+      'nav, header'
+
+    const postImages: { src: string; alt: string }[] = []
+    if (postCard) {
+      postCard.querySelectorAll('img').forEach((img: HTMLImageElement) => {
+        // 1. Rejeter si dans un conteneur avatar/comment/sidebar
+        if (img.closest(AVATAR_SCOPE)) return
+
+        // 2. Résoudre lazy-load
+        const realSrc =
+          img.getAttribute('data-src') ||
+          img.getAttribute('data-lazy-src') ||
+          img.getAttribute('data-lazy') ||
+          img.getAttribute('data-original') ||
+          img.src || ''
+        if (!realSrc || realSrc.startsWith('data:image/gif') || realSrc.startsWith('data:image/svg')) return
+
+        // 3. Rejeter par class de l'img elle-même
+        const cls = img.className || ''
+        if (/avatar|Avatar|profile|Profile|member|Member/i.test(cls)) return
+
+        // 4. Rejeter par URL (patterns avatar CDN)
+        if (/\/avatar[s]?\/|\/profile[s]?\/|\/user[s]?\/|\/thumb\/|\/icon\//i.test(realSrc)) return
+
+        // 5. Filtres de taille
+        const w = img.naturalWidth || img.width || 0
+        const h = img.naturalHeight || img.height || 0
+        if (w > 0 && w < 80) return
+        if (h > 0 && h < 80) return
+        // Carré ou quasi-carré < 250px → avatar
+        if (w > 0 && h > 0) {
+          const ratio = Math.abs(w - h) / Math.max(w, h)
+          if (ratio < 0.15 && Math.max(w, h) < 250) return
+        }
+        // Portrait < 300px → photo de profil sidebar
+        if (w > 0 && h > 0 && h > w && Math.max(w, h) < 300) return
+
+        postImages.push({ src: realSrc, alt: img.alt || 'Image du post' })
+      })
+    }
+
+    if (postCard) {
+      const clone = postCard.cloneNode(true) as HTMLElement
 
       // Supprimer avatars et images de profil
       clone.querySelectorAll([
+        'button',
         'img[class*="avatar"]', 'img[class*="Avatar"]',
         'img[class*="profile"]', 'img[class*="Profile"]',
         '[class*="avatar"] img', '[class*="Avatar"] img',
@@ -121,12 +115,16 @@ function extractSkool(): SiteExtractResult {
       // Supprimer sections de commentaires
       clone.querySelectorAll([
         '[class*="comment"]', '[class*="Comment"]',
+        '[class*="reply"]', '[class*="Reply"]',
         '[data-testid*="comment"]',
       ].join(', ')).forEach(el => el.remove())
 
-      bodyText2 = clone.textContent?.trim() || ''
+      bodyText2 = clone.textContent?.trim().slice(0, 8000) || ''
       bodyHtml = clone.innerHTML || ''
     }
+
+    // searchScope = post card si trouvé, sinon page entière
+    const searchScope = (postCard || document.body) as HTMLElement
 
     // -----------------------------------------------------------------------
     // Group name
@@ -181,22 +179,13 @@ function extractSkool(): SiteExtractResult {
         postTitle = linkText
       }
     }
-    if (!postTitle && bodyEl) {
-      const boldEl = bodyEl.querySelector('strong, b')
-      const boldText = boldEl?.textContent?.trim() || ''
-      if (boldText.length > 3 && boldText.length < 150) {
-        postTitle = boldText
-      }
-    }
 
     // -----------------------------------------------------------------------
-    // Author — LCA : remonter depuis le lien titre pour trouver l'auteur dans le même card
+    // Author — walk up depuis le lien titre pour trouver l'auteur dans le même card
     // -----------------------------------------------------------------------
     let authorName = ''
 
     if (postTitleLink) {
-      // Remonter depuis le lien titre jusqu'à un ancêtre contenant un lien auteur
-      // (même card → même ancêtre proche → trouvé rapidement)
       let card: Element | null = postTitleLink.parentElement
       for (let i = 0; i < 15 && card && card !== document.body; i++) {
         const userLinks = card.querySelectorAll(
@@ -215,7 +204,7 @@ function extractSkool(): SiteExtractResult {
       }
     }
 
-    // Fallback global (skip nav/header/sidebar pour éviter le compte connecté)
+    // Fallback global (skip nav/header/sidebar)
     if (!authorName) {
       const allLinks = document.querySelectorAll(
         'a[href*="/u/"], a[href*="/user/"], a[href*="/@"]'
@@ -248,67 +237,27 @@ function extractSkool(): SiteExtractResult {
     const postDate = dateEl?.getAttribute('datetime') || dateEl?.textContent?.trim() || ''
 
     // -----------------------------------------------------------------------
-    // Best-div fallback (limites conservatrices)
+    // Fallback minimal si postCard non trouvé (max 10 lignes après le titre)
     // -----------------------------------------------------------------------
-    if (!bodyText2 || bodyText2.length < 50) {
-      const mainContent = searchScope.querySelector('main') ||
-        (searchScope as Element) ||
-        document.body
-      const divs = (mainContent as Element).querySelectorAll('div')
-      let bestDiv: Element | null = null
-      let bestLen = 0
-      divs.forEach(div => {
-        const text = div.textContent?.trim() || ''
-        const directText = Array.from(div.childNodes)
-          .filter(n => n.nodeType === 3)
-          .map(n => n.textContent?.trim())
-          .join('')
-        const hasSubstantialDirectText = directText.length > 30
-        const childDivs = div.querySelectorAll('div').length
-
-        if (text.length > 100 && text.length < 8000 && childDivs < 50 &&
-            (hasSubstantialDirectText || div.querySelectorAll('p, li, br').length > 0) &&
-            text.length > bestLen) {
-          bestLen = text.length
-          bestDiv = div
-        }
-      })
-      if (bestDiv) {
-        const clone = (bestDiv as HTMLElement).cloneNode(true) as HTMLElement
-        clone.querySelectorAll(
-          'img[class*="avatar"], [class*="avatar"] img, img[class*="profile"]'
-        ).forEach(el => el.remove())
-        bodyText2 = clone.textContent?.trim() || ''
-        bodyHtml = clone.innerHTML || ''
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Ultimate text fallback (limité à 30 lignes pour éviter le débordement)
-    // -----------------------------------------------------------------------
-    if (!bodyText2 || bodyText2.length < 50) {
+    if (!bodyText2) {
       const lines = bodyText.split('\n').filter(l => l.trim().length > 20)
       const titleIdx = postTitle ? lines.findIndex(l => l.includes(postTitle)) : -1
-      if (titleIdx >= 0 && titleIdx < lines.length - 1) {
-        bodyText2 = lines.slice(titleIdx + 1, titleIdx + 30).join('\n')
-      } else {
-        bodyText2 = lines.slice(0, 20).join('\n')
-      }
+      bodyText2 = titleIdx >= 0
+        ? lines.slice(titleIdx + 1, titleIdx + 10).join('\n')
+        : lines.slice(0, 10).join('\n')
     }
 
     // -----------------------------------------------------------------------
-    // Engagement — regex élargi + DOM fallback pour les likes
+    // Engagement
     // -----------------------------------------------------------------------
     let likes = ''
     let commentsCount = ''
 
-    // Likes : essayer plusieurs formats
     const likesRegex =
       bodyText.match(/(\d+)\s*(?:likes?|j['']aime|aimé|reactions?|réactions?)/i) ||
       bodyText.match(/(?:aimé|liké?)\s*(?:par\s+)?(\d+)/i)
     if (likesRegex) likes = likesRegex[1]
 
-    // Likes DOM fallback (bouton avec count)
     if (!likes) {
       const likesEl =
         document.querySelector('[class*="like"][class*="count"]') ||
@@ -382,7 +331,7 @@ function extractSkool(): SiteExtractResult {
       description: bodyText2.slice(0, 300),
       author: authorName,
       siteName: 'Skool',
-      extras: { groupName, likes, commentsCount, postDate }
+      extras: { groupName, likes, commentsCount, postDate, images: postImages }
     }
   } catch (e) {
     return { success: false, error: String(e) }

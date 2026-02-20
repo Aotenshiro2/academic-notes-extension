@@ -378,6 +378,18 @@ function App() {
         await storage.addMessageToNote(newNoteId, { type: 'text', content: textContent })
       }
 
+      // 3. Images extraites par la stratégie (ex: post Skool)
+      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
+      if (extractedImages?.length) {
+        for (const img of extractedImages) {
+          await storage.addMessageToNote(newNoteId, {
+            type: 'image',
+            content: img.src,
+            metadata: { alt: img.alt, sourceUrl: result.url }
+          })
+        }
+      }
+
       setCurrentNoteId(newNoteId)
       setEditorContent('')
       await loadData()
@@ -420,6 +432,18 @@ function App() {
         type: 'text',
         content: textContent
       })
+
+      // Images extraites par la stratégie (ex: post Skool)
+      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
+      if (extractedImages?.length) {
+        for (const img of extractedImages) {
+          await storage.addMessageToNote(currentNoteId, {
+            type: 'image',
+            content: img.src,
+            metadata: { alt: img.alt, sourceUrl: result.url }
+          })
+        }
+      }
 
       // Capturer et ajouter le screenshot comme message image séparé
       try {
