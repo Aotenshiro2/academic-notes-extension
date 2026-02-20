@@ -118,6 +118,117 @@ class AcademicNotesDB extends Dexie {
 
 const db = new AcademicNotesDB()
 
+// Handle versionchange events (another tab/connection opened with newer version)
+db.on('versionchange', () => {
+  console.warn('[Storage] Database version changed by another connection, closing...')
+  db.close()
+})
+
+// ---- BACKUP SYSTEM (2-slot rotation, full data with unlimitedStorage) ----
+// Protects against IndexedDB data loss (Chrome updates, corruption, storage pressure)
+const BACKUP_SLOT_KEYS = ['notes_backup_0', 'notes_backup_1'] as const
+const BACKUP_TS_KEYS = ['notes_backup_ts_0', 'notes_backup_ts_1'] as const
+const BACKUP_ACTIVE_KEY = 'notes_backup_active' // 0 or 1
+const BACKUP_DEBOUNCE_MS = 3000
+const BACKUP_MIN_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+
+let backupTimer: ReturnType<typeof setTimeout> | null = null
+let lastBackupTime = 0
+let restoredFromBackup = false
+
+/**
+ * Write notes to the INACTIVE slot, then flip the active pointer.
+ * This ensures the previous good backup is never overwritten in-place.
+ */
+async function writeBackup(notes: AcademicNote[]): Promise<void> {
+  const result = await chrome.storage.local.get(BACKUP_ACTIVE_KEY)
+  const activeSlot: number = result[BACKUP_ACTIVE_KEY] ?? 0
+  const targetSlot = activeSlot === 0 ? 1 : 0 // write to inactive slot
+
+  await chrome.storage.local.set({
+    [BACKUP_SLOT_KEYS[targetSlot]]: notes,
+    [BACKUP_TS_KEYS[targetSlot]]: Date.now(),
+    [BACKUP_ACTIVE_KEY]: targetSlot // flip active pointer
+  })
+}
+
+/**
+ * Backup all notes to chrome.storage.local (debounced)
+ */
+function scheduleBackup() {
+  if (backupTimer) clearTimeout(backupTimer)
+  backupTimer = setTimeout(async () => {
+    try {
+      const notes = await db.notes.toArray()
+      if (notes.length === 0) return // Never overwrite with empty data
+      await writeBackup(notes)
+      lastBackupTime = Date.now()
+      console.log(`[Storage] Backup saved: ${notes.length} notes`)
+    } catch (error) {
+      console.error('[Storage] Backup failed:', error)
+    }
+  }, BACKUP_DEBOUNCE_MS)
+}
+
+/**
+ * Force an immediate backup (called from UI on startup)
+ */
+async function backupNow(): Promise<void> {
+  if (Date.now() - lastBackupTime < BACKUP_MIN_INTERVAL_MS) return
+  try {
+    const notes = await db.notes.toArray()
+    if (notes.length === 0) return
+    await writeBackup(notes)
+    lastBackupTime = Date.now()
+    console.log(`[Storage] Startup backup: ${notes.length} notes`)
+  } catch (error) {
+    console.error('[Storage] Startup backup failed:', error)
+  }
+}
+
+/**
+ * Read backup notes from a specific slot. Returns null if empty/missing.
+ */
+async function readBackupSlot(slot: number): Promise<{ notes: AcademicNote[]; timestamp: number } | null> {
+  const result = await chrome.storage.local.get([BACKUP_SLOT_KEYS[slot], BACKUP_TS_KEYS[slot]])
+  const notes = result[BACKUP_SLOT_KEYS[slot]] as AcademicNote[] | undefined
+  const ts = result[BACKUP_TS_KEYS[slot]] as number | undefined
+  if (!notes || notes.length === 0) return null
+  return { notes, timestamp: ts || 0 }
+}
+
+/**
+ * Check if IndexedDB lost data and restore from chrome.storage.local backup.
+ * Tries active slot first, then falls back to the other slot.
+ * Returns true if restoration happened.
+ */
+async function checkAndRestore(): Promise<boolean> {
+  try {
+    const count = await db.notes.count()
+    if (count > 0) return false // DB has data, nothing to restore
+
+    const result = await chrome.storage.local.get(BACKUP_ACTIVE_KEY)
+    const activeSlot: number = result[BACKUP_ACTIVE_KEY] ?? 0
+    const fallbackSlot = activeSlot === 0 ? 1 : 0
+
+    // Try active slot first, then fallback
+    const backup = await readBackupSlot(activeSlot) || await readBackupSlot(fallbackSlot)
+    if (!backup) return false
+
+    console.warn(
+      `[Storage] IndexedDB empty but backup found (${backup.notes.length} notes from ${new Date(backup.timestamp).toLocaleString()}). Restoring...`
+    )
+
+    await db.notes.bulkPut(backup.notes)
+    restoredFromBackup = true
+    console.log(`[Storage] Restored ${backup.notes.length} notes from backup`)
+    return true
+  } catch (error) {
+    console.error('[Storage] Restore from backup failed:', error)
+    return false
+  }
+}
+
 // Gestion des paramètres avec Chrome Storage
 const DEFAULT_SETTINGS: Settings = {
   autoCapture: false,
@@ -148,7 +259,14 @@ export const storage = {
       syncedAt: note.syncedAt
     }
 
-    await db.notes.put(fullNote)
+    try {
+      await db.notes.put(fullNote)
+    } catch (error) {
+      console.error('[Storage] saveNote failed:', error)
+      throw error
+    }
+
+    scheduleBackup()
 
     // Broadcast sync event to other views
     if (!skipSync) {
@@ -167,13 +285,50 @@ export const storage = {
   },
 
   async getNotes(limit = 50, offset = 0): Promise<AcademicNote[]> {
-    // Tri par ID (= date de création) pour un ordre chronologique stable
-    return await db.notes
-      .orderBy('id')
-      .reverse()
-      .offset(offset)
-      .limit(limit)
-      .toArray()
+    try {
+      // Tri par ID (= date de création) pour un ordre chronologique stable
+      const notes = await db.notes
+        .orderBy('id')
+        .reverse()
+        .offset(offset)
+        .limit(limit)
+        .toArray()
+
+      // If DB is empty on first load, try to restore from backup
+      if (notes.length === 0 && offset === 0 && !restoredFromBackup) {
+        const restored = await checkAndRestore()
+        if (restored) {
+          // Re-query after restoration
+          return await db.notes
+            .orderBy('id')
+            .reverse()
+            .offset(offset)
+            .limit(limit)
+            .toArray()
+        }
+      }
+
+      return notes
+    } catch (error) {
+      console.error('[Storage] getNotes failed:', error)
+      // Attempt restore from backup on DB error
+      if (!restoredFromBackup) {
+        try {
+          const activeResult = await chrome.storage.local.get(BACKUP_ACTIVE_KEY)
+          const activeSlot: number = activeResult[BACKUP_ACTIVE_KEY] ?? 0
+          const fallbackSlot = activeSlot === 0 ? 1 : 0
+          const backup = await readBackupSlot(activeSlot) || await readBackupSlot(fallbackSlot)
+          if (backup) {
+            console.warn(`[Storage] Returning ${backup.notes.length} notes from backup (DB error fallback)`)
+            restoredFromBackup = true
+            return backup.notes.slice(offset, offset + limit)
+          }
+        } catch (backupError) {
+          console.error('[Storage] Backup fallback also failed:', backupError)
+        }
+      }
+      return []
+    }
   },
 
   async searchNotes(query: string): Promise<AcademicNote[]> {
@@ -189,11 +344,18 @@ export const storage = {
   },
 
   async deleteNote(id: string, skipSync = false): Promise<void> {
-    await db.transaction('rw', [db.notes, db.screenshots, db.extracts], async () => {
-      await db.notes.delete(id)
-      await db.screenshots.where('noteId').equals(id).delete()
-      await db.extracts.where('noteId').equals(id).delete()
-    })
+    try {
+      await db.transaction('rw', [db.notes, db.screenshots, db.extracts], async () => {
+        await db.notes.delete(id)
+        await db.screenshots.where('noteId').equals(id).delete()
+        await db.extracts.where('noteId').equals(id).delete()
+      })
+    } catch (error) {
+      console.error('[Storage] deleteNote failed:', error)
+      throw error
+    }
+
+    scheduleBackup()
 
     // Broadcast sync event to other views
     if (!skipSync) {
@@ -473,5 +635,5 @@ export const storage = {
   }
 }
 
-export { db }
+export { db, backupNow, restoredFromBackup }
 export default storage

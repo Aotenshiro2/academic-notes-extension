@@ -4,6 +4,7 @@ import type { AcademicNote, ContentType } from '@/types/academic'
 import SimpleRichEditor from './SimpleRichEditor'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
+import ImageLightbox from './ImageLightbox'
 
 interface NoteDetailModalProps {
   note: AcademicNote | null
@@ -28,6 +29,7 @@ function NoteDetailModal({
   const [editedTags, setEditedTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
   // Réinitialiser les données quand la note change
   useEffect(() => {
@@ -228,8 +230,16 @@ function NoteDetailModal({
                 <div className="prose max-w-none">
                   {note.content.includes('<img') || note.content.includes('<p>') || note.content.includes('<strong>') ? (
                     <div
-                      className="text-gray-700 leading-relaxed rich-content-preview"
+                      className="text-gray-700 leading-relaxed rich-content-preview [&_img]:cursor-zoom-in [&_img]:hover:opacity-80"
                       dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement
+                        if (target.tagName === 'IMG') {
+                          e.stopPropagation()
+                          const src = (target as HTMLImageElement).src
+                          if (src) setLightboxImage(src)
+                        }
+                      }}
                     />
                   ) : (
                     <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -353,6 +363,15 @@ function NoteDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage}
+          alt="Note image"
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   )
 }

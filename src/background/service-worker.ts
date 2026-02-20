@@ -1,4 +1,5 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
+import { findStrategy } from '@/lib/smart-capture/registry'
 
 // Garder le service worker actif
 function keepAlive() {
@@ -760,6 +761,49 @@ async function smartCapture(tabId: number) {
     let author = ''
     let ogImage = ''
     let siteName = ''
+
+    // --- Stratégies de capture par domaine ---
+    const strategy = findStrategy(url)
+    if (strategy) {
+      console.log(`[SmartCapture] Strategy "${strategy.id}" selected for ${url}`)
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: strategy.func
+        })
+        const data = results?.[0]?.result
+        console.log(`[SmartCapture] Strategy "${strategy.id}" result:`, {
+          success: data?.success,
+          contentLength: data?.content?.length ?? 0,
+          error: data?.error,
+          pageTitle: data?.pageTitle
+        })
+        if (data?.success && data.content && data.content.length >= 50) {
+          let domain = ''
+          try { domain = new URL(url).hostname.replace('www.', '') } catch { /* ignore */ }
+          return {
+            success: true,
+            content: data.content,
+            pageTitle: data.pageTitle || pageTitle,
+            url,
+            favicon: tab.favIconUrl || '',
+            domain,
+            isYouTube,
+            contentType: detectContentType(url, data.pageTitle || pageTitle),
+            summary: data.summary || '',
+            keyPoints: data.keyPoints || [],
+            concepts: data.concepts || [],
+            tags: data.tags || [],
+            description: data.description || '',
+            author: data.author || '',
+            ogImage: data.ogImage || '',
+            siteName: data.siteName || ''
+          }
+        }
+      } catch (e) {
+        console.warn(`[SmartCapture] Strategy "${strategy.id}" failed, falling back to generic`, e)
+      }
+    }
 
     if (isYouTube) {
       // Pour YouTube, extraire la transcription/description

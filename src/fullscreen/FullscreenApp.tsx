@@ -19,9 +19,8 @@ import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput
 import ConfirmDialog from '@/components/ConfirmDialog'
 import TabPicker from '@/components/TabPicker'
 import CurrentNoteView from '@/components/CurrentNoteView'
-import ImageLightbox from '@/components/ImageLightbox'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
-import storage from '@/lib/storage'
+import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
@@ -42,7 +41,6 @@ function FullscreenApp() {
   // États pour l'édition du titre
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [deleteConfirmNoteId, setDeleteConfirmNoteId] = useState<string | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
 
@@ -125,6 +123,15 @@ function FullscreenApp() {
       ])
       setNotes(loadedNotes)
       setSettings(loadedSettings)
+
+      // Backup notes to chrome.storage.local (protection against IndexedDB loss)
+      if (loadedNotes.length > 0) {
+        backupNow()
+      }
+
+      if (restoredFromBackup) {
+        console.warn('[FullscreenApp] Notes restored from backup after IndexedDB data loss')
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -748,15 +755,6 @@ function FullscreenApp() {
           />
         </div>
       </div>
-
-      {/* Image Lightbox */}
-      {lightboxImage && (
-        <ImageLightbox
-          src={lightboxImage}
-          alt="Note image"
-          onClose={() => setLightboxImage(null)}
-        />
-      )}
 
       <ConfirmDialog
         isOpen={!!deleteConfirmNoteId}

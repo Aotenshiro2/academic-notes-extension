@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
 import MessageBlock from './MessageBlock'
-import type { AcademicNote } from '@/types/academic'
+import MessageDetailPanel from './MessageDetailPanel'
+import type { AcademicNote, NoteMessage } from '@/types/academic'
 
 interface CurrentNoteViewProps {
   noteId: string
@@ -14,7 +15,8 @@ interface CurrentNoteViewProps {
 function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [panelMessage, setPanelMessage] = useState<NoteMessage | null>(null)
 
   // Recharger la note quand noteId ou refreshTrigger change
   useEffect(() => {
@@ -38,6 +40,47 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
       setIsLoading(false)
     }
   }
+
+  // Collect all image sources from the note for lightbox navigation
+  const noteImages = useMemo(() => {
+    if (!note) return []
+    const imgs: string[] = []
+
+    // Images from messages
+    note.messages?.forEach(msg => {
+      if (msg.type === 'image' || msg.type === 'screenshot' || msg.type === 'capture') {
+        imgs.push(msg.content)
+      } else if (msg.type === 'text') {
+        // Extract <img src="..."> from HTML content
+        const matches = msg.content.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
+        for (const m of matches) {
+          if (m[1]) imgs.push(m[1])
+        }
+      }
+    })
+
+    // Images from legacy screenshots array
+    note.screenshots?.forEach(s => {
+      if (s.dataUrl && !imgs.includes(s.dataUrl)) {
+        imgs.push(s.dataUrl)
+      }
+    })
+
+    // If no messages, extract from legacy content
+    if ((!note.messages || note.messages.length === 0) && note.content) {
+      const matches = note.content.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
+      for (const m of matches) {
+        if (m[1] && !imgs.includes(m[1])) imgs.push(m[1])
+      }
+    }
+
+    return imgs
+  }, [note])
+
+  const handleImageClick = useCallback((src: string) => {
+    const idx = noteImages.indexOf(src)
+    setLightboxIndex(idx >= 0 ? idx : 0)
+  }, [noteImages])
 
   // Handlers for MessageBlock
   const handleUpdateMessage = useCallback(async (messageId: string, content: string) => {
@@ -110,7 +153,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
               message={message}
               onUpdate={handleUpdateMessage}
               onDelete={handleDeleteMessage}
-              onImageClick={setLightboxImage}
+              onImageClick={handleImageClick}
+              onOpenPanel={() => setPanelMessage(message)}
             />
           ))}
         </div>
@@ -120,16 +164,43 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
           <div
             className="text-foreground/90 leading-relaxed p-3 [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+            onClick={(e) => {
+              const target = e.target as HTMLElement
+              if (target.tagName === 'IMG') {
+                e.stopPropagation()
+                const src = (target as HTMLImageElement).src
+                if (src) handleImageClick(src)
+              }
+            }}
           />
         </div>
       ) : null}
 
-      {/* Image Lightbox */}
-      {lightboxImage && (
+      {/* Message Detail Panel overlay */}
+      {panelMessage && (
+        <MessageDetailPanel
+          message={panelMessage}
+          onClose={() => setPanelMessage(null)}
+          onUpdate={async (id, content) => {
+            await handleUpdateMessage(id, content)
+            setPanelMessage(null)
+          }}
+          onDelete={async (id) => {
+            await handleDeleteMessage(id)
+            setPanelMessage(null)
+          }}
+        />
+      )}
+
+      {/* Image Lightbox with navigation */}
+      {lightboxIndex !== null && noteImages.length > 0 && (
         <ImageLightbox
-          src={lightboxImage}
+          src={noteImages[lightboxIndex]}
           alt="Note image"
-          onClose={() => setLightboxImage(null)}
+          onClose={() => setLightboxIndex(null)}
+          images={noteImages}
+          currentIndex={lightboxIndex}
+          onNavigate={setLightboxIndex}
         />
       )}
 
@@ -177,7 +248,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
                 className="rounded-lg border border-border cursor-zoom-in hover:opacity-80 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setLightboxImage(screenshot.dataUrl)
+                  handleImageClick(screenshot.dataUrl)
                 }}
               />
             ))}

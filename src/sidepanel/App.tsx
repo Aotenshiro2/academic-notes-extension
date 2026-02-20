@@ -19,7 +19,7 @@ import SkoolBanner from '@/components/SkoolBanner'
 import SettingsView from '@/components/SettingsView'
 import ThemeToggle from '@/components/ThemeToggle'
 
-import storage from '@/lib/storage'
+import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
@@ -132,6 +132,16 @@ function App() {
       ])
       setNotes(loadedNotes)
       setSettings(loadedSettings)
+
+      // Backup notes to chrome.storage.local (protection against IndexedDB loss)
+      if (loadedNotes.length > 0) {
+        backupNow()
+      }
+
+      // Warn user if data was restored from backup
+      if (restoredFromBackup) {
+        console.warn('[App] Notes restored from backup after IndexedDB data loss')
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -316,21 +326,10 @@ function App() {
       // Créer la note directement avec les données extraites par heuristiques
       const newNoteId = Date.now().toString()
 
-      // Construire le contenu HTML de la note (sans résumé/points clés qui sont affichés via les blocs séparés)
-      let noteContent = ''
-
-      // Screenshot en premier
-      if (screenshotDataUrl) {
-        noteContent += `<p><img src="${screenshotDataUrl}" alt="Capture de la page" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
-      }
-
-      // Espace pour les notes personnelles
-      noteContent += '<p></p><p><em>Mes notes:</em></p><p></p>'
-
       const newNote: AcademicNote = {
         id: newNoteId,
         title: result.pageTitle.slice(0, 80) + (result.pageTitle.length > 80 ? '...' : ''),
-        content: noteContent,
+        content: '',
         summary: result.summary || '',
         keyPoints: result.keyPoints || [],
         url: result.url,
@@ -352,6 +351,33 @@ function App() {
       }
 
       await storage.saveNote(newNote)
+
+      // 1. Screenshot en premier (image message)
+      if (screenshotDataUrl) {
+        await storage.addMessageToNote(newNoteId, {
+          type: 'image',
+          content: screenshotDataUrl,
+          metadata: { alt: 'Capture de la page' }
+        })
+      }
+
+      // 2. Contenu structuré (text message)
+      let textContent = `<p><strong>${result.pageTitle}</strong></p>`
+      if (result.summary) {
+        textContent += `<p><em>${result.summary}</em></p>`
+      }
+      if (result.keyPoints?.length > 0) {
+        textContent += '<p><strong>Points clés :</strong></p><ul>'
+        result.keyPoints.forEach((p: string) => { textContent += `<li>${p}</li>` })
+        textContent += '</ul>'
+      }
+      if (result.content) {
+        textContent += `<hr>${result.content}`
+      }
+      if (textContent.trim()) {
+        await storage.addMessageToNote(newNoteId, { type: 'text', content: textContent })
+      }
+
       setCurrentNoteId(newNoteId)
       setEditorContent('')
       await loadData()
@@ -384,6 +410,9 @@ function App() {
         textContent += '<p><strong>Points clés:</strong></p><ul>'
         result.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
         textContent += '</ul>'
+      }
+      if (result.content) {
+        textContent += `<hr>${result.content}`
       }
 
       // Ajouter comme message (met à jour messages[] ET content)

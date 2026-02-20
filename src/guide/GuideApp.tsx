@@ -64,6 +64,23 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.2.5',
+    title: 'Smart Capture par domaine',
+    items: [
+      'Capture intelligente spécifique par site : TradingView, Skool, TopStepX, Forex Factory, Investing.com, Gmail, Outlook, Tradovate',
+      'TradingView : extraction automatique du symbole, prix, variation, timeframe et contrat futures',
+      'TopStepX Trade : extraction de la balance, P&L réalisé/non-réalisé, max loss limit depuis la barre du haut',
+      'TopStepX Stats : extraction des KPIs (Total PNL, Trade Win %, Day Win %, Profit Factor, Avg Win/Loss)',
+      'Skool : extraction du titre de post, auteur, groupe, contenu principal et engagement',
+      'Forex Factory / Investing.com : extraction des événements du calendrier économique (heure, devise, impact, forecast)',
+      'YouTube amélioré : capture du timestamp de lecture + lien avec ?t=, chapitres, transcription',
+      'Gmail / Outlook : extraction du sujet, expéditeur, date et corps de l\'email',
+      'Fallback GenericArticle pour blogs/Wordpress/Notion avec nettoyage du contenu',
+      'Architecture extensible : ajout facile de nouvelles stratégies par domaine',
+      'Fallback automatique sur l\'extracteur générique si la stratégie échoue',
+    ],
+  },
+  {
     version: '1.2.4',
     title: 'Analyse IA multi-provider',
     items: [
