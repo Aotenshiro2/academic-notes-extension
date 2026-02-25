@@ -64,6 +64,19 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.3.0',
+    title: 'Compte AOKnowledge & Cloud Sync',
+    items: [
+      'Compte AOKnowledge : connexion Google OAuth via le bouton 👤 du footer',
+      'Synchronisation cloud automatique vers Journal d\'Études à chaque nouvelle note capturée',
+      'AccountView dédiée : profil utilisateur, toggle sync automatique, sync manuelle globale',
+      'Déduplication intelligente : une même URL ne crée qu\'un seul nœud dans le journal',
+      'Supabase Auth centralisé — même compte pour toutes les apps AOKnowledge',
+      'Threads d\'analyse IA : définir une URL de thread cible par provider (ChatGPT, Claude, etc.)',
+      'Smart Capture v1 : stratégies topstep.com (dashboard, comptes, billing, payouts)',
+    ],
+  },
+  {
     version: '1.2.5',
     title: 'Smart Capture par domaine',
     items: [
