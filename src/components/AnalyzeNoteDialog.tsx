@@ -5,6 +5,7 @@ import { formatSmartDate } from '@/lib/date-utils'
 import { generateAnalysisPdfBlob } from '@/lib/pdf-export'
 import { openProviderWithContent } from '@/lib/provider-injector'
 import { PROVIDERS, PROVIDER_LIST } from '@/lib/analysis-providers'
+import storage from '@/lib/storage'
 
 interface AnalyzeNoteDialogProps {
   isOpen: boolean
@@ -14,7 +15,8 @@ interface AnalyzeNoteDialogProps {
 }
 
 type PromptType = 'neutral' | 'pedagogical' | 'action' | 'custom'
-type SendStatus = 'idle' | 'loading' | 'success' | 'fallback'
+type SendStatus = 'idle' | 'loading' | 'success' | 'fallback' | 'thread-fallback'
+type LoadingPhase = 'preparing' | 'opening' | 'loading' | 'injecting'
 
 const PROMPTS: Record<Exclude<PromptType, 'custom'>, string> = {
   neutral: `Voici une note prise pendant un apprentissage ou une analyse.
@@ -127,6 +129,9 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
   const [provider, setProvider] = useState<AnalysisProvider>(defaultProvider)
   const [status, setStatus] = useState<SendStatus>('idle')
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  const [providerThreadUrls, setProviderThreadUrls] = useState<Partial<Record<AnalysisProvider, string>>>({})
+  const [sendMode, setSendMode] = useState<'new' | 'thread'>('new')
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('preparing')
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
@@ -137,6 +142,8 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
       document.addEventListener('keydown', handleKeyDown)
       setStatus('idle')
       setPdfBlob(null)
+      setSendMode('new')
+      setLoadingPhase('preparing')
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen, handleKeyDown])
@@ -146,9 +153,26 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
     if (isOpen) setProvider(defaultProvider)
   }, [isOpen, defaultProvider])
 
+  // Load thread URLs from settings when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      storage.getSettings().then(s => {
+        setProviderThreadUrls(s.providerThreadUrls || {})
+      })
+    }
+  }, [isOpen])
+
+  // Reset sendMode to 'new' if the selected provider has no thread URL
+  useEffect(() => {
+    if (!providerThreadUrls[provider]) {
+      setSendMode('new')
+    }
+  }, [provider, providerThreadUrls])
+
   if (!isOpen) return null
 
   const providerConfig = PROVIDERS[provider]
+  const hasThreadUrl = !!(providerThreadUrls[provider])
 
   // Detect if note contains images
   const hasImages = note.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
@@ -176,46 +200,51 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
 
     setStatus('loading')
 
+    const threadUrl = sendMode === 'thread' ? (providerThreadUrls[provider] || undefined) : undefined
+
     try {
       // Toujours copier le prompt en backup
       await navigator.clipboard.writeText(fullPrompt)
 
+      // Préparer les données PDF si besoin (une seule fois, réutilisées en cas de retry)
+      let cachedBase64: string | null = null
+      let cachedFileName = ''
       if (hasImages) {
-        // Chemin PDF : générer blob + injecter
         const blob = await generateAnalysisPdfBlob(note)
         setPdfBlob(blob)
-
         const arrayBuffer = await blob.arrayBuffer()
         const bytes = new Uint8Array(arrayBuffer)
         let binary = ''
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i])
-        }
-        const base64 = btoa(binary)
-
-        const safeName = (note.title || 'note')
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+        cachedBase64 = btoa(binary)
+        cachedFileName = `${(note.title || 'note')
           .replace(/[^a-zA-Z0-9\u00C0-\u024F\s-]/g, '')
           .replace(/\s+/g, '-')
-          .substring(0, 40)
+          .substring(0, 40)}.pdf`
+      }
 
-        const result = await openProviderWithContent({
-          provider: providerConfig,
-          pdfBase64: base64,
-          fileName: `${safeName}.pdf`,
-          promptText: fullPrompt,
-        })
+      const onProgress = (phase: 'opening' | 'loading' | 'injecting') => setLoadingPhase(phase)
 
-        setStatus(result.pdfUploaded ? 'success' : 'fallback')
-      } else {
-        // Chemin texte : prefill URL ou injection DOM
-        await openProviderWithContent({
-          provider: providerConfig,
-          pdfBase64: null,
-          fileName: '',
-          promptText: fullPrompt,
-        })
+      const send = (tUrl?: string) => openProviderWithContent({
+        provider: providerConfig,
+        pdfBase64: cachedBase64,
+        fileName: cachedFileName,
+        promptText: fullPrompt,
+        threadUrl: tUrl,
+        onProgress,
+      })
 
-        setStatus('success')
+      try {
+        const result = await send(threadUrl)
+        setStatus(hasImages ? (result.pdfUploaded ? 'success' : 'fallback') : 'success')
+      } catch (err) {
+        if (err instanceof Error && err.message === 'THREAD_INJECTION_FAILED') {
+          setStatus('thread-fallback')
+          // Retry en mode nouvelle conversation
+          await send(undefined)
+        } else {
+          throw err
+        }
       }
     } catch (error) {
       console.error(`Error sending to ${providerConfig.label}:`, error)
@@ -235,6 +264,20 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
 
   const promptDisabled = selectedPrompt === 'custom' && !customPrompt.trim()
   const isLoading = status === 'loading'
+
+  const PHASE_MESSAGES: Record<LoadingPhase, string> = {
+    preparing: 'Préparation du contexte...',
+    opening:   `Ouverture de ${providerConfig.label}...`,
+    loading:   `Chargement de ${providerConfig.label}...`,
+    injecting: 'Injection du prompt...',
+  }
+
+  const PHASE_PROGRESS: Record<LoadingPhase, string> = {
+    preparing: '10%',
+    opening:   '35%',
+    loading:   '70%',
+    injecting: '95%',
+  }
 
   const PROMPT_OPTIONS: { type: PromptType; label: string; subtitle: string; icon: typeof MessageSquare }[] = [
     { type: 'neutral', label: 'Analyse neutre', subtitle: 'Clarifier, zones floues, pistes de réflexion', icon: MessageSquare },
@@ -320,6 +363,37 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
             </div>
           </div>
 
+          {/* Thread mode segmented control — visible seulement si une URL thread est définie */}
+          {hasThreadUrl && (
+            <div className="px-5 mt-3 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Envoyer dans :</span>
+              <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
+                <button
+                  onClick={() => setSendMode('new')}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+                    sendMode === 'new'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Nouvelle conv.
+                </button>
+                <button
+                  onClick={() => setSendMode('thread')}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+                    sendMode === 'thread'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Thread cible
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Image info callout */}
           {hasImages && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
@@ -338,7 +412,7 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed ${
                 status === 'success'
                   ? 'bg-green-500/10 border-green-500/20'
-                  : status === 'fallback'
+                  : status === 'fallback' || status === 'thread-fallback'
                     ? 'bg-amber-500/10 border-amber-500/20'
                     : promptDisabled
                       ? 'opacity-40 bg-muted border-border'
@@ -348,7 +422,7 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
               {status === 'loading' && (
                 <>
                   <Loader2 size={16} className="text-purple-600 dark:text-purple-400 animate-spin" />
-                  <span className="text-purple-600 dark:text-purple-400">Préparation du contexte...</span>
+                  <span className="text-purple-600 dark:text-purple-400">{PHASE_MESSAGES[loadingPhase]}</span>
                 </>
               )}
               {status === 'idle' && (
@@ -365,7 +439,7 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
                   </span>
                 </>
               )}
-              {status === 'fallback' && (
+              {(status === 'fallback' || status === 'thread-fallback') && (
                 <>
                   <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
                   <span className="text-amber-600 dark:text-amber-400">Ouvert</span>
@@ -374,6 +448,18 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
             </button>
           </div>
 
+          {/* Barre de progression par phases */}
+          {status === 'loading' && (
+            <div className="mx-5 -mt-3 mb-3">
+              <div className="h-0.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-purple-500/50 rounded-full animate-pulse transition-[width] duration-700 ease-in-out"
+                  style={{ width: PHASE_PROGRESS[loadingPhase] }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Fallback feedback */}
           {status === 'fallback' && (
             <div className="mx-5 mb-4 space-y-2">
@@ -381,6 +467,28 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
                 <Copy size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   Le prompt a été copié — collez avec <kbd className="px-1 py-0.5 bg-amber-500/10 rounded text-[10px] font-mono">Ctrl+V</kbd>.
+                  {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
+                </p>
+              </div>
+              {pdfBlob && (
+                <button
+                  onClick={handleDownloadPdf}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium transition-colors"
+                >
+                  <Download size={14} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">Télécharger le PDF</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Thread fallback feedback */}
+          {status === 'thread-fallback' && (
+            <div className="mx-5 mb-4 space-y-2">
+              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
+                <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Thread cible indisponible — une nouvelle conversation a été ouverte.
                   {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
                 </p>
               </div>

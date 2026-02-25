@@ -125,6 +125,7 @@ export interface Settings {
   aiSummaryEnabled: boolean
   aiConfig?: AIConfig
   analysisProvider?: AnalysisProvider
+  providerThreadUrls?: Partial<Record<AnalysisProvider, string>>
   defaultTags: string[]
   journalSync: SyncStatus
   captureScreenshots: boolean

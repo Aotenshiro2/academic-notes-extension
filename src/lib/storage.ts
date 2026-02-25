@@ -234,6 +234,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoCapture: false,
   aiSummaryEnabled: true,
   analysisProvider: 'chatgpt',
+  providerThreadUrls: {},
   defaultTags: [],
   journalSync: {
     lastSync: 0,

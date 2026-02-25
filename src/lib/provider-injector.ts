@@ -108,38 +108,27 @@ async function injectIntoProvider(
   return { pdfUploaded, promptFilled }
 }
 
+type ProgressPhase = 'opening' | 'loading' | 'injecting'
+
 /**
- * Ouvre un provider IA et injecte le contenu.
- * Gère prefill URL, injection DOM, et fallback clipboard.
+ * Ouvre un onglet sur `url`, attend le chargement, puis injecte le contenu.
+ * Helper interne partagé entre le mode "nouvelle conversation" et "thread cible".
+ * Appelle `onProgress` à chaque phase pour permettre un feedback visuel dans l'UI.
  */
-export async function openProviderWithContent(options: {
-  provider: ProviderConfig
-  pdfBase64: string | null
-  fileName: string
-  promptText: string
-}): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
-  const { provider, pdfBase64, fileName, promptText } = options
-
-  // Chemin prefill URL (texte seul + provider supporte ?q=)
-  if (!pdfBase64 && provider.prefillParam && promptText) {
-    const encoded = encodeURIComponent(promptText)
-    if (provider.prefillMaxLength && encoded.length < provider.prefillMaxLength) {
-      const url = `${provider.url}?${provider.prefillParam}=${encoded}`
-      const tab = await chrome.tabs.create({ url, active: true })
-      return {
-        tabId: tab.id ?? 0,
-        pdfUploaded: false,
-        promptFilled: true,
-      }
-    }
-  }
-
-  // Chemin injection DOM (PDF ou texte long ou provider sans prefill)
-  const tab = await chrome.tabs.create({ url: provider.url, active: true })
+async function openAndInject(
+  provider: ProviderConfig,
+  pdfBase64: string | null,
+  fileName: string,
+  promptText: string,
+  url: string,
+  onProgress?: (phase: ProgressPhase) => void
+): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
+  onProgress?.('opening')
+  const tab = await chrome.tabs.create({ url, active: true })
   if (!tab.id) throw new Error(`Failed to create ${provider.label} tab`)
   const tabId = tab.id
 
-  // Attendre le chargement complet
+  onProgress?.('loading')
   await new Promise<void>((resolve) => {
     const listener = (id: number, info: chrome.tabs.TabChangeInfo) => {
       if (id === tabId && info.status === 'complete') {
@@ -150,10 +139,9 @@ export async function openProviderWithContent(options: {
     chrome.tabs.onUpdated.addListener(listener)
   })
 
-  // Délai SPA spécifique au provider
   await new Promise(r => setTimeout(r, provider.spaDelay))
 
-  // Injecter la fonction autonome avec les sélecteurs du provider
+  onProgress?.('injecting')
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     func: injectIntoProvider,
@@ -174,4 +162,48 @@ export async function openProviderWithContent(options: {
     pdfUploaded: result?.pdfUploaded ?? false,
     promptFilled: result?.promptFilled ?? false,
   }
+}
+
+/**
+ * Ouvre un provider IA et injecte le contenu.
+ * Gère prefill URL, injection DOM, et fallback clipboard.
+ * Si `threadUrl` est fourni, ouvre cet onglet existant (mode thread) — toujours par injection DOM.
+ * En cas d'échec thread, lance THREAD_INJECTION_FAILED pour que l'appelant gère le fallback.
+ * `onProgress` permet à l'UI de suivre les phases : 'opening' | 'loading' | 'injecting'.
+ */
+export async function openProviderWithContent(options: {
+  provider: ProviderConfig
+  pdfBase64: string | null
+  fileName: string
+  promptText: string
+  threadUrl?: string
+  onProgress?: (phase: ProgressPhase) => void
+}): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
+  const { provider, pdfBase64, fileName, promptText, threadUrl, onProgress } = options
+
+  // Mode thread cible — toujours injection DOM (pas de prefill ?q= sur un thread existant)
+  if (threadUrl) {
+    try {
+      return await openAndInject(provider, pdfBase64, fileName, promptText, threadUrl, onProgress)
+    } catch {
+      throw new Error('THREAD_INJECTION_FAILED')
+    }
+  }
+
+  // Chemin prefill URL (texte seul + provider supporte ?q=)
+  if (!pdfBase64 && provider.prefillParam && promptText) {
+    const encoded = encodeURIComponent(promptText)
+    if (provider.prefillMaxLength && encoded.length < provider.prefillMaxLength) {
+      const url = `${provider.url}?${provider.prefillParam}=${encoded}`
+      const tab = await chrome.tabs.create({ url, active: true })
+      return {
+        tabId: tab.id ?? 0,
+        pdfUploaded: false,
+        promptFilled: true,
+      }
+    }
+  }
+
+  // Chemin injection DOM (PDF ou texte long ou provider sans prefill)
+  return await openAndInject(provider, pdfBase64, fileName, promptText, provider.url, onProgress)
 }
