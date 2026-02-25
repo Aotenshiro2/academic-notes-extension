@@ -1,5 +1,7 @@
 import Dexie from 'dexie'
 import { stateSync } from './state-sync'
+import { getSession } from './auth'
+import { syncNoteToJournal } from './sync'
 import type {
   AcademicNote,
   NoteMessage,
@@ -268,6 +270,20 @@ export const storage = {
     }
 
     scheduleBackup()
+
+    // Cloud sync vers Journal d'Études (non-bloquant, seulement si connecté + nouvelle note)
+    if (isNew && !fullNote.syncedAt) {
+      getSession().then(session => {
+        if (session) {
+          syncNoteToJournal(fullNote).then(result => {
+            if (result.success) {
+              // Marquer la note comme synquée dans IndexedDB
+              db.notes.update(id, { syncedAt: Date.now() }).catch(() => {})
+            }
+          }).catch(() => {})
+        }
+      }).catch(() => {})
+    }
 
     // Broadcast sync event to other views
     if (!skipSync) {

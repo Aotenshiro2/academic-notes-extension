@@ -17,6 +17,7 @@ import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import SkoolBanner from '@/components/SkoolBanner'
 import SettingsView from '@/components/SettingsView'
+import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
@@ -29,6 +30,7 @@ function App() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
   const [notes, setNotes] = useState<AcademicNote[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -546,7 +548,18 @@ function App() {
       <main className="content-section flex flex-col">
         {/* Contenu de la note courante */}
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto p-4">
-          {showSettings ? (
+          {showAccount ? (
+            <AccountView
+              settings={settings!}
+              onSettingsChange={async (newSettings) => {
+                await storage.saveSettings(newSettings)
+                const updated = await storage.getSettings()
+                setSettings(updated)
+              }}
+              onSyncAll={() => { /* TODO: forceSyncAll */ }}
+              onBack={() => setShowAccount(false)}
+            />
+          ) : showSettings ? (
             <div className="space-y-4">
               {/* Header avec bouton retour */}
               <div className="flex items-center space-x-3 pb-3 border-b border-border">
@@ -692,15 +705,15 @@ function App() {
                 <Star size={14} />
               </button>
               <button
-                disabled
-                className="p-1.5 text-muted-foreground/40 cursor-not-allowed rounded-md"
-                title="Compte (bientôt)"
-                aria-label="Compte (bientôt)"
+                onClick={() => { setShowAccount(!showAccount); setShowSettings(false) }}
+                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showAccount ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
+                title="Compte AOKnowledge"
+                aria-label="Compte AOKnowledge"
               >
                 <User size={14} />
               </button>
               <button
-                onClick={() => setShowSettings(!showSettings)}
+                onClick={() => { setShowSettings(!showSettings); setShowAccount(false) }}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 title="Paramètres"
                 aria-label="Paramètres"
