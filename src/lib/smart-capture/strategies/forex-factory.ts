@@ -131,7 +131,9 @@ function extractForexFactoryCalendar(): SiteExtractResult {
 export const forexFactoryStrategy: SiteStrategy = {
   id: 'forex-factory',
   label: 'Forex Factory Calendar',
-  match: (url: string) => /forexfactory\.com/i.test(url) && /calendar/i.test(url),
+  // La page racine forexfactory.com IS le calendrier (redirect vers /calendar).
+  // L'extraction vérifie elle-même la présence du tableau — pas besoin de "/calendar" dans l'URL.
+  match: (url: string) => /forexfactory\.com/i.test(url),
   priority: 10,
   func: extractForexFactoryCalendar
 }

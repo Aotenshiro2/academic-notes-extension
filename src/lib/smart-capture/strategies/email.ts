@@ -48,20 +48,26 @@ function extractGmail(): SiteExtractResult {
       document.querySelector('[data-message-id] div[dir]')
     let bodyText = ''
     let bodyHtml = ''
+    // Nettoyage du corps : supprime médias décoratifs, formulaires, citations et styles inline
+    const sanitize = (el: HTMLElement, extraSelector?: string): { text: string; html: string } => {
+      const clone = el.cloneNode(true) as HTMLElement
+      const base = 'style, script, img, svg, video, canvas, iframe, picture, source, button, form, input, select, textarea, .gmail_quote, blockquote'
+      clone.querySelectorAll(extraSelector ? `${base}, ${extraSelector}` : base).forEach(e => e.remove())
+      clone.querySelectorAll('[style]').forEach(e => e.removeAttribute('style'))
+      clone.querySelectorAll('[width],[height]').forEach(e => { e.removeAttribute('width'); e.removeAttribute('height') })
+      return { text: clone.textContent?.trim() || '', html: clone.innerHTML || '' }
+    }
     if (bodyEl) {
-      // Cloner pour nettoyer
-      const clone = bodyEl.cloneNode(true) as HTMLElement
-      clone.querySelectorAll('style, script, .gmail_quote, blockquote').forEach(el => el.remove())
-      bodyText = clone.textContent?.trim() || ''
-      bodyHtml = clone.innerHTML || ''
+      const { text, html } = sanitize(bodyEl as HTMLElement)
+      bodyText = text
+      bodyHtml = html
     }
     // Fallback: use [role="main"] innerText (strips noise from heading/nav elements)
     if (!bodyText) {
       const mainEl = document.querySelector('[role="main"]')
       if (mainEl) {
-        const clone = mainEl.cloneNode(true) as HTMLElement
-        clone.querySelectorAll('style, script, .gmail_quote, blockquote, [role="heading"], nav').forEach(el => el.remove())
-        bodyText = clone.textContent?.trim().slice(0, 8000) || ''
+        const { text } = sanitize(mainEl as HTMLElement, '[role="heading"], nav')
+        bodyText = text.slice(0, 8000)
       }
     }
 
@@ -149,11 +155,27 @@ function extractOutlook(): SiteExtractResult {
       document.querySelector('[class*="ReadingPaneContent"]')
     let bodyText = ''
     let bodyHtml = ''
+    // Nettoyage du corps : supprime médias décoratifs, formulaires, historique de réponse et styles inline
+    const sanitize = (el: HTMLElement, extraSelector?: string): { text: string; html: string } => {
+      const clone = el.cloneNode(true) as HTMLElement
+      const base = 'style, script, img, svg, video, canvas, iframe, picture, source, button, form, input, select, textarea, blockquote, [class*="originalMessage"], [class*="divReply"]'
+      clone.querySelectorAll(extraSelector ? `${base}, ${extraSelector}` : base).forEach(e => e.remove())
+      clone.querySelectorAll('[style]').forEach(e => e.removeAttribute('style'))
+      clone.querySelectorAll('[width],[height]').forEach(e => { e.removeAttribute('width'); e.removeAttribute('height') })
+      return { text: clone.textContent?.trim() || '', html: clone.innerHTML || '' }
+    }
     if (bodyEl) {
-      const clone = bodyEl.cloneNode(true) as HTMLElement
-      clone.querySelectorAll('style, script').forEach(el => el.remove())
-      bodyText = clone.textContent?.trim() || ''
-      bodyHtml = clone.innerHTML || ''
+      const { text, html } = sanitize(bodyEl as HTMLElement)
+      bodyText = text
+      bodyHtml = html
+    }
+    // Fallback: use [role="main"] (comme Gmail)
+    if (!bodyText) {
+      const mainEl = document.querySelector('[role="main"]')
+      if (mainEl) {
+        const { text } = sanitize(mainEl as HTMLElement, '[role="heading"], nav')
+        bodyText = text.slice(0, 8000)
+      }
     }
 
     // Construire
