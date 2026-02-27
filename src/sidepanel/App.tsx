@@ -23,6 +23,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
+import { exportNoteToDocx } from '@/lib/docx-export'
 import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
@@ -491,6 +492,19 @@ function App() {
     }
   }
 
+  const handleExportDocx = async () => {
+    if (!currentNote) return
+    setIsExporting(true)
+    try {
+      await exportNoteToDocx(currentNote)
+    } catch (error) {
+      console.error('Error exporting DOCX:', error)
+      alert('Erreur lors de l\'export Google Docs')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Fonction pour ouvrir la vue fullscreen de l'extension
   const handleFullscreen = async () => {
     try {
@@ -540,6 +554,7 @@ function App() {
         onHome={handleGoHome}
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}
+        onExportDocx={currentNote ? handleExportDocx : undefined}
         onAnalyze={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
         isExporting={isExporting}
       />

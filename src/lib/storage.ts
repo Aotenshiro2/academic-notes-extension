@@ -242,7 +242,7 @@ const DEFAULT_SETTINGS: Settings = {
     lastSync: 0,
     pendingNotes: [],
     syncEnabled: false,
-    journalAppUrl: 'https://trading-journal.app'
+    journalAppUrl: 'https://journal-d-etude-beta.vercel.app'
   },
   captureScreenshots: true,
   extractMainContent: true,

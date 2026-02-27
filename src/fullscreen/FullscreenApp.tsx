@@ -12,7 +12,9 @@ import {
   Maximize,
   Trash2,
   Check,
-  Sparkles
+  Sparkles,
+  FileText,
+  FileDown,
 } from 'lucide-react'
 
 import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
@@ -23,6 +25,7 @@ import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
+import { exportNoteToDocx } from '@/lib/docx-export'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import type { AcademicNote, Settings as SettingsType } from '@/types/academic'
 
@@ -475,6 +478,32 @@ function FullscreenApp() {
     }
   }
 
+  const handleExportDocx = async () => {
+    if (!currentNote) return
+    setIsExporting(true)
+    try {
+      await exportNoteToDocx(currentNote)
+    } catch (error) {
+      console.error('Error exporting DOCX:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    function handleClickOutside(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showExportMenu])
+
   // Filtrer les notes selon la recherche
   const filteredNotes = notes.filter(note =>
     !searchQuery ||
@@ -657,15 +686,35 @@ function FullscreenApp() {
                 <div className="w-px h-6 bg-border mx-1"></div>
               </>
             )}
-            <button
-              onClick={handleExportPDF}
-              disabled={!currentNote || isExporting}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isExporting ? "Export en cours..." : "Exporter en PDF"}
-              aria-label="Exporter en PDF"
-            >
-              {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-            </button>
+            <div ref={exportMenuRef} className="relative">
+              <button
+                onClick={() => { if (currentNote && !isExporting) setShowExportMenu(p => !p) }}
+                disabled={!currentNote || isExporting}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isExporting ? 'Export en cours…' : 'Exporter la note'}
+                aria-label="Exporter la note"
+              >
+                {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border bg-popover shadow-lg py-1">
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleExportPDF() }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <FileDown size={14} className="text-red-500 flex-shrink-0" />
+                    Exporter en PDF
+                  </button>
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleExportDocx() }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <FileText size={14} className="text-blue-500 flex-shrink-0" />
+                    Google Docs (.docx)
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
