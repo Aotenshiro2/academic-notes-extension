@@ -409,5 +409,13 @@ function init() {
   }
 }
 
+// Signal de présence pour le journal AOKnowledge
+document.documentElement.setAttribute('data-aok-installed', '1')
+
+// Écouter la demande d'ouverture du panneau depuis le journal
+document.addEventListener('aok:open-panel', () => {
+  chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' })
+})
+
 // Démarrer l'initialisation
 init()
