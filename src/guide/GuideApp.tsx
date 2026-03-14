@@ -64,6 +64,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.3.5',
+    title: 'Fix sync HTTP 413 — Supabase Storage',
+    items: [
+      'Fix : les notes avec screenshots ne d\u00e9clenchent plus d\u2019erreur HTTP 413 lors de la synchronisation',
+      'Images upload\u00e9es dans Supabase Storage avant envoi (plus de base64 brut dans le payload)',
+      'Compression automatique JPEG 1200\u00d7800 avant upload (qualit\u00e9 pr\u00e9serv\u00e9e, zoomable dans le journal)',
+      'D\u00e9duplication par hash SHA-256 : la m\u00eame image n\u2019est jamais upload\u00e9e deux fois',
+      'Fallback silencieux : si un upload \u00e9choue, la note est quand m\u00eame synqu\u00e9e',
+    ],
+  },
+  {
     version: '1.3.4',
     title: 'Analyse multi-notes & PDF combiné',
     items: [
