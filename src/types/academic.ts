@@ -14,6 +14,12 @@ export interface NoteMessage {
   }
 }
 
+export interface NoteFolder {
+  id: string
+  name: string
+  createdAt: number
+}
+
 export interface AcademicNote {
   id: string
   title: string
@@ -25,6 +31,7 @@ export interface AcademicNote {
   favicon?: string
   timestamp: number
   syncedAt?: number
+  folderId?: string // undefined = note libre (sans dossier)
   type: ContentType
   metadata: ContentMetadata
   tags: string[]
@@ -127,6 +134,7 @@ export interface Settings {
   analysisProvider?: AnalysisProvider
   providerThreadUrls?: Partial<Record<AnalysisProvider, string>>
   defaultTags: string[]
+  folders: NoteFolder[]
   journalSync: SyncStatus
   captureScreenshots: boolean
   extractMainContent: boolean

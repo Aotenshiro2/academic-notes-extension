@@ -4,6 +4,7 @@ import { getSession } from './auth'
 import { syncNoteToJournal } from './sync'
 import type {
   AcademicNote,
+  NoteFolder,
   NoteMessage,
   NoteMessageType,
   Screenshot,
@@ -114,6 +115,13 @@ class AcademicNotesDB extends Dexie {
           note.messages = convertLegacyContentToMessages(note.content, note.timestamp)
         }
       })
+    })
+
+    // Version 3: Add folderId index for folder grouping
+    this.version(3).stores({
+      notes: 'id, title, url, timestamp, type, folderId, *tags, *concepts',
+      screenshots: 'id, noteId, url, timestamp',
+      extracts: 'id, noteId, timestamp, source'
     })
   }
 }
@@ -238,6 +246,7 @@ const DEFAULT_SETTINGS: Settings = {
   analysisProvider: 'chatgpt',
   providerThreadUrls: {},
   defaultTags: [],
+  folders: [],
   journalSync: {
     lastSync: 0,
     pendingNotes: [],
@@ -279,8 +288,12 @@ export const storage = {
             if (result.success) {
               // Marquer la note comme synquée dans IndexedDB
               db.notes.update(id, { syncedAt: Date.now() }).catch(() => {})
+            } else {
+              console.warn('[AOK Sync] Failed:', result.error, '— note:', fullNote.title)
             }
-          }).catch(() => {})
+          }).catch((err) => {
+            console.error('[AOK Sync] Exception:', err)
+          })
         }
       }).catch(() => {})
     }
@@ -634,6 +647,44 @@ export const storage = {
         }
       })
       .join('<br><br>')
+  },
+
+  // ---- FOLDERS ----
+
+  async getFolders(): Promise<NoteFolder[]> {
+    const settings = await this.getSettings()
+    return settings.folders ?? []
+  },
+
+  async saveFolder(folder: NoteFolder): Promise<void> {
+    const settings = await this.getSettings()
+    const folders = settings.folders ?? []
+    const idx = folders.findIndex(f => f.id === folder.id)
+    if (idx >= 0) {
+      folders[idx] = folder
+    } else {
+      folders.push(folder)
+    }
+    await this.saveSettings({ folders })
+  },
+
+  async deleteFolder(id: string): Promise<void> {
+    const settings = await this.getSettings()
+    const folders = (settings.folders ?? []).filter(f => f.id !== id)
+    await this.saveSettings({ folders })
+    // Détacher toutes les notes qui appartiennent à ce dossier
+    await db.notes.where('folderId').equals(id).modify({ folderId: undefined })
+    scheduleBackup()
+  },
+
+  async moveNoteToFolder(noteId: string, folderId: string | null): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const updatedNote: AcademicNote = {
+      ...note,
+      folderId: folderId ?? undefined
+    }
+    await this.saveNote(updatedNote)
   },
 
   /**

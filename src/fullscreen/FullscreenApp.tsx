@@ -27,11 +27,13 @@ import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
-import type { AcademicNote, Settings as SettingsType } from '@/types/academic'
+import type { AcademicNote, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
 function FullscreenApp() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   const [notes, setNotes] = useState<AcademicNote[]>([])
+  const [folders, setFolders] = useState<NoteFolder[]>([])
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editorContent, setEditorContent] = useState('')
@@ -125,6 +127,7 @@ function FullscreenApp() {
         storage.getSettings()
       ])
       setNotes(loadedNotes)
+      setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
 
       // Backup notes to chrome.storage.local (protection against IndexedDB loss)
@@ -504,13 +507,15 @@ function FullscreenApp() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showExportMenu])
 
-  // Filtrer les notes selon la recherche
-  const filteredNotes = notes.filter(note =>
-    !searchQuery ||
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  // Filtrer les notes selon le dossier actif et la recherche
+  const filteredNotes = notes
+    .filter(note => activeFolderId === null || note.folderId === activeFolderId)
+    .filter(note =>
+      !searchQuery ||
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
 
   if (isLoading) {
     return (
@@ -550,6 +555,36 @@ function FullscreenApp() {
               className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
+
+          {/* Folder filter pills */}
+          {folders.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              <button
+                onClick={() => setActiveFolderId(null)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  activeFolderId === null
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Toutes
+              </button>
+              {folders.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFolderId(f.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors truncate max-w-[120px] ${
+                    activeFolderId === f.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                  title={f.name}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Liste des notes */}

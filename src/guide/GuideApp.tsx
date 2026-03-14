@@ -64,6 +64,19 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.3.3',
+    title: 'Dossiers / Projets',
+    items: [
+      'Dossiers : regroupez vos notes dans des projets nommés (style ChatGPT/Claude)',
+      'Drag & drop : faites glisser une note sur un dossier pour l\'y assigner',
+      'Créer, renommer, supprimer des dossiers directement dans l\'historique',
+      'Notes libres : les notes sans dossier restent accessibles dans la section "Notes"',
+      'Fullscreen : filtrage par dossier via des pills en haut de la sidebar',
+      'Suppression de dossier non-destructive : les notes redeviennent libres',
+      'Export/import JSON et sauvegarde backup incluent les dossiers automatiquement',
+    ],
+  },
+  {
     version: '1.3.2',
     title: 'Logs Sync détaillés',
     items: [

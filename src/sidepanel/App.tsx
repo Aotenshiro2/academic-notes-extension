@@ -24,7 +24,8 @@ import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
-import type { AcademicNote, Settings as SettingsType, Screenshot } from '@/types/academic'
+import { forceSyncAll } from '@/lib/sync'
+import type { AcademicNote, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
   // Suppression du système de vue par tabs
@@ -33,6 +34,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
   const [notes, setNotes] = useState<AcademicNote[]>([])
+  const [folders, setFolders] = useState<NoteFolder[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editorContent, setEditorContent] = useState('')
@@ -134,6 +136,7 @@ function App() {
         storage.getSettings()
       ])
       setNotes(loadedNotes)
+      setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
 
       // Backup notes to chrome.storage.local (protection against IndexedDB loss)
@@ -220,6 +223,28 @@ function App() {
   // Fonction pour retourner à l'accueil (au lieu de créer une note vide)
   const handleGoHome = () => {
     setCurrentNoteId(null)
+  }
+
+  // ---- Folder handlers ----
+  const handleFolderCreate = async (name: string) => {
+    await storage.saveFolder({ id: crypto.randomUUID(), name, createdAt: Date.now() })
+    await loadData()
+  }
+
+  const handleFolderRename = async (id: string, name: string) => {
+    const existing = folders.find(f => f.id === id)
+    if (existing) await storage.saveFolder({ ...existing, name })
+    await loadData()
+  }
+
+  const handleFolderDelete = async (id: string) => {
+    await storage.deleteFolder(id)
+    await loadData()
+  }
+
+  const handleMoveNoteToFolder = async (noteId: string, folderId: string | null) => {
+    await storage.moveNoteToFolder(noteId, folderId)
+    await loadData()
   }
 
   // Fonction pour capturer la page actuelle et créer une note avec screenshot
@@ -571,7 +596,7 @@ function App() {
                 const updated = await storage.getSettings()
                 setSettings(updated)
               }}
-              onSyncAll={() => { /* TODO: forceSyncAll */ }}
+              onSyncAll={() => forceSyncAll(notes)}
               onBack={() => setShowAccount(false)}
             />
           ) : showSettings ? (
@@ -744,9 +769,14 @@ function App() {
         isOpen={showHistoryDropdown}
         onClose={() => setShowHistoryDropdown(false)}
         notes={notes}
+        folders={folders}
         currentNoteId={currentNoteId}
         onSelectNote={setCurrentNoteId}
         onNotesUpdate={loadData}
+        onFolderCreate={handleFolderCreate}
+        onFolderRename={handleFolderRename}
+        onFolderDelete={handleFolderDelete}
+        onMoveNoteToFolder={handleMoveNoteToFolder}
       />
 
       {/* Dialog d'analyse AI */}

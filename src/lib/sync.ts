@@ -21,6 +21,7 @@ function toJournalPayload(note: AcademicNote) {
     favicon: note.favicon ?? null,
     syncedAt: new Date().toISOString(),
     messages: note.messages ?? [],
+    folderId: note.folderId ?? null,
   }
 }
 
