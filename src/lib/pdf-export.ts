@@ -588,3 +588,145 @@ export async function generateAnalysisPdfBlob(note: AcademicNote): Promise<Blob>
 
   return pdf.output('blob')
 }
+
+/**
+ * Génère un PDF combiné en mémoire pour l'analyse multi-notes.
+ * Chaque note démarre sur une nouvelle page avec un en-tête de séparation.
+ * Retourne un Blob — rien n'est téléchargé.
+ */
+export async function generateMultiNoteAnalysisPdfBlob(notes: AcademicNote[]): Promise<Blob> {
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 15
+  const contentWidth = pageWidth - margin * 2
+  let yPos = margin
+
+  const lineHeight = 5
+  const paragraphSpacing = 3
+
+  function checkNewPage(neededHeight: number): void {
+    if (yPos + neededHeight > pageHeight - margin) {
+      pdf.addPage()
+      yPos = margin
+    }
+  }
+
+  const sortedNotes = notes.slice().sort((a, b) => a.timestamp - b.timestamp)
+
+  for (let noteIndex = 0; noteIndex < sortedNotes.length; noteIndex++) {
+    const note = sortedNotes[noteIndex]
+
+    if (noteIndex > 0) {
+      pdf.addPage()
+      yPos = margin
+    }
+
+    // Note header
+    pdf.setFontSize(13)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setTextColor(0, 0, 0)
+    const noteLabel = sanitizeTextForPdf(`[${noteIndex + 1}/${sortedNotes.length}] ${note.title || 'Sans titre'}`)
+    const titleLines = pdf.splitTextToSize(noteLabel, contentWidth)
+    pdf.text(titleLines, margin, yPos + 5)
+    yPos += titleLines.length * 6 + 2
+
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setTextColor(120, 120, 120)
+    const dateStr = new Date(note.timestamp).toLocaleDateString('fr-FR', {
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    })
+    pdf.text(dateStr, margin, yPos)
+    yPos += 4
+
+    if (note.url) {
+      const rawUrl = note.url.length > 80 ? note.url.substring(0, 80) + '...' : note.url
+      pdf.setTextColor(60, 120, 200)
+      pdf.text(sanitizeTextForPdf(rawUrl), margin, yPos)
+      yPos += 4
+    }
+
+    yPos += 2
+    pdf.setDrawColor(180, 180, 180)
+    pdf.line(margin, yPos, pageWidth - margin, yPos)
+    yPos += 6
+
+    // Content blocks
+    pdf.setTextColor(0, 0, 0)
+    pdf.setFontSize(11)
+
+    const blocks = parseHtmlContent(note.content)
+    for (const block of blocks) {
+      switch (block.type) {
+        case 'text': {
+          const fontStyle = block.bold && block.italic ? 'bolditalic' :
+                            block.bold ? 'bold' :
+                            block.italic ? 'italic' : 'normal'
+          pdf.setFont('helvetica', fontStyle)
+          pdf.setFontSize(11)
+          const sanitizedContent = sanitizeTextForPdf(block.content)
+          const lines = pdf.splitTextToSize(sanitizedContent, contentWidth)
+          for (const line of lines) {
+            checkNewPage(lineHeight)
+            pdf.text(line, margin, yPos)
+            yPos += lineHeight
+          }
+          break
+        }
+        case 'heading': {
+          const fontSize = block.level === 1 ? 16 : block.level === 2 ? 14 : 12
+          const headingHeight = fontSize * 0.5 + 3
+          checkNewPage(headingHeight)
+          yPos += 2
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(fontSize)
+          pdf.text(sanitizeTextForPdf(block.content), margin, yPos)
+          yPos += headingHeight
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(11)
+          break
+        }
+        case 'linebreak': {
+          yPos += paragraphSpacing
+          break
+        }
+        case 'image': {
+          try {
+            const img = await loadImage(block.content)
+            let imgData = block.content
+            if (!block.content.startsWith('data:')) {
+              try { imgData = await imageToBase64(img) } catch { imgData = block.content }
+            }
+            const aspectRatio = img.naturalHeight / img.naturalWidth
+            let imgWidth = Math.min(contentWidth, 160)
+            let imgHeight = imgWidth * aspectRatio
+            const maxImgHeight = pageHeight - margin * 2 - 10
+            if (imgHeight > maxImgHeight) {
+              imgHeight = maxImgHeight
+              imgWidth = imgHeight / aspectRatio
+            }
+            if (imgHeight > pageHeight - yPos - margin) {
+              pdf.addPage()
+              yPos = margin
+            }
+            pdf.addImage(imgData, 'JPEG', margin, yPos, imgWidth, imgHeight)
+            yPos += imgHeight + 5
+          } catch (error) {
+            console.warn('Could not load image for multi-note PDF:', block.content, error)
+            checkNewPage(lineHeight)
+            pdf.setTextColor(150, 150, 150)
+            pdf.setFont('helvetica', 'italic')
+            pdf.text('[Image non disponible]', margin, yPos)
+            pdf.setTextColor(0, 0, 0)
+            pdf.setFont('helvetica', 'normal')
+            yPos += lineHeight
+          }
+          break
+        }
+      }
+    }
+  }
+
+  return pdf.output('blob')
+}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { Edit3, Check, X } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -17,6 +18,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const [isLoading, setIsLoading] = useState(true)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [panelMessage, setPanelMessage] = useState<NoteMessage | null>(null)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
 
   // Recharger la note quand noteId ou refreshTrigger change
   useEffect(() => {
@@ -90,6 +93,14 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
+  const saveTitle = useCallback(async () => {
+    if (!note || !titleDraft.trim()) { setEditingTitle(false); return }
+    await storage.saveNote({ ...note, title: titleDraft.trim() })
+    setEditingTitle(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, titleDraft, onNoteUpdate])
+
   const handleDeleteMessage = useCallback(async (messageId: string) => {
     if (!note) return
     await storage.deleteMessage(noteId, messageId)
@@ -121,6 +132,39 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
 
   return (
     <div className="space-y-4">
+      {/* Titre de la note */}
+      <div className="flex items-center gap-2 group pb-1 border-b border-border/40">
+        {editingTitle ? (
+          <>
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); saveTitle() }
+                if (e.key === 'Escape') setEditingTitle(false)
+              }}
+              className="flex-1 text-sm font-semibold bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <button onClick={saveTitle} className="p-1 text-green-600 hover:text-green-700 rounded flex-shrink-0" aria-label="Sauvegarder"><Check size={13} /></button>
+            <button onClick={() => setEditingTitle(false)} className="p-1 text-muted-foreground hover:text-foreground rounded flex-shrink-0" aria-label="Annuler"><X size={13} /></button>
+          </>
+        ) : (
+          <>
+            <h2 className="flex-1 text-sm font-semibold text-foreground truncate">{note.title}</h2>
+            <button
+              onClick={() => { setTitleDraft(note.title); setEditingTitle(true) }}
+              className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              title="Modifier le titre"
+              aria-label="Modifier le titre"
+            >
+              <Edit3 size={13} />
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Résumé */}
       {note.summary && (
         <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">

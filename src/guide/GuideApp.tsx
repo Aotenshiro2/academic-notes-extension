@@ -64,8 +64,19 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.3.4',
+    title: 'Analyse multi-notes & PDF combiné',
+    items: [
+      'Analyse multi-notes : s\u00e9lectionnez plusieurs notes dans le dialog d\u2019analyse (ex: toute une semaine de trading)',
+      'PDF combin\u00e9 : en mode multi avec images, un seul PDF fusionn\u00e9 est g\u00e9n\u00e9r\u00e9 (toutes les images incluses)',
+      'Picker de notes : filtre par dossier, s\u00e9lection rapide d\u2019un dossier entier',
+      'Fix doublon texte+PDF : quand un PDF est envoy\u00e9, le prompt inject\u00e9 contient seulement les instructions (pas de contenu en double)',
+      'Titre de la note visible en haut du panneau lat\u00e9ral (\u00e9ditable inline)',
+    ],
+  },
+  {
     version: '1.3.3',
-    title: 'Dossiers / Projets',
+    title: 'Dossiers \/ Projets',
     items: [
       'Dossiers : regroupez vos notes dans des projets nommés (style ChatGPT/Claude)',
       'Drag & drop : faites glisser une note sur un dossier pour l\'y assigner',

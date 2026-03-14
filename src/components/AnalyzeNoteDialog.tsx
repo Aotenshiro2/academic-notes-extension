@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download } from 'lucide-react'
-import type { AcademicNote, AnalysisProvider } from '@/types/academic'
-import { formatSmartDate } from '@/lib/date-utils'
-import { generateAnalysisPdfBlob } from '@/lib/pdf-export'
+import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
+import type { AcademicNote, AnalysisProvider, NoteFolder } from '@/types/academic'
+import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
+import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib/pdf-export'
 import { openProviderWithContent } from '@/lib/provider-injector'
 import { PROVIDERS, PROVIDER_LIST } from '@/lib/analysis-providers'
 import storage from '@/lib/storage'
@@ -12,6 +12,8 @@ interface AnalyzeNoteDialogProps {
   onClose: () => void
   note: AcademicNote
   defaultProvider?: AnalysisProvider
+  availableNotes?: AcademicNote[]
+  folders?: NoteFolder[]
 }
 
 type PromptType = 'neutral' | 'pedagogical' | 'action' | 'custom'
@@ -123,7 +125,22 @@ function noteToPlainText(note: AcademicNote): string {
   return parts.join('\n')
 }
 
-function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' }: AnalyzeNoteDialogProps) {
+function buildMultiNoteText(notes: AcademicNote[]): string {
+  return notes
+    .slice()
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map((n, i) => `=== Note ${i + 1} : ${n.title} ===\n${noteToPlainText(n)}`)
+    .join('\n\n')
+}
+
+function AnalyzeNoteDialog({
+  isOpen,
+  onClose,
+  note,
+  defaultProvider = 'chatgpt',
+  availableNotes = [],
+  folders = [],
+}: AnalyzeNoteDialogProps) {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptType>('neutral')
   const [customPrompt, setCustomPrompt] = useState('')
   const [provider, setProvider] = useState<AnalysisProvider>(defaultProvider)
@@ -132,6 +149,13 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
   const [providerThreadUrls, setProviderThreadUrls] = useState<Partial<Record<AnalysisProvider, string>>>({})
   const [sendMode, setSendMode] = useState<'new' | 'thread'>('new')
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('preparing')
+
+  // Multi-note picker state
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([note.id])
+  const [showNotePicker, setShowNotePicker] = useState(false)
+  const [pickerFolderFilter, setPickerFolderFilter] = useState<string | null>(null)
+
+  const isMultiNote = selectedNoteIds.length > 1
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
@@ -144,9 +168,12 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
       setPdfBlob(null)
       setSendMode('new')
       setLoadingPhase('preparing')
+      setSelectedNoteIds([note.id])
+      setShowNotePicker(false)
+      setPickerFolderFilter(null)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, handleKeyDown])
+  }, [isOpen, handleKeyDown, note.id])
 
   // Sync provider with settings when dialog opens
   useEffect(() => {
@@ -174,10 +201,14 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
   const providerConfig = PROVIDERS[provider]
   const hasThreadUrl = !!(providerThreadUrls[provider])
 
-  // Detect if note contains images
-  const hasImages = note.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
-    (note.content && /<img\s/i.test(note.content)) ||
-    (note.screenshots && note.screenshots.length > 0)
+  const noteHasImages = (n: AcademicNote) =>
+    n.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
+    (n.content && /<img\s/i.test(n.content)) ||
+    (n.screenshots && n.screenshots.length > 0)
+
+  const hasImages = isMultiNote
+    ? availableNotes.filter(n => selectedNoteIds.includes(n.id)).some(noteHasImages)
+    : noteHasImages(note)
 
   const getPromptText = (): string => {
     if (selectedPrompt === 'custom') return customPrompt.trim()
@@ -186,12 +217,42 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
 
   const buildFullPrompt = (): string => {
     const promptText = getPromptText()
-    const noteText = noteToPlainText(note)
 
+    if (isMultiNote) {
+      const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
+      const notesText = buildMultiNoteText(selectedNotes)
+      if (promptText.includes('[CONTENU_DE_LA_NOTE]')) {
+        return promptText.replace('[CONTENU_DE_LA_NOTE]', notesText)
+      }
+      return `${promptText}\n\n---\n\n${notesText}`
+    }
+
+    const noteText = noteToPlainText(note)
     if (promptText.includes('[CONTENU_DE_LA_NOTE]')) {
       return promptText.replace('[CONTENU_DE_LA_NOTE]', noteText)
     }
     return `${promptText}\n\n---\n\n${noteText}`
+  }
+
+  // Feature C: when PDF is uploaded, inject only the analysis instructions
+  // to avoid duplicate content (text prompt + PDF have the same content)
+  const buildInjectionPrompt = (): string => {
+    const promptText = getPromptText()
+    let pdfNote: string
+    if (isMultiNote) {
+      const selectedNotes = availableNotes
+        .filter(n => selectedNoteIds.includes(n.id))
+        .slice()
+        .sort((a, b) => a.timestamp - b.timestamp)
+      const notesList = selectedNotes.map((n, i) => `- Note ${i + 1} : ${n.title}`).join('\n')
+      pdfNote = `(Le contenu de ${selectedNotes.length} notes est dans le document PDF joint :\n${notesList})`
+    } else {
+      pdfNote = '(Voir le document PDF joint pour le contenu de la note.)'
+    }
+    if (promptText.includes('[CONTENU_DE_LA_NOTE]')) {
+      return promptText.replace('[CONTENU_DE_LA_NOTE]', pdfNote)
+    }
+    return `${promptText}\n\n---\n\n${pdfNote}`
   }
 
   const handleAnalyze = async () => {
@@ -203,33 +264,46 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
     const threadUrl = sendMode === 'thread' ? (providerThreadUrls[provider] || undefined) : undefined
 
     try {
-      // Toujours copier le prompt en backup
+      // Always copy full prompt to clipboard as backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // Préparer les données PDF si besoin (une seule fois, réutilisées en cas de retry)
+      // Generate PDF: combined multi-note PDF or single-note PDF (when images present)
       let cachedBase64: string | null = null
       let cachedFileName = ''
       if (hasImages) {
-        const blob = await generateAnalysisPdfBlob(note)
+        let blob: Blob
+        if (isMultiNote) {
+          const selectedNotes = availableNotes
+            .filter(n => selectedNoteIds.includes(n.id))
+            .slice()
+            .sort((a, b) => a.timestamp - b.timestamp)
+          blob = await generateMultiNoteAnalysisPdfBlob(selectedNotes)
+          cachedFileName = `notes-${selectedNoteIds.length}.pdf`
+        } else {
+          blob = await generateAnalysisPdfBlob(note)
+          cachedFileName = `${(note.title || 'note')
+            .replace(/[^a-zA-Z0-9\u00C0-\u024F\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 40)}.pdf`
+        }
         setPdfBlob(blob)
         const arrayBuffer = await blob.arrayBuffer()
         const bytes = new Uint8Array(arrayBuffer)
         let binary = ''
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
         cachedBase64 = btoa(binary)
-        cachedFileName = `${(note.title || 'note')
-          .replace(/[^a-zA-Z0-9\u00C0-\u024F\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 40)}.pdf`
       }
 
       const onProgress = (phase: 'opening' | 'loading' | 'injecting') => setLoadingPhase(phase)
+
+      // Feature C: when PDF present, inject shorter prompt (instructions only)
+      const injectionText = cachedBase64 ? buildInjectionPrompt() : fullPrompt
 
       const send = (tUrl?: string) => openProviderWithContent({
         provider: providerConfig,
         pdfBase64: cachedBase64,
         fileName: cachedFileName,
-        promptText: fullPrompt,
+        promptText: injectionText,
         threadUrl: tUrl,
         onProgress,
       })
@@ -240,7 +314,6 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
       } catch (err) {
         if (err instanceof Error && err.message === 'THREAD_INJECTION_FAILED') {
           setStatus('thread-fallback')
-          // Retry en mode nouvelle conversation
           await send(undefined)
         } else {
           throw err
@@ -260,6 +333,20 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
     a.download = `${note.title || 'note'}.pdf`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const toggleNoteSelection = (noteId: string, checked: boolean) => {
+    if (noteId === note.id) return // current note always selected
+    if (checked) {
+      setSelectedNoteIds(prev => [...prev, noteId])
+    } else {
+      setSelectedNoteIds(prev => prev.filter(id => id !== noteId))
+    }
+  }
+
+  const selectFolder = (folderId: string) => {
+    const folderNoteIds = availableNotes.filter(n => n.folderId === folderId).map(n => n.id)
+    setSelectedNoteIds(prev => [...new Set([...prev, ...folderNoteIds])])
   }
 
   const promptDisabled = selectedPrompt === 'custom' && !customPrompt.trim()
@@ -286,6 +373,14 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
     { type: 'custom', label: 'Prompt libre', subtitle: 'Écrivez votre propre consigne', icon: PenLine },
   ]
 
+  const pickerNotes = availableNotes.filter(n =>
+    !pickerFolderFilter || n.folderId === pickerFolderFilter
+  )
+
+  const buttonLabel = isMultiNote
+    ? `Analyser les ${selectedNoteIds.length} notes`
+    : 'Analyser'
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
@@ -294,7 +389,9 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
         <div className="flex items-center justify-between p-5 pb-3">
           <div className="flex items-center gap-2">
             <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
-            <h3 className="text-base font-semibold text-foreground">Analyser cette note</h3>
+            <h3 className="text-base font-semibold text-foreground">
+              {isMultiNote ? `Analyser ${selectedNoteIds.length} notes` : 'Analyser cette note'}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -307,6 +404,89 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
 
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1">
+
+          {/* ── Note picker ── */}
+          {availableNotes.length > 1 && (
+            <div className="px-5 mb-3">
+              <button
+                onClick={() => setShowNotePicker(!showNotePicker)}
+                disabled={isLoading}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-muted/50 transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText size={13} className="text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-foreground">
+                    {selectedNoteIds.length} note{selectedNoteIds.length > 1 ? 's' : ''} incluse{selectedNoteIds.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-150 ${showNotePicker ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showNotePicker && (
+                <div className="mt-1 border border-border rounded-lg overflow-hidden">
+                  {/* Folder filter pills */}
+                  {folders.length > 0 && (
+                    <div className="flex flex-wrap gap-1 p-2 border-b border-border">
+                      <button
+                        onClick={() => setPickerFolderFilter(null)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${pickerFolderFilter === null ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                      >
+                        Toutes
+                      </button>
+                      {folders.map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setPickerFolderFilter(f.id)}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors truncate max-w-[90px] ${pickerFolderFilter === f.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                          title={f.name}
+                        >
+                          {f.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Folder quick-select */}
+                  {pickerFolderFilter && (
+                    <button
+                      onClick={() => selectFolder(pickerFolderFilter)}
+                      className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 border-b border-border transition-colors"
+                    >
+                      + Sélectionner tout « {folders.find(f => f.id === pickerFolderFilter)?.name} »
+                    </button>
+                  )}
+
+                  {/* Note list */}
+                  <div className="max-h-48 overflow-y-auto divide-y divide-border/30">
+                    {pickerNotes.map(n => (
+                      <label
+                        key={n.id}
+                        className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${
+                          n.id === note.id ? 'bg-muted/30' : 'hover:bg-muted/30'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedNoteIds.includes(n.id)}
+                          onChange={e => toggleNoteSelection(n.id, e.target.checked)}
+                          disabled={n.id === note.id}
+                          className="rounded flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{n.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{formatCompactDate(n.timestamp)}</p>
+                        </div>
+                        {n.id === note.id && (
+                          <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">actuelle</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Prompt options */}
           <div className="px-5 space-y-2">
             <p className="text-xs text-muted-foreground mb-2">Choisissez un type d'analyse :</p>
@@ -363,7 +543,7 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
             </div>
           </div>
 
-          {/* Thread mode segmented control — visible seulement si une URL thread est définie */}
+          {/* Thread mode segmented control */}
           {hasThreadUrl && (
             <div className="px-5 mt-3 flex items-center gap-2">
               <span className="text-xs text-muted-foreground whitespace-nowrap">Envoyer dans :</span>
@@ -394,12 +574,25 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
             </div>
           )}
 
-          {/* Image info callout */}
+          {/* Image info callout — single note only */}
           {hasImages && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
               <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-purple-700 dark:text-purple-300">
                 Images détectées — un PDF sera généré et envoyé automatiquement.
+              </p>
+            </div>
+          )}
+
+          {/* Multi-note info callout */}
+          {isMultiNote && status === 'idle' && (
+            <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
+              <FileText size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                {selectedNoteIds.length} notes incluses —{' '}
+                {hasImages
+                  ? 'un PDF combiné sera généré avec toutes les images.'
+                  : 'envoyées en texte concaténé (aucune image détectée).'}
               </p>
             </div>
           )}
@@ -428,14 +621,18 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
               {status === 'idle' && (
                 <>
                   <ExternalLink size={16} className="text-purple-600 dark:text-purple-400" />
-                  <span className="text-purple-600 dark:text-purple-400">Analyser</span>
+                  <span className="text-purple-600 dark:text-purple-400">{buttonLabel}</span>
                 </>
               )}
               {status === 'success' && (
                 <>
                   <Check size={16} className="text-green-600 dark:text-green-400" />
                   <span className="text-green-600 dark:text-green-400">
-                    {hasImages ? 'PDF envoyé' : 'Envoyé'}
+                    {isMultiNote
+                      ? hasImages
+                        ? `PDF combiné envoyé (${selectedNoteIds.length} notes)`
+                        : `${selectedNoteIds.length} notes envoyées`
+                      : hasImages ? 'PDF envoyé' : 'Envoyé'}
                   </span>
                 </>
               )}
@@ -448,7 +645,7 @@ function AnalyzeNoteDialog({ isOpen, onClose, note, defaultProvider = 'chatgpt' 
             </button>
           </div>
 
-          {/* Barre de progression par phases */}
+          {/* Progress bar */}
           {status === 'loading' && (
             <div className="mx-5 -mt-3 mb-3">
               <div className="h-0.5 bg-muted rounded-full overflow-hidden">

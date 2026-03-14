@@ -786,6 +786,8 @@ function App() {
           onClose={() => setShowAnalyzeDialog(false)}
           note={currentNote}
           defaultProvider={settings?.analysisProvider}
+          availableNotes={notes}
+          folders={folders}
         />
       )}
     </div>
