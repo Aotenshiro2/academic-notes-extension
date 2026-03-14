@@ -1,8 +1,7 @@
 import type { AcademicNote } from '@/types/academic'
 import { getSession, getBearerToken } from './auth'
 
-const JOURNAL_API = 'https://journal-d-etude-beta.vercel.app/api'
-const SYNC_CANVAS_ID = 'notes-extension-academic'
+const JOURNAL_API = 'https://journal-d-etude-beta.vercel.app'
 
 export interface SyncResult {
   success: boolean
@@ -11,18 +10,17 @@ export interface SyncResult {
 }
 
 /**
- * Convertit une AcademicNote en payload pour POST /api/canvas/[canvasId]/notes
+ * Convertit une AcademicNote en payload pour POST /api/notes
  */
 function toJournalPayload(note: AcademicNote) {
   return {
     title: note.title,
     content: note.content,
-    mainTakeaway: note.summary ?? '',
     source: 'extension',
     sourceUrl: note.url || null,
     favicon: note.favicon ?? null,
     syncedAt: new Date().toISOString(),
-    // position auto-calculée côté serveur
+    messages: note.messages ?? [],
   }
 }
 
@@ -38,7 +36,7 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
       return { success: false, error: 'Not authenticated' }
     }
 
-    const response = await fetch(`${JOURNAL_API}/canvas/${SYNC_CANVAS_ID}/notes`, {
+    const response = await fetch(`${JOURNAL_API}/api/notes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,34 +58,36 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
     const data = await response.json()
     return { success: true, noteId: data.id }
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Network error' }
+    const error = err instanceof Error ? err.message : 'Network error'
+    console.warn('[AOK Sync] ✗', note.title, '—', error)
+    return { success: false, error }
   }
-}
-
-/**
- * Retourne l'ID du canvas dédié à la sync de l'extension.
- * Le canvas est auto-créé côté serveur à la première note.
- */
-export function getSyncCanvasId(): string {
-  return SYNC_CANVAS_ID
 }
 
 /**
  * Force-synque toutes les notes non encore synquées.
  */
-export async function forceSyncAll(notes: AcademicNote[]): Promise<{ synced: number; failed: number }> {
+export async function forceSyncAll(notes: AcademicNote[]): Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }> {
   const session = await getSession()
-  if (!session) return { synced: 0, failed: 0 }
+  if (!session) return { synced: 0, failed: 0, errors: [] }
 
   const unsynced = notes.filter(n => !n.syncedAt)
   let synced = 0
   let failed = 0
+  const errors: Array<{ title: string; error: string }> = []
 
   for (const note of unsynced) {
     const result = await syncNoteToJournal(note)
-    if (result.success) synced++
-    else failed++
+    if (result.success) {
+      synced++
+      console.log('[AOK Sync] ✓', note.title)
+    } else {
+      failed++
+      errors.push({ title: note.title, error: result.error ?? 'Unknown error' })
+      console.warn('[AOK Sync] ✗', note.title, '—', result.error)
+    }
   }
 
-  return { synced, failed }
+  console.log(`[AOK ForceSyncAll] Done: ${synced} synced, ${failed} failed`)
+  return { synced, failed, errors }
 }

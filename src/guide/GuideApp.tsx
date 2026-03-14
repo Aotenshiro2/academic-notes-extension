@@ -64,6 +64,25 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.3.2',
+    title: 'Logs Sync détaillés',
+    items: [
+      'Log de chaque note synquée avec succès dans forceSyncAll (console.log par note)',
+      'Log enrichi dans syncNoteToJournal : affiche le titre de la note en cas d\'erreur',
+      'AccountView : affichage de la liste détaillée des échecs (titre + message d\'erreur)',
+    ],
+  },
+  {
+    version: '1.3.1',
+    title: 'Export DOCX & Diagnostics Sync',
+    items: [
+      'Export Google Docs (.docx) : nouveau bouton dropdown PDF / Google Docs dans l\'en-tête',
+      'docx-export.ts : génération de fichier .docx avec images, header/footer via la librairie docx@9',
+      'AccountView : affichage du résultat de sync manuelle (N synquée(s) · N échec(s))',
+      'ForceSyncAll : log console.warn par note échouée pour diagnostic dans DevTools',
+    ],
+  },
+  {
     version: '1.3.0',
     title: 'Compte AOKnowledge & Cloud Sync',
     items: [

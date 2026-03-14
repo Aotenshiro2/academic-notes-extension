@@ -7,7 +7,7 @@ import type { User } from '@/lib/supabase'
 interface AccountViewProps {
   settings: SettingsType
   onSettingsChange: (s: Partial<SettingsType>) => void
-  onSyncAll: () => void
+  onSyncAll: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
   onBack: () => void
 }
 
@@ -15,6 +15,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onB
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> } | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
 
   useEffect(() => {
@@ -45,8 +46,10 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onB
 
   const handleSyncAll = async () => {
     setSyncing(true)
-    onSyncAll()
-    setTimeout(() => setSyncing(false), 1500)
+    setSyncResult(null)
+    const result = await onSyncAll()
+    setSyncResult(result)
+    setSyncing(false)
   }
 
   const handleSyncToggle = (enabled: boolean) => {
@@ -154,6 +157,24 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onB
                 Synchroniser tout
               </button>
             </div>
+            {syncResult && (
+              <div className="mt-1 space-y-1">
+                <p className={`text-xs ${syncResult.failed > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {syncResult.synced > 0 && `${syncResult.synced} synquée(s)`}
+                  {syncResult.failed > 0 && ` · ${syncResult.failed} échec(s)`}
+                  {syncResult.synced === 0 && syncResult.failed === 0 && 'Tout est déjà synqué'}
+                </p>
+                {syncResult.errors.length > 0 && (
+                  <ul className="space-y-0.5">
+                    {syncResult.errors.slice(0, 5).map((e, i) => (
+                      <li key={i} className="text-xs text-orange-400/80 truncate">
+                        ✗ {e.title} — {e.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Lien vers le journal */}
