@@ -64,6 +64,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.4.0',
+    title: 'Auth email + inscription',
+    items: [
+      'Connexion par email et mot de passe en plus de Google OAuth',
+      'Inscription : création de compte avec prénom, email, mot de passe et opt-in newsletter',
+      'Réinitialisation de mot de passe : email de reset → page dédiée dans Journal d\'Études',
+      'Journal d\'Études : page de connexion mise à jour avec onglets Connexion / Inscription',
+      'Extension : vue Compte restructurée avec navigation Google / Email / Créer un compte',
+    ],
+  },
+  {
     version: '1.3.5',
     title: 'Fix sync HTTP 413 — Supabase Storage',
     items: [

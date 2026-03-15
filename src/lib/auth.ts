@@ -81,6 +81,52 @@ export async function signInWithGoogle(): Promise<{ session: Session | null; err
 }
 
 /**
+ * Connexion email + mot de passe
+ */
+export async function signInWithEmail(
+  email: string,
+  password: string
+): Promise<{ session: Session | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return { session: null, error: error.message }
+  return { session: data.session, error: null }
+}
+
+/**
+ * Inscription email + mot de passe (avec metadata nom + newsletter)
+ */
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  meta: { name: string; newsletter: boolean }
+): Promise<{ session: Session | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: meta.name,
+        newsletter_subscribed: meta.newsletter,
+      },
+    },
+  })
+  if (error) return { session: null, error: error.message }
+  return { session: data.session, error: null }
+}
+
+/**
+ * Envoie un email de reset de mot de passe (lien → journal /auth/reset-password)
+ */
+export async function sendPasswordResetEmail(
+  email: string
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://journal-d-etude-beta.vercel.app/auth/reset-password',
+  })
+  return { error: error?.message ?? null }
+}
+
+/**
  * Déconnexion
  */
 export async function signOut(): Promise<void> {
