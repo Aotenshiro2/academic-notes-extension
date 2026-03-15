@@ -106,6 +106,13 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
       return { success: false, error: 'Not authenticated' }
     }
 
+    // Charger la session dans l'état interne du client Supabase
+    // → nécessaire pour que storage.upload() parte avec le bon JWT (auth RLS)
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token ?? '',
+    })
+
     const response = await fetch(`${JOURNAL_API}/api/notes`, {
       method: 'POST',
       headers: {
