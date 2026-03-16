@@ -64,6 +64,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.4.7',
+    title: 'Export Google Drive + Pull journal + Fix AnalyzeNoteDialog',
+    items: [
+      'Nouveau : export de notes en .docx directement vers Google Drive (OAuth PKCE)',
+      'Nouveau : importer ses notes depuis le journal vers l\'extension (AccountView)',
+      'Fix : le dropdown "Ajouter des notes" dans l\'analyse IA ne se fermait plus au clic',
+      'Fix : le dropdown ne se réinitialisait plus tout seul après quelques secondes',
+      'Sécurité : client secret Google Drive sorti du code source',
+    ],
+  },
+  {
     version: '1.4.5',
     title: 'Sync : état réel complet + AccountView redesign',
     items: [
