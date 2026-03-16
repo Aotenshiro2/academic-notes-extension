@@ -1,17 +1,18 @@
 import React from 'react'
-import { 
-  FileText, 
-  Video, 
-  Globe, 
-  BookOpen, 
-  File, 
+import {
+  FileText,
+  Video,
+  Globe,
+  BookOpen,
+  File,
   ExternalLink,
   Calendar,
   Tag,
   Hash,
   MoreVertical,
   Trash2,
-  Eye
+  Eye,
+  CloudOff
 } from 'lucide-react'
 import type { AcademicNote, ContentType } from '@/types/academic'
 import storage from '@/lib/storage'
@@ -24,9 +25,10 @@ interface NotesListProps {
   onLoadMore?: () => void
   hasMoreNotes?: boolean
   isLoadingMore?: boolean
+  onToggleSyncExcluded?: (note: AcademicNote) => void
 }
 
-function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, isLoadingMore }: NotesListProps) {
+function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, isLoadingMore, onToggleSyncExcluded }: NotesListProps) {
   const getContentTypeIcon = (type: ContentType) => {
     switch (type) {
       case 'article': return <FileText size={16} className="text-primary" />
@@ -155,6 +157,12 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
                     <span>{note.metadata.domain}</span>
                     <Calendar size={12} />
                     <span>{formatDate(note.timestamp)}</span>
+                    {note.syncExcluded && (
+                      <span className="flex items-center gap-0.5 text-orange-500">
+                        <CloudOff size={10} />
+                        exclue
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -170,6 +178,22 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
                     title="Voir/Éditer la note"
                   >
                     <Eye size={14} className="text-primary" />
+                  </button>
+                )}
+                {onToggleSyncExcluded && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleSyncExcluded(note)
+                    }}
+                    className={`p-1.5 rounded-md aoknowledge-transition ${
+                      note.syncExcluded
+                        ? 'text-orange-500 bg-orange-500/10 hover:bg-orange-500/20'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                    title={note.syncExcluded ? 'Réactiver la sync' : 'Exclure de la sync'}
+                  >
+                    <CloudOff size={14} />
                   </button>
                 )}
                 <button

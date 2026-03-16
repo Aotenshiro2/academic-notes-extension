@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient, Session, User } from '@supabase/supabase-js'
 
-const SUPABASE_URL = 'https://ujdqrtjanmmwidnfhkxg.supabase.co'
+export const SUPABASE_URL = 'https://ujdqrtjanmmwidnfhkxg.supabase.co'
 const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHFydGphbm1td2lkbmZoa3hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1MTY0MTUsImV4cCI6MjA0OTA5MjQxNX0.suzqKZkSjMon7cX38Cc_r5RUmGuFJe1OzURszVW11B4'
 

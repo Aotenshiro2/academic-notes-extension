@@ -163,7 +163,6 @@ function AnalyzeNoteDialog({
 
   useEffect(() => {
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
       setStatus('idle')
       setPdfBlob(null)
       setSendMode('new')
@@ -171,9 +170,14 @@ function AnalyzeNoteDialog({
       setSelectedNoteIds([note.id])
       setShowNotePicker(false)
       setPickerFolderFilter(null)
-      return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, handleKeyDown, note.id])
+  }, [isOpen, note.id])
+
+  useEffect(() => {
+    if (!isOpen) return
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, handleKeyDown])
 
   // Sync provider with settings when dialog opens
   useEffect(() => {
@@ -384,7 +388,7 @@ function AnalyzeNoteDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-popover border border-border rounded-xl shadow-xl w-[420px] max-h-[90vh] overflow-hidden animate-scale-in flex flex-col">
+      <div className="relative bg-popover border border-border rounded-xl shadow-xl w-[420px] max-h-[90vh] overflow-hidden animate-scale-in flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-5 pb-3">
           <div className="flex items-center gap-2">
@@ -568,7 +572,7 @@ function AnalyzeNoteDialog({
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Thread cible
+                  Conv. existante
                 </button>
               </div>
             </div>
@@ -685,7 +689,7 @@ function AnalyzeNoteDialog({
               <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
                 <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Thread cible indisponible — une nouvelle conversation a été ouverte.
+                  Conv. existante indisponible — une nouvelle conversation a été ouverte.
                   {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
                 </p>
               </div>

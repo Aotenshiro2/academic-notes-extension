@@ -252,7 +252,7 @@ async function blocksToParagraphs(blocks: DocxBlock[]): Promise<Paragraph[]> {
  * Exporte une note au format .docx (compatible Google Docs, Word, LibreOffice).
  * Déclenche un téléchargement dans le navigateur.
  */
-export async function exportNoteToDocx(note: AcademicNote): Promise<void> {
+export async function buildDocxBlob(note: AcademicNote): Promise<{ blob: Blob; filename: string }> {
   const dateStr = new Date(note.timestamp).toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'long',
@@ -368,10 +368,15 @@ export async function exportNoteToDocx(note: AcademicNote): Promise<void> {
     .substring(0, 50)
   const dateFile = new Date(note.timestamp).toISOString().split('T')[0]
 
+  return { blob, filename: `${safeName}-${dateFile}.docx` }
+}
+
+export async function exportNoteToDocx(note: AcademicNote): Promise<void> {
+  const { blob, filename } = await buildDocxBlob(note)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${safeName}-${dateFile}.docx`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
 }

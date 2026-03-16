@@ -177,7 +177,7 @@ function MessageBlock({
   // Render collapsed long text — compact pill style
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative mb-3 inline-block max-w-[160px] w-full">
+      <div className="group relative mb-3 block w-full max-w-[240px]">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
           className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden"

@@ -24,7 +24,8 @@ import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
-import { forceSyncAll } from '@/lib/sync'
+import { exportNoteToDrive } from '@/lib/drive-export'
+import { forceSyncAll, verifySyncStatus, pullFromJournal } from '@/lib/sync'
 import type { AcademicNote, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
@@ -530,6 +531,19 @@ function App() {
     }
   }
 
+  const handleExportDrive = async () => {
+    if (!currentNote) return
+    setIsExporting(true)
+    try {
+      await exportNoteToDrive(currentNote)
+    } catch (error) {
+      console.error('Error exporting to Drive:', error)
+      alert('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Fonction pour ouvrir la vue fullscreen de l'extension
   const handleFullscreen = async () => {
     try {
@@ -580,6 +594,7 @@ function App() {
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}
         onExportDocx={currentNote ? handleExportDocx : undefined}
+        onExportDrive={currentNote ? handleExportDrive : undefined}
         onAnalyze={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
         isExporting={isExporting}
       />
@@ -590,13 +605,57 @@ function App() {
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto p-4">
           {showAccount ? (
             <AccountView
+              notes={notes}
               settings={settings!}
               onSettingsChange={async (newSettings) => {
                 await storage.saveSettings(newSettings)
                 const updated = await storage.getSettings()
                 setSettings(updated)
               }}
-              onSyncAll={() => forceSyncAll(notes)}
+              onSyncAll={async () => {
+                const result = await forceSyncAll(notes, (id) => storage.updateNote(id, { syncedAt: Date.now() }))
+                await loadData()
+                return result
+              }}
+              onVerifySync={async () => {
+                const result = await verifySyncStatus(notes, (id, changes) => storage.updateNote(id, changes))
+                await loadData()
+                return result
+              }}
+              onResyncMissing={(missingNotes) => {
+                // Reset syncedAt sur les notes manquantes puis les synquer
+                return Promise.all(missingNotes.map(n => storage.updateNote(n.id, { syncedAt: undefined })))
+                  .then(() => forceSyncAll(
+                    missingNotes.map(n => ({ ...n, syncedAt: undefined })),
+                    (id) => storage.updateNote(id, { syncedAt: Date.now() })
+                  ))
+              }}
+              onForceResyncAll={async () => {
+                // Reset syncedAt sur TOUTES les notes puis re-synquer (récupère notes manquantes)
+                await Promise.all(notes.map(n => storage.updateNote(n.id, { syncedAt: undefined })))
+                const freshNotes = notes.map(n => ({ ...n, syncedAt: undefined }))
+                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { syncedAt: Date.now() }))
+                await loadData()
+                return result
+              }}
+              onPullFromJournal={async () => {
+                const { notes: journalNotes, error } = await pullFromJournal()
+                if (error) return { imported: 0, skipped: 0, error }
+                const existingIds = new Set(notes.map(n => n.id))
+                const existingUrls = new Set(notes.map(n => n.url).filter(Boolean))
+                let imported = 0
+                let skipped = 0
+                for (const note of journalNotes) {
+                  if (existingIds.has(note.id) || (note.url && existingUrls.has(note.url))) {
+                    skipped++
+                  } else {
+                    await storage.saveNote(note)
+                    imported++
+                  }
+                }
+                await loadData()
+                return { imported, skipped }
+              }}
               onBack={() => setShowAccount(false)}
             />
           ) : showSettings ? (

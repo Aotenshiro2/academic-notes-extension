@@ -3,22 +3,13 @@ import {
   Settings,
   Download,
   Upload,
-  ArrowRight,
   Zap,
-  Brain,
-  Camera,
   FileText,
   Globe,
-  CheckCircle,
-  XCircle,
   Info,
-  ExternalLink,
-  Key,
-  Loader2,
   Link2
 } from 'lucide-react'
-import type { Settings as SettingsType, AIProvider, AnalysisProvider } from '@/types/academic'
-import { AIService, AI_MODELS, AI_PROVIDER_LABELS } from '@/lib/ai-service'
+import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
 import { PROVIDER_LIST } from '@/lib/analysis-providers'
 
 interface SettingsViewProps {
@@ -37,8 +28,6 @@ function SettingsView({
   onSyncToJournal 
 }: SettingsViewProps) {
   const [importFileRef, setImportFileRef] = useState<HTMLInputElement | null>(null)
-  const [testingAI, setTestingAI] = useState(false)
-  const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [tabUrlErrors, setTabUrlErrors] = useState<Partial<Record<AnalysisProvider, boolean>>>({})
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
@@ -71,37 +60,6 @@ function SettingsView({
     }
   }
 
-  const handleAIProviderChange = (provider: AIProvider) => {
-    const models = AI_MODELS[provider]
-    onChange({
-      aiConfig: {
-        provider,
-        apiKey: settings.aiConfig?.apiKey || '',
-        model: models[0].value
-      }
-    })
-  }
-
-  const handleAIApiKeyChange = (apiKey: string) => {
-    onChange({
-      aiConfig: {
-        provider: settings.aiConfig?.provider || 'openai',
-        apiKey,
-        model: settings.aiConfig?.model || 'gpt-4o-mini'
-      }
-    })
-  }
-
-  const handleAIModelChange = (model: string) => {
-    onChange({
-      aiConfig: {
-        provider: settings.aiConfig?.provider || 'openai',
-        apiKey: settings.aiConfig?.apiKey || '',
-        model
-      }
-    })
-  }
-
   const setThreadUrlFromCurrentTab = async (providerId: AnalysisProvider, baseUrl: string) => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -114,31 +72,6 @@ function SettingsView({
       }
     } catch {
       setTabUrlErrors(prev => ({ ...prev, [providerId]: true }))
-    }
-  }
-
-  const testAIConnection = async () => {
-    if (!settings.aiConfig?.apiKey) {
-      setAiTestResult({ success: false, message: 'Veuillez entrer une clé API' })
-      return
-    }
-    setTestingAI(true)
-    setAiTestResult(null)
-    try {
-      const service = new AIService(settings.aiConfig)
-      const result = await service.testConnection()
-      service.destroy()
-      setAiTestResult({
-        success: result.success,
-        message: result.success ? 'Connexion réussie !' : (result.error || 'Erreur de connexion')
-      })
-    } catch (error) {
-      setAiTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Erreur inconnue'
-      })
-    } finally {
-      setTestingAI(false)
     }
   }
 
@@ -207,111 +140,6 @@ function SettingsView({
         </div>
       </div>
 
-      {/* IA et résumés */}
-      <div className="mb-6">
-        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
-          <Brain size={16} className="mr-2" />
-          Intelligence artificielle
-        </h3>
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div>
-              <p className="font-medium text-foreground">Résumés automatiques</p>
-              <p className="text-sm text-muted-foreground">Générer des résumés avec l'IA locale (Chrome AI)</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.aiSummaryEnabled}
-                onChange={(e) => handleToggle('aiSummaryEnabled', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-700 dark:text-blue-300">
-                <p className="font-medium mb-1">Fonctionnalités IA disponibles :</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Résumés automatiques du contenu</li>
-                  <li>Extraction de concepts clés</li>
-                  <li>Points clés de la page</li>
-                  <li>Transcription YouTube</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Configuration API IA */}
-          <div className="p-4 border rounded-lg space-y-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <Key size={16} className="text-muted-foreground" />
-              <p className="font-medium text-foreground">Configuration API</p>
-            </div>
-
-            <p className="text-xs text-muted-foreground mb-3">
-              Chrome AI sera utilisé automatiquement si disponible. Sinon, l'API externe configurée ci-dessous sera utilisée.
-            </p>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Fournisseur</label>
-              <select
-                value={settings.aiConfig?.provider || 'openai'}
-                onChange={(e) => handleAIProviderChange(e.target.value as AIProvider)}
-                className="input-field"
-              >
-                {(Object.keys(AI_PROVIDER_LABELS) as AIProvider[]).map(p => (
-                  <option key={p} value={p}>{AI_PROVIDER_LABELS[p]}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Clé API</label>
-              <input
-                type="password"
-                value={settings.aiConfig?.apiKey || ''}
-                onChange={(e) => handleAIApiKeyChange(e.target.value)}
-                className="input-field"
-                placeholder="sk-... ou clé API"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Modèle</label>
-              <select
-                value={settings.aiConfig?.model || 'gpt-4o-mini'}
-                onChange={(e) => handleAIModelChange(e.target.value)}
-                className="input-field"
-              >
-                {AI_MODELS[settings.aiConfig?.provider || 'openai'].map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={testAIConnection}
-                disabled={testingAI || !settings.aiConfig?.apiKey}
-                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-              >
-                {testingAI ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                <span>Tester</span>
-              </button>
-              {aiTestResult && (
-                <span className={`text-sm ${aiTestResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {aiTestResult.message}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Threads d'analyse IA */}
       <div className="mb-6">
@@ -324,7 +152,7 @@ function SettingsView({
           <div className="flex items-start space-x-2">
             <Info size={14} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              Optionnel — définissez une conversation existante par provider. Lors d'une analyse, vous pourrez choisir d'y envoyer plutôt que d'ouvrir une nouvelle conversation.
+              Collez ici l'URL d'une conversation ouverte — vos notes y seront envoyées directement au lieu d'ouvrir une nouvelle fenêtre.
             </p>
           </div>
         </div>
@@ -431,23 +259,6 @@ function SettingsView({
             </select>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-foreground/80 mb-2">
-              Tags par défaut
-            </label>
-            <input
-              type="text"
-              value={settings.defaultTags.join(', ')}
-              onChange={(e) => onChange({ 
-                defaultTags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-              })}
-              className="input-field"
-              placeholder="Séparer les tags par des virgules"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Ces tags seront automatiquement ajoutés à chaque nouvelle note
-            </p>
-          </div>
         </div>
       </div>
     </div>

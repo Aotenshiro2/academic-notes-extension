@@ -115,6 +115,19 @@ export const PROVIDERS: Record<AnalysisProvider, ProviderConfig> = {
       ],
     ],
   },
+  other: {
+    id: 'other',
+    label: 'Autre',
+    url: '',
+    fileInputSelectors: [
+      'input[type="file"]',
+    ],
+    textareaSelectors: [
+      'div[contenteditable="true"]',
+      'textarea',
+    ],
+    spaDelay: 2000,
+  },
 }
 
 export const PROVIDER_LIST: ProviderConfig[] = Object.values(PROVIDERS)

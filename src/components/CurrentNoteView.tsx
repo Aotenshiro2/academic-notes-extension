@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Edit3, Check, X } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Edit3, Check, X, Plus } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -20,6 +20,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const [panelMessage, setPanelMessage] = useState<NoteMessage | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
+  const [addingTag, setAddingTag] = useState(false)
+  const [tagDraft, setTagDraft] = useState('')
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   // Recharger la note quand noteId ou refreshTrigger change
   useEffect(() => {
@@ -108,6 +111,24 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
+  const handleAddTag = useCallback(async () => {
+    if (!note || !tagDraft.trim()) { setAddingTag(false); setTagDraft(''); return }
+    const newTag = tagDraft.trim().replace(/^#/, '')
+    if (!newTag || note.tags.includes(newTag)) { setAddingTag(false); setTagDraft(''); return }
+    await storage.saveNote({ ...note, tags: [...note.tags, newTag] })
+    setAddingTag(false)
+    setTagDraft('')
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, tagDraft, onNoteUpdate])
+
+  const handleRemoveTag = useCallback(async (tag: string) => {
+    if (!note) return
+    await storage.saveNote({ ...note, tags: note.tags.filter(t => t !== tag) })
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -162,6 +183,45 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
               <Edit3 size={13} />
             </button>
           </>
+        )}
+      </div>
+
+      {/* Tags éditables */}
+      <div className="flex flex-wrap items-center gap-1.5 pb-1">
+        {note.tags.map((tag) => (
+          <button
+            key={tag}
+            onClick={() => handleRemoveTag(tag)}
+            className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors"
+            title="Supprimer ce tag"
+          >
+            #{tag}
+            <X size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        ))}
+        {addingTag ? (
+          <input
+            ref={tagInputRef}
+            autoFocus
+            value={tagDraft}
+            onChange={e => setTagDraft(e.target.value)}
+            onBlur={handleAddTag}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); handleAddTag() }
+              if (e.key === 'Escape') { setAddingTag(false); setTagDraft('') }
+            }}
+            placeholder="tag..."
+            className="px-2 py-0.5 text-xs bg-muted rounded-full border border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20 w-20"
+          />
+        ) : (
+          <button
+            onClick={() => setAddingTag(true)}
+            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors"
+            title="Ajouter un tag"
+          >
+            <Plus size={10} />
+            <span>tag</span>
+          </button>
         )}
       </div>
 
@@ -265,19 +325,6 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
         </div>
       )}
 
-      {/* Tags */}
-      {note.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {note.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Screenshots si présentes */}
       {note.screenshots && note.screenshots.length > 0 && (

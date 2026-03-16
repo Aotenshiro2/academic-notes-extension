@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical } from 'lucide-react'
+import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
 import storage from '@/lib/storage'
 import { formatCompactDate } from '@/lib/date-utils'
@@ -229,12 +229,28 @@ function HistoryDropdown({
               <>
                 <h3 className="flex-1 font-medium text-foreground text-sm truncate">{truncateTitle(note.title)}</h3>
                 <button onClick={e => startEditingTitle(note, e)} className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100" title="Modifier le titre" aria-label="Modifier le titre"><Edit3 size={12} /></button>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    storage.updateNote(note.id, { syncExcluded: !note.syncExcluded }).then(() => onNotesUpdate?.())
+                  }}
+                  className={`p-1 rounded opacity-0 group-hover:opacity-100 ${note.syncExcluded ? 'text-orange-500 !opacity-100' : 'text-muted-foreground hover:text-orange-500'}`}
+                  title={note.syncExcluded ? 'Réactiver la sync' : 'Exclure de la sync'}
+                  aria-label={note.syncExcluded ? 'Réactiver la sync' : 'Exclure de la sync'}
+                >
+                  <CloudOff size={12} />
+                </button>
                 <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(note.id) }} className="p-1 text-muted-foreground hover:text-destructive rounded opacity-0 group-hover:opacity-100" title="Supprimer" aria-label="Supprimer la note"><Trash2 size={12} /></button>
               </>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             {formatCompactDate(note.timestamp)} • {note.metadata.domain}
+            {note.syncExcluded && (
+              <span className="inline-flex items-center gap-0.5 text-orange-500">
+                <CloudOff size={10} />exclue
+              </span>
+            )}
           </p>
           {note.tags.length > 0 && (
             <div className="flex space-x-1 mt-1.5">

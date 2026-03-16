@@ -280,13 +280,13 @@ export const storage = {
 
     scheduleBackup()
 
-    // Cloud sync vers Journal d'Études (non-bloquant, seulement si connecté + nouvelle note)
+    // Cloud sync vers Journal d'Études (non-bloquant)
     if (isNew && !fullNote.syncedAt) {
+      // Nouvelle note : sync initiale
       getSession().then(session => {
         if (session) {
           syncNoteToJournal(fullNote).then(result => {
             if (result.success) {
-              // Marquer la note comme synquée dans IndexedDB
               db.notes.update(id, { syncedAt: Date.now() }).catch(() => {})
             } else {
               console.warn('[AOK Sync] Failed:', result.error, '— note:', fullNote.title)
@@ -294,6 +294,17 @@ export const storage = {
           }).catch((err) => {
             console.error('[AOK Sync] Exception:', err)
           })
+        }
+      }).catch(() => {})
+    } else if (!isNew && fullNote.syncedAt && !skipSync) {
+      // Note modifiée déjà synquée : propager les modifications vers le journal
+      getSession().then(session => {
+        if (session) {
+          syncNoteToJournal(fullNote).then(result => {
+            if (!result.success) {
+              console.warn('[AOK Sync] Re-sync failed:', result.error, '— note:', fullNote.title)
+            }
+          }).catch(err => console.error('[AOK Sync] Re-sync exception:', err))
         }
       }).catch(() => {})
     }
@@ -312,6 +323,10 @@ export const storage = {
 
   async getNote(id: string): Promise<AcademicNote | undefined> {
     return await db.notes.get(id)
+  },
+
+  async updateNote(id: string, changes: Partial<AcademicNote>): Promise<void> {
+    await db.notes.update(id, changes)
   },
 
   async getNotes(limit = 50, offset = 0): Promise<AcademicNote[]> {

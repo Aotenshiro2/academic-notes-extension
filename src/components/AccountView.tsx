@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, ChevronLeft } from 'lucide-react'
-import type { Settings as SettingsType } from '@/types/academic'
+import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, ChevronLeft, ShieldCheck, Download } from 'lucide-react'
+import type { Settings as SettingsType, AcademicNote } from '@/types/academic'
+import type { VerifySyncResult } from '@/lib/sync'
 import { getUser, signInWithGoogle, signOut, signInWithEmail, signUpWithEmail, sendPasswordResetEmail } from '@/lib/auth'
 import type { User } from '@/lib/supabase'
 
@@ -8,17 +9,27 @@ interface AccountViewProps {
   settings: SettingsType
   onSettingsChange: (s: Partial<SettingsType>) => void
   onSyncAll: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
+  onVerifySync: () => Promise<VerifySyncResult>
+  onResyncMissing: (missingNotes: VerifySyncResult['missingNotes']) => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
+  onForceResyncAll: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
+  onPullFromJournal: () => Promise<{ imported: number; skipped: number; error?: string }>
   onBack: () => void
+  notes: AcademicNote[]
 }
 
 type AuthMode = 'signin' | 'signup'
 type AuthView = 'main' | 'forgot'
 
-export default function AccountView({ settings, onSettingsChange, onSyncAll, onBack }: AccountViewProps) {
+export default function AccountView({ settings, onSettingsChange, onSyncAll, onVerifySync, onResyncMissing, onForceResyncAll, onPullFromJournal, onBack, notes }: AccountViewProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const [pulling, setPulling] = useState(false)
+  const [pullResult, setPullResult] = useState<{ imported: number; skipped: number; error?: string } | null>(null)
   const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> } | null>(null)
+  const [verifyResult, setVerifyResult] = useState<VerifySyncResult | null>(null)
+  const [verifyTime, setVerifyTime] = useState<number | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
 
   // Auth state
@@ -113,6 +124,49 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onB
     setSyncing(false)
   }
 
+  const handleVerifySync = async () => {
+    setVerifying(true)
+    setVerifyResult(null)
+    setSyncResult(null)
+    const result = await onVerifySync()
+    setVerifyResult(result)
+    setVerifyTime(Date.now())
+    setVerifying(false)
+  }
+
+  const handleResyncMissing = async () => {
+    if (!verifyResult?.missingNotes.length) return
+    setSyncing(true)
+    const result = await onResyncMissing(verifyResult.missingNotes)
+    setSyncResult(result)
+    setVerifyResult(prev => prev ? {
+      ...prev,
+      missing: result.failed,
+      confirmed: prev.confirmed + result.synced,
+      pending: prev.pending - result.synced,
+      missingNotes: [],
+    } : null)
+    setSyncing(false)
+  }
+
+  const handleForceResyncAll = async () => {
+    if (!confirm('Cela va re-synquer TOUTES les notes vers le journal (même celles déjà synquées). Continuer ?')) return
+    setSyncing(true)
+    setSyncResult(null)
+    const result = await onForceResyncAll()
+    setSyncResult(result)
+    setSyncing(false)
+  }
+
+  const handlePullFromJournal = async () => {
+    if (!confirm('Récupérer toutes les notes depuis le journal ? Les notes déjà présentes localement seront ignorées.')) return
+    setPulling(true)
+    setPullResult(null)
+    const result = await onPullFromJournal()
+    setPullResult(result)
+    setPulling(false)
+  }
+
   const handleSyncToggle = (enabled: boolean) => {
     onSettingsChange({
       journalSync: { ...settings.journalSync, syncEnabled: enabled }
@@ -195,29 +249,127 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onB
               </label>
             </div>
 
-            {/* Status */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                {settings.journalSync.pendingNotes.length > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
-                    {settings.journalSync.pendingNotes.length} en attente
-                  </span>
-                )}
-                {settings.journalSync.lastSync > 0 && (
-                  <span>
-                    {new Date(settings.journalSync.lastSync).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </div>
+            {/* Comptage total local (fiable sans appel réseau) */}
+            <p className="text-xs text-muted-foreground">
+              {notes.length} note{notes.length > 1 ? 's' : ''} dans l'extension
+            </p>
+
+            {/* Boutons sync */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={handleVerifySync}
+                disabled={verifying || syncing}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Comparer les notes locales avec le journal pour connaître l'état réel"
+              >
+                {verifying ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                Vérifier l'état
+              </button>
               <button
                 onClick={handleSyncAll}
-                disabled={syncing || !settings.journalSync.syncEnabled}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={syncing || verifying || !settings.journalSync.syncEnabled}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                Synchroniser tout
+                Sync tout
+              </button>
+              <button
+                onClick={handleForceResyncAll}
+                disabled={syncing || verifying || !settings.journalSync.syncEnabled}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-500/40 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Re-synque toutes les notes, même celles déjà synquées. Utile pour récupérer les notes manquantes."
+              >
+                {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                Forcer re-sync
               </button>
             </div>
+
+            {/* Import depuis le journal */}
+            <div className="pt-2 border-t border-border">
+              <button
+                onClick={handlePullFromJournal}
+                disabled={pulling || syncing || verifying}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-purple-500/40 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Récupère les notes depuis le journal vers l'extension (utile après réinstallation)"
+              >
+                {pulling ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                Importer depuis le journal
+              </button>
+              {pullResult && (
+                <p className={`mt-1.5 text-xs ${pullResult.error ? 'text-red-400' : 'text-green-400'}`}>
+                  {pullResult.error
+                    ? `Erreur : ${pullResult.error}`
+                    : `${pullResult.imported} importée(s)${pullResult.skipped > 0 ? ` · ${pullResult.skipped} déjà présente(s)` : ''}`
+                  }
+                </p>
+              )}
+            </div>
+
+            {/* Résultat vérification */}
+            {(verifyResult || verifying) && (
+              <div className="space-y-1 p-2.5 rounded-lg bg-muted/50 border border-border">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-medium text-foreground">État sync vérifié</p>
+                  {verifyTime && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(verifyTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+                {verifyResult?.verifyError ? (
+                  <p className="text-xs text-red-400">{verifyResult.verifyError}</p>
+                ) : verifyResult ? (
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-[1rem_auto_1fr] items-baseline gap-x-1.5 gap-y-0.5 text-xs">
+                      <span className="text-green-500 font-mono text-center">✓</span>
+                      <span className="text-green-500 font-semibold tabular-nums">{verifyResult.confirmed}</span>
+                      <span className="text-muted-foreground">confirmée{verifyResult.confirmed > 1 ? 's' : ''} — dans l'extension ET le journal</span>
+
+                      <span className="text-blue-400 font-mono text-center">○</span>
+                      <span className="text-blue-400 font-semibold tabular-nums">{verifyResult.pending}</span>
+                      <span className="text-muted-foreground">en attente — jamais envoyée{verifyResult.pending > 1 ? 's' : ''} au journal</span>
+
+                      {verifyResult.missing > 0 && <>
+                        <span className="text-orange-400 font-mono text-center">✗</span>
+                        <span className="text-orange-400 font-semibold tabular-nums">{verifyResult.missing}</span>
+                        <span className="text-muted-foreground">manquante{verifyResult.missing > 1 ? 's' : ''} — étaient synquées, disparues du journal</span>
+                      </>}
+
+                      {verifyResult.locallyExcluded > 0 && <>
+                        <span className="text-orange-500 font-mono text-center">⊗</span>
+                        <span className="text-orange-500 font-semibold tabular-nums">{verifyResult.locallyExcluded}</span>
+                        <span className="text-muted-foreground">exclue{verifyResult.locallyExcluded > 1 ? 's' : ''} manuellement — ne seront pas synquées</span>
+                      </>}
+
+                      {verifyResult.journalExcluded > 0 && <>
+                        <span className="text-muted-foreground font-mono text-center">−</span>
+                        <span className="text-muted-foreground font-semibold tabular-nums">{verifyResult.journalExcluded}</span>
+                        <span className="text-muted-foreground">supprimée{verifyResult.journalExcluded > 1 ? 's' : ''} du journal — exclues automatiquement</span>
+                      </>}
+
+                      {verifyResult.journalOrphans > 0 && <>
+                        <span className="text-yellow-500 font-mono text-center">⚠</span>
+                        <span className="text-yellow-500 font-semibold tabular-nums">{verifyResult.journalOrphans}</span>
+                        <span className="text-muted-foreground">seule{verifyResult.journalOrphans > 1 ? 's' : ''} dans le journal — supprimée{verifyResult.journalOrphans > 1 ? 's' : ''} de l'extension</span>
+                      </>}
+                    </div>
+
+                    {verifyResult.missingNotes.length > 0 && (
+                      <button
+                        onClick={handleResyncMissing}
+                        disabled={syncing}
+                        className="w-full mt-1.5 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                        Re-synquer les {verifyResult.missingNotes.length} manquante{verifyResult.missingNotes.length > 1 ? 's' : ''}
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Résultat sync */}
             {syncResult && (
               <div className="mt-1 space-y-1">
                 <p className={`text-xs ${syncResult.failed > 0 ? 'text-orange-400' : 'text-green-400'}`}>

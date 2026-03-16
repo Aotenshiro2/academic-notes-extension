@@ -31,6 +31,7 @@ export interface AcademicNote {
   favicon?: string
   timestamp: number
   syncedAt?: number
+  syncExcluded?: boolean // true = exclue du journal (ne sera pas re-synquée automatiquement)
   folderId?: string // undefined = note libre (sans dossier)
   type: ContentType
   metadata: ContentMetadata
@@ -119,7 +120,7 @@ export interface SyncStatus {
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini'
 
-export type AnalysisProvider = 'chatgpt' | 'claude' | 'gemini' | 'perplexity' | 'grok'
+export type AnalysisProvider = 'chatgpt' | 'claude' | 'gemini' | 'perplexity' | 'grok' | 'other'
 
 export interface AIConfig {
   provider: AIProvider

@@ -64,6 +64,63 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.4.5',
+    title: 'Sync : état réel complet + AccountView redesign',
+    items: [
+      'Fix : "Vérifier" retournait toujours 0 confirmées car il ne scannait que les notes avec syncedAt déjà set (bug structurel)',
+      'Fix : le state React n\'était jamais rechargé après "Sync tout" — les stats restaient stale',
+      'Nouveau : "Vérifier" détecte maintenant 6 états distincts par note',
+      '✓ Confirmées : présentes dans l\'extension ET le journal',
+      '○ En attente : jamais synquées, pas exclues',
+      '✗ Manquantes du journal : étaient synquées mais ont disparu du journal',
+      '⊗ Exclues manuellement : vous les avez exclues depuis l\'historique',
+      '− Supprimées du journal : supprimées du journal, exclues automatiquement',
+      '⚠ Seules dans le journal : supprimées de l\'extension mais encore dans le journal (si supprimées du journal aussi → perdues partout)',
+      'Fix : "Vérifier" met à jour syncedAt localement pour les notes confirmées (réconciliation locale/journal)',
+    ],
+  },
+  {
+    version: '1.4.4',
+    title: 'Flaguer des notes + stats sync locales',
+    items: [
+      'Nouveau : exclure une note de la sync directement depuis l\'historique (icône CloudOff au hover)',
+      'Une note exclue manuellement n\'est plus envoyée au journal lors de "Sync tout"',
+      'Vue Compte : stats locales instantanées (synquées / en attente / exclues) visibles sans appuyer sur "Vérifier"',
+      'Fix : "Sync tout" et "Re-synquer" mettent désormais à jour syncedAt localement → "Vérifier" affiche les confirmées correctement',
+      'Fix Supabase Storage : ajout de la politique RLS UPDATE — les uploads d\'images ne retournent plus HTTP 500',
+    ],
+  },
+  {
+    version: '1.4.3',
+    title: 'Fix sync : erreurs HTTP 413 (images trop lourdes)',
+    items: [
+      'Fix : les notes avec des captures d\'écran ne causent plus d\'erreur "413 Request Too Large" lors de la sync',
+      'Quand l\'upload d\'une image vers Supabase Storage échoue, l\'image est retirée du payload (au lieu de garder le base64 brut qui faisait exploser la taille)',
+      'L\'image reste intacte dans l\'extension (IndexedDB est la source de vérité)',
+    ],
+  },
+  {
+    version: '1.4.2',
+    title: 'Fix sync structurel — Smart Capture + modifications + traçabilité',
+    items: [
+      'Fix : les notes créées via Smart Capture avaient un contenu vide dans le journal (les messages étaient là mais le champ content ne l\'était pas)',
+      'Fix : modifier une note déjà synquée propage maintenant la modification vers le journal automatiquement',
+      'Nouveau : chaque note synquée inclut désormais sa date originale de création (capturedAt) et la version de l\'extension',
+      'Journal : colonnes capturedAt + extensionVersion ajoutées à la base de données',
+    ],
+  },
+  {
+    version: '1.4.1',
+    title: 'Vérification sync + gestion exclusion notes',
+    items: [
+      'Nouveau bouton "Vérifier" : compare les notes locales avec le journal et affiche combien sont confirmées, manquantes ou exclues',
+      'Re-sync ciblée : les notes détectées comme manquantes peuvent être re-synquées en un clic',
+      'Exclusion de sync : une note supprimée dans le journal est automatiquement marquée "exclue" dans l\'extension (ne sera plus re-synquée automatiquement)',
+      'Sync tout : n\'envoie plus les notes marquées comme exclues',
+      'Journal : endpoint DELETE /api/notes/:id (soft-delete) + contrainte unicité sourceUrl (évite les doublons)',
+    ],
+  },
+  {
     version: '1.4.0',
     title: 'Auth email + inscription',
     items: [
