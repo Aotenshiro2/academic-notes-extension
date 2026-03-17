@@ -268,7 +268,7 @@ export const storage = {
       ...note,
       id,
       timestamp: note.timestamp || Date.now(),
-      syncedAt: note.syncedAt
+      lastSyncAt: note.lastSyncAt
     }
 
     try {
@@ -281,13 +281,13 @@ export const storage = {
     scheduleBackup()
 
     // Cloud sync vers Journal d'Études (non-bloquant)
-    if (isNew && !fullNote.syncedAt) {
+    if (isNew && !fullNote.lastSyncAt) {
       // Nouvelle note : sync initiale
       getSession().then(session => {
         if (session) {
           syncNoteToJournal(fullNote).then(result => {
             if (result.success) {
-              db.notes.update(id, { syncedAt: Date.now() }).catch(() => {})
+              db.notes.update(id, { lastSyncAt: Date.now() }).catch(() => {})
             } else {
               console.warn('[AOK Sync] Failed:', result.error, '— note:', fullNote.title)
             }
@@ -296,7 +296,7 @@ export const storage = {
           })
         }
       }).catch(() => {})
-    } else if (!isNew && fullNote.syncedAt && !skipSync) {
+    } else if (!isNew && fullNote.lastSyncAt && !skipSync) {
       // Note modifiée déjà synquée : propager les modifications vers le journal
       getSession().then(session => {
         if (session) {

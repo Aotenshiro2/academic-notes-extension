@@ -123,10 +123,10 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     source: 'extension',
     sourceUrl: note.url || null,
     favicon: note.favicon ?? null,
-    syncedAt: new Date().toISOString(),
+    lastSyncAt: new Date().toISOString(),
     messages: processedMessages,
     folderId: note.folderId ?? null,
-    capturedAt: new Date(note.timestamp).toISOString(),
+    createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
     extensionNoteId: note.id,
   }
@@ -199,7 +199,7 @@ export async function forceSyncAll(
   const session = await getSession()
   if (!session) return { synced: 0, failed: 0, errors: [] }
 
-  const unsynced = notes.filter(n => !n.syncedAt && !n.syncExcluded)
+  const unsynced = notes.filter(n => !n.lastSyncAt && !n.syncExcluded)
   let synced = 0
   let failed = 0
   const errors: Array<{ title: string; error: string }> = []
@@ -266,8 +266,8 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
             })),
           url,
           favicon: jn.favicon ?? undefined,
-          timestamp: jn.capturedAt ? new Date(jn.capturedAt).getTime() : Date.now(),
-          syncedAt: Date.now(),
+          timestamp: jn.createdAt ? new Date(jn.createdAt).getTime() : Date.now(),
+          lastSyncAt: Date.now(),
           type: 'webpage' as const,
           metadata: { domain },
           tags: [],
@@ -284,7 +284,7 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
 export interface VerifySyncResult {
   confirmed: number         // dans l'extension ET dans le journal (actif) ✓
   pending: number           // dans l'extension, jamais synquée, pas exclue ○
-  missing: number           // dans l'extension, avait syncedAt, absente du journal ✗
+  missing: number           // dans l'extension, avait lastSyncAt, absente du journal ✗
   locallyExcluded: number   // dans l'extension, exclue manuellement (syncExcluded, pas dans journal) ⊗
   journalExcluded: number   // dans l'extension, supprimée du journal (deletedAt) → auto-exclue −
   journalOrphans: number    // dans le journal (actif) MAIS absente de l'extension ⚠ (supprimée de l'ext.)
@@ -344,13 +344,13 @@ export async function verifySyncStatus(
         confirmed++
         // Réconcilier l'état local avec la réalité du journal (source de vérité)
         const updates: Partial<AcademicNote> = {}
-        if (!note.syncedAt) updates.syncedAt = Date.now()
+        if (!note.lastSyncAt) updates.lastSyncAt = Date.now()
         if (note.syncExcluded) updates.syncExcluded = false
         if (Object.keys(updates).length > 0) await updateNote(note.id, updates)
       } else if (isExcluded) {
         journalExcluded++
         if (!note.syncExcluded) await updateNote(note.id, { syncExcluded: true })
-      } else if (note.syncedAt) {
+      } else if (note.lastSyncAt) {
         missingNotes.push(note)    // était synquée, a disparu du journal → à re-synquer
       } else if (note.syncExcluded) {
         locallyExcluded++          // exclue manuellement par l'utilisateur

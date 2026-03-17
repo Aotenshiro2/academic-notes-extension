@@ -30,7 +30,7 @@ export interface AcademicNote {
   url: string
   favicon?: string
   timestamp: number
-  syncedAt?: number
+  lastSyncAt?: number
   syncExcluded?: boolean // true = exclue du journal (ne sera pas re-synquée automatiquement)
   folderId?: string // undefined = note libre (sans dossier)
   type: ContentType

@@ -613,7 +613,7 @@ function App() {
                 setSettings(updated)
               }}
               onSyncAll={async () => {
-                const result = await forceSyncAll(notes, (id) => storage.updateNote(id, { syncedAt: Date.now() }))
+                const result = await forceSyncAll(notes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
                 await loadData()
                 return result
               }}
@@ -623,18 +623,18 @@ function App() {
                 return result
               }}
               onResyncMissing={(missingNotes) => {
-                // Reset syncedAt sur les notes manquantes puis les synquer
-                return Promise.all(missingNotes.map(n => storage.updateNote(n.id, { syncedAt: undefined })))
+                // Reset lastSyncAt sur les notes manquantes puis les synquer
+                return Promise.all(missingNotes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined })))
                   .then(() => forceSyncAll(
-                    missingNotes.map(n => ({ ...n, syncedAt: undefined })),
-                    (id) => storage.updateNote(id, { syncedAt: Date.now() })
+                    missingNotes.map(n => ({ ...n, lastSyncAt: undefined })),
+                    (id) => storage.updateNote(id, { lastSyncAt: Date.now() })
                   ))
               }}
               onForceResyncAll={async () => {
-                // Reset syncedAt sur TOUTES les notes puis re-synquer (récupère notes manquantes)
-                await Promise.all(notes.map(n => storage.updateNote(n.id, { syncedAt: undefined })))
-                const freshNotes = notes.map(n => ({ ...n, syncedAt: undefined }))
-                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { syncedAt: Date.now() }))
+                // Reset lastSyncAt sur TOUTES les notes puis re-synquer (récupère notes manquantes)
+                await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined })))
+                const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined }))
+                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
                 await loadData()
                 return result
               }}
