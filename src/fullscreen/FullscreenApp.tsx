@@ -103,9 +103,9 @@ function FullscreenApp() {
     loadData()
     loadCurrentPageInfo()
 
-    // Listen to sync events from other views (sidepanel, etc.)
+    // Listen to sync events from other views (sidepanel, other fullscreen windows, etc.)
     const unsubscribeSync = stateSync.subscribe((message) => {
-      if (message.source !== 'fullscreen') {
+      if (!stateSync.isOwnMessage(message)) {
         loadData()
         if (message.noteId) {
           setNoteRefreshTrigger(Date.now())

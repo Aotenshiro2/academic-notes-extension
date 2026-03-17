@@ -25,7 +25,7 @@ import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
-import { forceSyncAll, verifySyncStatus, pullFromJournal } from '@/lib/sync'
+import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
 import type { AcademicNote, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
@@ -84,10 +84,10 @@ function App() {
     chrome.tabs.onActivated.addListener(handleTabActivated)
     chrome.tabs.onUpdated.addListener(handleTabUpdated)
 
-    // Listen to sync events from other views (fullscreen, etc.)
+    // Listen to sync events from other views (fullscreen, other sidepanel windows, etc.)
     const unsubscribeSync = stateSync.subscribe((message) => {
-      // Reload data when notes are modified in another view
-      if (message.source !== 'sidepanel') {
+      // Reload data when notes are modified in another window/view
+      if (!stateSync.isOwnMessage(message)) {
         loadData()
         // Also trigger refresh if a specific note was updated
         if (message.noteId) {
@@ -631,9 +631,19 @@ function App() {
                   ))
               }}
               onForceResyncAll={async () => {
-                // Reset lastSyncAt sur TOUTES les notes puis re-synquer (récupère notes manquantes)
+                // Reset lastSyncAt sur TOUTES les notes (inclut les exclues via includeExcluded)
                 await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined })))
                 const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined }))
+                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }), { includeExcluded: true })
+                await loadData()
+                return result
+              }}
+              onRebuildJournal={async () => {
+                // Supprime toutes les notes dans le journal, reset les flags, re-sync complet
+                const { ok, error } = await deleteJournalNotes()
+                if (!ok) return { synced: 0, failed: 0, errors: [{ title: 'Journal', error: error ?? 'Erreur inconnue' }] }
+                await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined, syncExcluded: false })))
+                const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined, syncExcluded: false }))
                 const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
                 await loadData()
                 return result

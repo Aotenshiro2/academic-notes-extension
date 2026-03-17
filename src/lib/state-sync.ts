@@ -16,6 +16,7 @@ export interface SyncMessage {
   noteIds?: string[]
   timestamp: number
   source: 'sidepanel' | 'fullscreen' | 'background'
+  instanceId: string
 }
 
 type SyncListener = (message: SyncMessage) => void
@@ -74,10 +75,11 @@ class StateSync {
   /**
    * Broadcast a sync message to all other views
    */
-  broadcast(message: Omit<SyncMessage, 'timestamp'>) {
+  broadcast(message: Omit<SyncMessage, 'timestamp' | 'instanceId'>) {
     const fullMessage: SyncMessage = {
       ...message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      instanceId: this.instanceId,
     }
 
     if (this.channel) {
@@ -114,6 +116,13 @@ class StateSync {
    */
   notesBulkUpdate(noteIds: string[], source: SyncMessage['source'] = 'sidepanel') {
     this.broadcast({ type: 'NOTES_BULK_UPDATE', noteIds, source })
+  }
+
+  /**
+   * Returns true if the message was sent by this same instance (should be ignored)
+   */
+  isOwnMessage(message: SyncMessage): boolean {
+    return message.instanceId === this.instanceId
   }
 
   /**

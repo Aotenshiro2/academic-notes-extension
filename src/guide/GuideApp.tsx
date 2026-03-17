@@ -64,6 +64,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.4.8',
+    title: 'Sync multi-fenêtres (5 écrans)',
+    items: [
+      'Fix : les sidepanels ouverts sur plusieurs écrans s\'ignoraient mutuellement (filtre source statique)',
+      'Nouveau : toute sauvegarde dans une fenêtre se répercute automatiquement dans les autres',
+      'Protection : si une édition est en cours lors d\'un refresh distant, un bandeau s\'affiche plutôt que d\'écraser le contenu',
+    ],
+  },
+  {
     version: '1.4.7',
     title: 'Export Google Drive + Pull journal + Fix AnalyzeNoteDialog',
     items: [

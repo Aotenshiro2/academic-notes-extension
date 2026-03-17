@@ -23,11 +23,23 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const [addingTag, setAddingTag] = useState(false)
   const [tagDraft, setTagDraft] = useState('')
   const tagInputRef = useRef<HTMLInputElement>(null)
+  const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
 
-  // Recharger la note quand noteId ou refreshTrigger change
+  // Recharger la note quand noteId change
   useEffect(() => {
+    setRemoteUpdatePending(false)
     loadNote()
-  }, [noteId, refreshTrigger])
+  }, [noteId])
+
+  // Quand un refresh distant arrive, vérifier si une édition est en cours
+  useEffect(() => {
+    if (!refreshTrigger) return
+    if (editingTitle || panelMessage !== null || addingTag) {
+      setRemoteUpdatePending(true)
+    } else {
+      loadNote()
+    }
+  }, [refreshTrigger])
 
 
   const loadNote = async () => {
@@ -92,6 +104,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const handleUpdateMessage = useCallback(async (messageId: string, content: string) => {
     if (!note) return
     await storage.updateMessage(noteId, messageId, { content })
+    setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
@@ -100,6 +113,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
     if (!note || !titleDraft.trim()) { setEditingTitle(false); return }
     await storage.saveNote({ ...note, title: titleDraft.trim() })
     setEditingTitle(false)
+    setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
   }, [note, titleDraft, onNoteUpdate])
@@ -153,6 +167,19 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
 
   return (
     <div className="space-y-4">
+      {/* Bandeau : mise à jour distante en attente */}
+      {remoteUpdatePending && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400">
+          <span>Note mise à jour dans une autre fenêtre.</span>
+          <button
+            onClick={() => { setRemoteUpdatePending(false); loadNote() }}
+            className="font-medium underline underline-offset-2 hover:no-underline flex-shrink-0"
+          >
+            Recharger
+          </button>
+        </div>
+      )}
+
       {/* Titre de la note */}
       <div className="flex items-center gap-2 group pb-1 border-b border-border/40">
         {editingTitle ? (
