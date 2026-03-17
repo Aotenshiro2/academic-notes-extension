@@ -92,6 +92,12 @@ function App() {
         // Also trigger refresh if a specific note was updated
         if (message.noteId) {
           setNoteRefreshTrigger(Date.now())
+          // Scroll to bottom after remote reload (nouveau contenu ajouté en bas)
+          setTimeout(() => {
+            if (noteDisplayRef.current) {
+              noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
+            }
+          }, 150)
         }
       }
     })

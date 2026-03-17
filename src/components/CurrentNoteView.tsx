@@ -24,9 +24,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
   const [tagDraft, setTagDraft] = useState('')
   const tagInputRef = useRef<HTMLInputElement>(null)
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
+  const isFirstLoad = useRef(true)
 
   // Recharger la note quand noteId change
   useEffect(() => {
+    isFirstLoad.current = true
     setRemoteUpdatePending(false)
     loadNote()
   }, [noteId])
@@ -44,16 +46,18 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
 
   const loadNote = async () => {
     try {
-      setIsLoading(true)
-      // Use ensureNoteHasMessages to migrate on-demand if needed
+      // Spinner uniquement au premier chargement — les refreshes suivants
+      // mettent à jour silencieusement pour ne pas réinitialiser le scroll
+      if (isFirstLoad.current) setIsLoading(true)
       const noteWithMessages = await storage.ensureNoteHasMessages(noteId)
       setNote(noteWithMessages)
+      isFirstLoad.current = false
     } catch (error) {
       console.error('Error loading note:', error)
-      // Fallback to simple get
       const notes = await storage.getNotes(1000)
       const foundNote = notes.find(n => n.id === noteId)
       setNote(foundNote || null)
+      isFirstLoad.current = false
     } finally {
       setIsLoading(false)
     }
