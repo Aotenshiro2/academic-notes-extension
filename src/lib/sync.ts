@@ -33,7 +33,13 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
 async function uploadImageToStorage(dataUrl: string, userId: string, accessToken: string): Promise<string | null> {
   if (!dataUrl.startsWith('data:')) return null
   try {
-    const compressed = await compressImage(dataUrl, SYNC_IMG_OPTIONS)
+    let compressed: string
+    try {
+      compressed = await compressImage(dataUrl, SYNC_IMG_OPTIONS)
+    } catch {
+      // Canvas indisponible (service worker MV3) — upload sans compression
+      compressed = dataUrl
+    }
     const hash = await shortHash(compressed)
     const { blob, ext } = dataUrlToBlob(compressed)
     const path = `${userId}/images/${hash}.${ext}`
