@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, ChevronLeft, ShieldCheck, Download } from 'lucide-react'
+import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, ChevronLeft, ShieldCheck, Download, Trash2 } from 'lucide-react'
 import type { Settings as SettingsType, AcademicNote } from '@/types/academic'
 import type { VerifySyncResult } from '@/lib/sync'
 import { getUser, signInWithGoogle, signOut, signInWithEmail, signUpWithEmail, sendPasswordResetEmail } from '@/lib/auth'
@@ -12,6 +12,7 @@ interface AccountViewProps {
   onVerifySync: () => Promise<VerifySyncResult>
   onResyncMissing: (missingNotes: VerifySyncResult['missingNotes']) => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
   onForceResyncAll: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
+  onRebuildJournal: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
   onPullFromJournal: () => Promise<{ imported: number; skipped: number; error?: string }>
   onBack: () => void
   notes: AcademicNote[]
@@ -20,12 +21,13 @@ interface AccountViewProps {
 type AuthMode = 'signin' | 'signup'
 type AuthView = 'main' | 'forgot'
 
-export default function AccountView({ settings, onSettingsChange, onSyncAll, onVerifySync, onResyncMissing, onForceResyncAll, onPullFromJournal, onBack, notes }: AccountViewProps) {
+export default function AccountView({ settings, onSettingsChange, onSyncAll, onVerifySync, onResyncMissing, onForceResyncAll, onRebuildJournal, onPullFromJournal, onBack, notes }: AccountViewProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [pulling, setPulling] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
   const [pullResult, setPullResult] = useState<{ imported: number; skipped: number; error?: string } | null>(null)
   const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> } | null>(null)
   const [verifyResult, setVerifyResult] = useState<VerifySyncResult | null>(null)
@@ -150,12 +152,21 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
   }
 
   const handleForceResyncAll = async () => {
-    if (!confirm('Cela va re-synquer TOUTES les notes vers le journal (même celles déjà synquées). Continuer ?')) return
+    if (!confirm('Cela va renvoyer TOUTES les notes vers le journal, y compris celles déjà envoyées et celles exclues. Continuer ?')) return
     setSyncing(true)
     setSyncResult(null)
     const result = await onForceResyncAll()
     setSyncResult(result)
     setSyncing(false)
+  }
+
+  const handleRebuildJournal = async () => {
+    if (!confirm('Cela va supprimer toutes tes notes dans le journal en ligne, puis les renvoyer depuis l\'extension. Continue ?')) return
+    setRebuilding(true)
+    setSyncResult(null)
+    const result = await onRebuildJournal()
+    setSyncResult(result)
+    setRebuilding(false)
   }
 
   const handlePullFromJournal = async () => {
@@ -258,29 +269,39 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 onClick={handleVerifySync}
-                disabled={verifying || syncing}
+                disabled={verifying || syncing || rebuilding}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Comparer les notes locales avec le journal pour connaître l'état réel"
+                title="Compare tes notes locales avec le journal pour connaître l'état réel"
               >
                 {verifying ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
                 Vérifier l'état
               </button>
               <button
                 onClick={handleSyncAll}
-                disabled={syncing || verifying || !settings.journalSync.syncEnabled}
+                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Envoie les notes pas encore arrivées dans le journal"
               >
                 {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                Sync tout
+                Envoyer les nouvelles
               </button>
               <button
                 onClick={handleForceResyncAll}
-                disabled={syncing || verifying || !settings.journalSync.syncEnabled}
+                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-500/40 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Re-synque toutes les notes, même celles déjà synquées. Utile pour récupérer les notes manquantes."
+                title="Renvoie toutes les notes, même celles déjà envoyées et celles exclues"
               >
                 {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                Forcer re-sync
+                Tout renvoyer
+              </button>
+              <button
+                onClick={handleRebuildJournal}
+                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/40 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Supprime toutes les données du journal en ligne et les renvoie depuis l'extension"
+              >
+                {rebuilding ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                Reconstruire le journal
               </button>
             </div>
 
@@ -293,7 +314,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
                 title="Récupère les notes depuis le journal vers l'extension (utile après réinstallation)"
               >
                 {pulling ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                Importer depuis le journal
+                Importer depuis le cloud
               </button>
               {pullResult && (
                 <p className={`mt-1.5 text-xs ${pullResult.error ? 'text-red-400' : 'text-green-400'}`}>

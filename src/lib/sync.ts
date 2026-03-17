@@ -190,16 +190,17 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
 
 /**
  * Force-synque toutes les notes non encore synquées.
- * Exclut les notes marquées syncExcluded: true.
+ * Exclut les notes marquées syncExcluded: true (sauf si includeExcluded=true).
  */
 export async function forceSyncAll(
   notes: AcademicNote[],
-  onSynced?: (noteId: string) => Promise<void>
+  onSynced?: (noteId: string) => Promise<void>,
+  options?: { includeExcluded?: boolean }
 ): Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }> {
   const session = await getSession()
   if (!session) return { synced: 0, failed: 0, errors: [] }
 
-  const unsynced = notes.filter(n => !n.lastSyncAt && !n.syncExcluded)
+  const unsynced = notes.filter(n => !n.lastSyncAt && (options?.includeExcluded || !n.syncExcluded))
   let synced = 0
   let failed = 0
   const errors: Array<{ title: string; error: string }> = []
@@ -219,6 +220,29 @@ export async function forceSyncAll(
 
   console.log(`[AOK ForceSyncAll] Done: ${synced} synced, ${failed} failed`)
   return { synced, failed, errors }
+}
+
+/**
+ * Supprime toutes les notes de l'utilisateur dans le journal en ligne.
+ * Utilisé avant "Reconstruire le journal" pour repartir sur une base propre.
+ */
+export async function deleteJournalNotes(): Promise<{ ok: boolean; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { ok: false, error: 'Non connecté — reconnecte-toi dans le compte.' }
+
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/notes`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Extension-Source': 'trading-notes-extension',
+      },
+    })
+    if (!res.ok) return { ok: false, error: `Erreur serveur (${res.status})` }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
 }
 
 /**
