@@ -6,67 +6,68 @@
 /* Variables CSS du design system AOKnowledge */
 @layer base {
   :root {
-    /* Couleurs principales */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    
+    /* Couleurs principales — palette journal (#f1f3f4 / #e5e7e9) */
+    --background: 210 5% 95%;
+    --foreground: 220 10% 15%;
+    --card: 210 3% 90%;
+    --card-foreground: 220 10% 15%;
+    --popover: 210 5% 95%;
+    --popover-foreground: 220 10% 15%;
+
     /* Couleurs primaires */
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    
+    --primary: 220 10% 15%;
+    --primary-foreground: 210 5% 95%;
+
     /* Couleurs secondaires */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    
+    --secondary: 210 4% 92%;
+    --secondary-foreground: 220 10% 15%;
+
     /* Couleurs muted */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    
+    --muted: 210 4% 92%;
+    --muted-foreground: 215 8% 46%;
+
     /* Couleurs accent */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    
+    --accent: 210 4% 92%;
+    --accent-foreground: 220 10% 15%;
+
     /* Couleurs destructive */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    
+    --destructive-foreground: 210 5% 95%;
+
     /* Bordures */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    
+    --border: 210 5% 85%;
+    --input: 210 5% 85%;
+    --ring: 220 10% 15%;
+
     /* Rayon des bordures */
     --radius: 0.5rem;
-    
+
     /* Couleur de sélection AOKnowledge */
     --selection-bg: 45 100% 72%; /* #fcdf3e */
     --selection-fg: 0 0% 0%;     /* #000000 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Palette journal (#202124 / #1b1c1e) */
+    --background: 225 6% 13%;
+    --foreground: 210 10% 95%;
+    --card: 220 5% 11%;
+    --card-foreground: 210 10% 95%;
+    --popover: 225 6% 13%;
+    --popover-foreground: 210 10% 95%;
+    --primary: 210 10% 95%;
+    --primary-foreground: 225 6% 13%;
+    --secondary: 220 4% 17%;
+    --secondary-foreground: 210 10% 95%;
+    --muted: 220 4% 17%;
+    --muted-foreground: 215 8% 65%;
+    --accent: 220 4% 17%;
+    --accent-foreground: 210 10% 95%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive-foreground: 210 10% 95%;
+    --border: 220 4% 20%;
+    --input: 220 4% 20%;
+    --ring: 210 8% 80%;
   }
   
   
