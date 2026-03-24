@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { Plus, ArrowUp, ImageIcon, Camera, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2 } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize } from '@/lib/image-utils'
 
 export interface CaptureInputHandle {
@@ -13,6 +13,7 @@ interface CaptureInputProps {
   onChange: (content: string) => void
   placeholder?: string
   onInsertScreenshot?: () => Promise<string | null>
+  onInsertExternalScreenshot?: () => Promise<string | null>
   onSubmit?: (content: string) => void
   onSmartCapture?: () => void
   isSmartCapturing?: boolean
@@ -28,6 +29,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   onChange,
   placeholder = 'Écrivez ou capturez...',
   onInsertScreenshot,
+  onInsertExternalScreenshot,
   onSubmit,
   onSmartCapture,
   isSmartCapturing = false,
@@ -39,6 +41,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   const [isFocused, setIsFocused] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
+  const [isCapturingExternal, setIsCapturingExternal] = useState(false)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -105,8 +108,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       const originalSize = estimateImageSize(dataUrl)
       let processedDataUrl = dataUrl
 
-      if (originalSize > 300000) {
-        processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.preview)
+      if (originalSize > 1500000) {
+        processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.full)
         console.log(`Image compressée: ${formatFileSize(originalSize)} → ${formatFileSize(estimateImageSize(processedDataUrl))}`)
       }
 
@@ -162,6 +165,57 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
     input.click()
   }, [insertImageAtCursor])
 
+  // Capture écran externe (Zoom, app desktop, etc.) via getDisplayMedia
+  const handleExternalScreenshotInsert = useCallback(async () => {
+    if (!onInsertExternalScreenshot) return
+    setIsCapturingExternal(true)
+    try {
+      const dataUrl = await onInsertExternalScreenshot()
+      if (dataUrl) {
+        try {
+          const originalSize = estimateImageSize(dataUrl)
+          let processedDataUrl = dataUrl
+          if (originalSize > 1500000) {
+            processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.screenshot)
+          }
+          const currentDate = new Date().toLocaleString('fr-FR')
+          const screenshotHtml = `
+            <img src="${processedDataUrl}" alt="Capture externe" style="max-width: 100%; height: auto; margin: 8px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
+            <p style="font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 12px; font-style: italic;">
+              📅 ${currentDate} • 🖥️ Capture externe
+            </p>
+          `
+          if (editorRef.current?.isContentEditable) {
+            editorRef.current.focus()
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0)
+              if (editorRef.current.contains(range.commonAncestorContainer)) {
+                range.deleteContents()
+                const tempDiv = document.createElement('div')
+                tempDiv.innerHTML = screenshotHtml
+                while (tempDiv.firstChild) range.insertNode(tempDiv.firstChild)
+                range.collapse(false)
+                selection.removeAllRanges()
+                selection.addRange(range)
+              } else {
+                editorRef.current.insertAdjacentHTML('beforeend', screenshotHtml)
+              }
+            } else {
+              editorRef.current.insertAdjacentHTML('beforeend', screenshotHtml)
+            }
+          }
+          handleInput()
+        } catch (error) {
+          console.error('Erreur insertion capture externe:', error)
+          await insertImageAtCursor(dataUrl)
+        }
+      }
+    } finally {
+      setIsCapturingExternal(false)
+    }
+  }, [onInsertExternalScreenshot, handleInput, insertImageAtCursor])
+
   // Screenshot with metadata
   const handleScreenshotInsert = useCallback(async () => {
     if (onInsertScreenshot) {
@@ -173,8 +227,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           const originalSize = estimateImageSize(screenshotDataUrl)
           let processedDataUrl = screenshotDataUrl
 
-          if (originalSize > 300000) {
-            processedDataUrl = await compressImage(screenshotDataUrl, COMPRESSION_PRESETS.preview)
+          if (originalSize > 1500000) {
+            processedDataUrl = await compressImage(screenshotDataUrl, COMPRESSION_PRESETS.screenshot)
           }
 
           const currentDate = new Date().toLocaleString('fr-FR')
@@ -315,7 +369,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       <div className={`
         flex items-end
         border rounded-2xl
-        bg-background
+        bg-card
         transition-all duration-200
         ${isFocused ? 'border-primary/40 ring-2 ring-primary/10' : 'border-border hover:border-muted-foreground/30'}
       `}>
@@ -331,7 +385,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onKeyDown={handleKeyDown}
-            className="min-h-[44px] max-h-[200px] overflow-y-auto pl-4 pr-1 py-3 focus:outline-none text-foreground text-sm leading-relaxed"
+            className="min-h-[44px] max-h-[160px] overflow-y-auto pl-4 pr-1 py-3 focus:outline-none text-foreground text-sm leading-relaxed"
             data-placeholder={placeholder}
           />
         </div>
@@ -385,6 +439,23 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                       <div className="text-left">
                         <div className="font-medium">{isCapturingScreenshot ? 'Capture...' : 'Capture d\'écran'}</div>
                         <div className="text-xs text-muted-foreground">Photo de la page</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {onInsertExternalScreenshot && (
+                    <button
+                      onClick={() => { handleExternalScreenshotInsert(); setIsMenuOpen(false) }}
+                      disabled={isCapturingExternal}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      {isCapturingExternal
+                        ? <Loader2 size={18} className="text-orange-500 flex-shrink-0 animate-spin" />
+                        : <Monitor size={18} className="text-orange-500 flex-shrink-0" />
+                      }
+                      <div className="text-left">
+                        <div className="font-medium">{isCapturingExternal ? 'Capture...' : 'Capture externe'}</div>
+                        <div className="text-xs text-muted-foreground">Zoom, app desktop...</div>
                       </div>
                     </button>
                   )}

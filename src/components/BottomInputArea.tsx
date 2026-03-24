@@ -34,7 +34,7 @@ function BottomInputArea({ onAddContent, currentNoteId }: BottomInputAreaProps) 
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={currentNoteId ? "Ajouter du contenu à cette note..." : "Commencer une nouvelle note de trading..."}
-            className="w-full min-h-[60px] max-h-[200px] px-4 py-3 pr-12 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="w-full min-h-[60px] max-h-[160px] px-4 py-3 pr-12 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             rows={1}
             style={{
               height: 'auto',
@@ -43,7 +43,7 @@ function BottomInputArea({ onAddContent, currentNoteId }: BottomInputAreaProps) 
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement
               target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 200) + 'px'
+              target.style.height = Math.min(target.scrollHeight, 160) + 'px'
             }}
           />
           
