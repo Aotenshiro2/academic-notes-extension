@@ -274,6 +274,13 @@ export const storage = {
     try {
       await db.notes.put(fullNote)
     } catch (error) {
+      const isQuotaError = error instanceof DOMException && (
+        error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+      )
+      if (isQuotaError) {
+        console.error('[Storage] Quota IndexedDB dépassé — supprime des anciennes notes pour libérer de l\'espace')
+        throw new Error('Espace de stockage insuffisant. Supprime des anciennes notes.')
+      }
       console.error('[Storage] saveNote failed:', error)
       throw error
     }
@@ -700,6 +707,24 @@ export const storage = {
       folderId: folderId ?? undefined
     }
     await this.saveNote(updatedNote)
+  },
+
+  /**
+   * Update the tags on a specific message (message-level tags → MessageTag)
+   */
+  async updateMessageTags(noteId: string, messageId: string, tags: string[]): Promise<boolean> {
+    const note = await this.getNote(noteId)
+    if (!note || !note.messages) return false
+
+    const messageIndex = note.messages.findIndex(m => m.id === messageId)
+    if (messageIndex === -1) return false
+
+    note.messages[messageIndex] = { ...note.messages[messageIndex], tags }
+    note.content = this.messagesToHtml(note.messages)
+    note.timestamp = Date.now()
+
+    await this.saveNote(note)
+    return true
   },
 
   /**

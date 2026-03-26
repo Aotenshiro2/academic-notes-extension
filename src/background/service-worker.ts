@@ -1,23 +1,56 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
 
-// Garder le service worker actif
+// Fallback pour les navigateurs Chromium sans sidePanel (Opera, etc.)
+async function openSidePanel(tabId: number): Promise<void> {
+  if (chrome.sidePanel) {
+    await chrome.sidePanel.open({ tabId })
+  } else {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('src/sidepanel/index.html'),
+      type: 'popup',
+      width: 420,
+      height: 700,
+    })
+  }
+}
+
+// Guard : évite d'empiler plusieurs setIntervals à chaque réveil du SW
+let keepAliveInterval: ReturnType<typeof setInterval> | null = null
+
+// Garder le service worker actif à chaque réveil
 function keepAlive() {
-  setInterval(() => {
+  // Clear l'interval précédent avant d'en créer un nouveau
+  if (keepAliveInterval) clearInterval(keepAliveInterval)
+  keepAliveInterval = setInterval(() => {
     chrome.runtime.getPlatformInfo()
   }, 20000)
+
+  // Recrée l'alarm proprement (clear puis create)
+  chrome.alarms.clear('keepAlive', () => {
+    chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 }) // ~24s
+  })
 }
+
+// Réveil forcé par l'alarme
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepAlive') {
+    chrome.runtime.getPlatformInfo()
+  }
+})
+
+// Appel unique au module level : s'exécute à CHAQUE réveil du SW
+keepAlive()
 
 // Initialisation du service worker
 chrome.runtime.onStartup.addListener(() => {
-  // Service worker démarré
-  keepAlive()
+  // keepAlive déjà appelé au module level — ne pas dupliquer
 })
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Academic Notes Extension installed')
   setupContextMenus()
-  keepAlive()
+  // keepAlive déjà appelé au module level — ne pas dupliquer
 })
 
 // Configuration des menus contextuels (clic droit uniquement)
@@ -55,7 +88,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   switch (info.menuItemId) {
     case 'open-sidebar':
-      await chrome.sidePanel.open({ tabId: tab.id })
+      await openSidePanel(tab.id)
       break
 
     case 'capture-selection':
@@ -80,7 +113,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 
   switch (command) {
     case 'toggle-sidebar':
-      await chrome.sidePanel.open({ tabId: tab.id })
+      await openSidePanel(tab.id)
       break
 
     case 'quick-capture':
@@ -93,7 +126,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id) {
     try {
-      await chrome.sidePanel.open({ tabId: tab.id })
+      await openSidePanel(tab.id)
     } catch (error) {
       console.error('Error opening sidepanel:', error)
     }
@@ -187,7 +220,7 @@ async function handleMessage(
 
       case 'OPEN_SIDEBAR':
         if (tabId) {
-          await chrome.sidePanel.open({ tabId })
+          await openSidePanel(tabId)
           sendResponse({ success: true })
         }
         break
