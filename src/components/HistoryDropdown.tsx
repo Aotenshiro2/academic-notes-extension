@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff } from 'lucide-react'
+import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff, Search } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
+import SearchBar from './SearchBar'
 import storage from '@/lib/storage'
 import { formatCompactDate } from '@/lib/date-utils'
 import type { AcademicNote, NoteFolder } from '@/types/academic'
@@ -49,6 +50,9 @@ function HistoryDropdown({
   const [deleteFolderConfirmId, setDeleteFolderConfirmId] = useState<string | null>(null)
   const [isDeletingFolder, setIsDeletingFolder] = useState(false)
 
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Drag-and-drop
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null)
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
@@ -68,6 +72,7 @@ function HistoryDropdown({
     if (!isOpen) {
       setDeleteConfirmId(null)
       setDeleteFolderConfirmId(null)
+      setSearchQuery('')
     }
   }, [isOpen])
 
@@ -184,9 +189,19 @@ function HistoryDropdown({
     setDraggingNoteId(null)
   }
 
+  // ---- Search filter ----
+  const q = searchQuery.toLowerCase().trim()
+  const filteredNotes = q
+    ? notes.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.tags.some(t => t.toLowerCase().includes(q)) ||
+        n.messages?.some(m => m.tags?.some(t => t.toLowerCase().includes(q)))
+      )
+    : notes
+
   // ---- Computed groups ----
-  const notesByFolder = (folderId: string) => notes.filter(n => n.folderId === folderId)
-  const freeNotes = notes.filter(n => !n.folderId)
+  const notesByFolder = (folderId: string) => filteredNotes.filter(n => n.folderId === folderId)
+  const freeNotes = filteredNotes.filter(n => !n.folderId)
 
   // ---- Note item renderer ----
   const renderNoteItem = (note: AcademicNote) => (
@@ -284,6 +299,11 @@ function HistoryDropdown({
           </button>
         </div>
 
+        {/* Search */}
+        <div className="px-3 py-2 border-b border-border">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Titre, tag…" />
+        </div>
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {notes.length === 0 ? (
@@ -291,6 +311,24 @@ function HistoryDropdown({
               <FileText size={48} className="text-muted-foreground/40 mb-4" />
               <p className="text-muted-foreground">Aucune note trouvée</p>
               <p className="text-sm text-muted-foreground/80 mt-1">Créez votre première note pour commencer</p>
+            </div>
+          ) : searchQuery.trim() ? (
+            // ── Mode recherche — liste plate ──
+            <div className="p-2 space-y-1">
+              {filteredNotes.length === 0 ? (
+                <div className="flex flex-col items-center py-10 text-center px-4">
+                  <Search size={32} className="text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">Aucun résultat</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">pour « {searchQuery} »</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground px-2 py-1">
+                    {filteredNotes.length} résultat{filteredNotes.length > 1 ? 's' : ''}
+                  </p>
+                  {filteredNotes.map(renderNoteItem)}
+                </>
+              )}
             </div>
           ) : (
             <div className="p-2 space-y-1">
@@ -455,8 +493,10 @@ function HistoryDropdown({
         {/* Footer */}
         <div className="border-t border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">
-            {notes.length} note{notes.length > 1 ? 's' : ''} au total
-            {folders.length > 0 && ` · ${folders.length} dossier${folders.length > 1 ? 's' : ''}`}
+            {searchQuery.trim()
+              ? `${filteredNotes.length} / ${notes.length} note${notes.length > 1 ? 's' : ''}`
+              : `${notes.length} note${notes.length > 1 ? 's' : ''} au total${folders.length > 0 ? ` · ${folders.length} dossier${folders.length > 1 ? 's' : ''}` : ''}`
+            }
           </p>
         </div>
       </div>
