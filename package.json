@@ -1,6 +1,6 @@
 {
   "name": "academic-notes-extension",
-  "version": "1.4.8",
+  "version": "1.4.12",
   "description": "Extension Chrome pour capture académique et synchronisation avec Journal d'Études",
   "type": "module",
   "scripts": {
