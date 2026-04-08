@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { Save, X, Trash2, GripVertical, ChevronUp, FileText } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
 import { formatSmartDate } from '@/lib/date-utils'
+import storage from '@/lib/storage'
+import TagPickerPopup from './TagPickerPopup'
 import type { NoteMessage } from '@/types/academic'
 
 const COLLAPSE_THRESHOLD = 800 // characters of plain text
@@ -9,8 +11,10 @@ const PREVIEW_LENGTH = 250 // characters shown in preview
 
 interface MessageBlockProps {
   message: NoteMessage
+  noteId: string
   onUpdate: (messageId: string, content: string) => Promise<void>
   onDelete: (messageId: string) => Promise<void>
+  onTagsUpdate?: () => void
   onImageClick?: (src: string) => void
   onOpenPanel?: () => void
   isReadOnly?: boolean
@@ -18,8 +22,10 @@ interface MessageBlockProps {
 
 function MessageBlock({
   message,
+  noteId,
   onUpdate,
   onDelete,
+  onTagsUpdate,
   onImageClick,
   onOpenPanel,
   isReadOnly = false
@@ -28,6 +34,8 @@ function MessageBlock({
   const [isSaving, setIsSaving] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [originalContent, setOriginalContent] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerPosition, setPickerPosition] = useState({ top: 0, bottom: 0, left: 0 })
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Detect if this text message is long enough to collapse
@@ -103,6 +111,7 @@ function MessageBlock({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      if (pickerOpen) return
       e.preventDefault()
       cancelEditing()
     }
@@ -117,6 +126,31 @@ function MessageBlock({
       await onDelete(message.id)
     }
   }, [message.id, onDelete])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isEditing) return
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+    if (!contentRef.current) return
+    const range = selection.getRangeAt(0)
+    if (!contentRef.current.contains(range.commonAncestorContainer)) return
+    const rect = range.getBoundingClientRect()
+    setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+    setPickerOpen(true)
+  }, [isEditing])
+
+  const handleAddTag = useCallback(async (tagName: string) => {
+    const current = message.tags ?? []
+    if (current.includes(tagName)) return
+    await storage.updateMessageTags(noteId, message.id, [...current, tagName])
+    onTagsUpdate?.()
+  }, [noteId, message.id, message.tags, onTagsUpdate])
+
+  const handleRemoveTag = useCallback(async (tagName: string) => {
+    const current = message.tags ?? []
+    await storage.updateMessageTags(noteId, message.id, current.filter(t => t !== tagName))
+    onTagsUpdate?.()
+  }, [noteId, message.id, message.tags, onTagsUpdate])
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     // For standalone image messages, open lightbox
@@ -166,10 +200,31 @@ function MessageBlock({
           </button>
         )}
 
+        {/* Tag badges */}
+        <MessageTagBadges
+          tags={message.tags}
+          isReadOnly={isReadOnly}
+          onRemove={handleRemoveTag}
+          onOpenPicker={(rect) => {
+            setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+            setPickerOpen(true)
+          }}
+        />
+
         {/* Timestamp */}
         <div className="text-xs text-muted-foreground mt-1">
           {formatSmartDate(message.timestamp)}
         </div>
+
+        {pickerOpen && (
+          <TagPickerPopup
+            position={pickerPosition}
+            currentTags={message.tags ?? []}
+            onAdd={handleAddTag}
+            onRemove={handleRemoveTag}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
       </div>
     )
   }
@@ -239,6 +294,17 @@ function MessageBlock({
         </div>
       )}
 
+      {/* Tag badges */}
+      <MessageTagBadges
+        tags={message.tags}
+        isReadOnly={isReadOnly}
+        onRemove={handleRemoveTag}
+        onOpenPicker={(rect) => {
+          setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+          setPickerOpen(true)
+        }}
+      />
+
       {/* Collapse header for expanded long text — sticky so it stays visible while scrolling */}
       {isLongText && !isEditing && (
         <div className="sticky top-0 z-10 flex items-center justify-between mb-2 py-1 bg-background/90 backdrop-blur-sm rounded border-b border-border/20">
@@ -263,6 +329,7 @@ function MessageBlock({
           contentEditable={isEditing}
           suppressContentEditableWarning={true}
           onClick={handleClick}
+          onMouseUp={!isReadOnly ? handleMouseUp : undefined}
           onKeyDown={isEditing ? handleKeyDown : undefined}
           className={`
             prose prose-sm max-w-none text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
@@ -276,6 +343,16 @@ function MessageBlock({
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
         />
       </div>
+
+      {pickerOpen && (
+        <TagPickerPopup
+          position={pickerPosition}
+          currentTags={message.tags ?? []}
+          onAdd={handleAddTag}
+          onRemove={handleRemoveTag}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {/* Editing controls */}
       {isEditing && (
@@ -312,6 +389,52 @@ function MessageBlock({
         <div className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {formatSmartDate(message.timestamp)}
         </div>
+      )}
+    </div>
+  )
+}
+
+interface MessageTagBadgesProps {
+  tags?: string[]
+  isReadOnly: boolean
+  onRemove: (tag: string) => void
+  onOpenPicker: (rect: DOMRect) => void
+}
+
+function MessageTagBadges({ tags, isReadOnly, onRemove, onOpenPicker }: MessageTagBadgesProps) {
+  if (isReadOnly && (!tags || tags.length === 0)) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1 mb-1">
+      {(tags ?? []).map(tag => (
+        <span
+          key={tag}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full border"
+          style={{
+            background: 'rgba(59,130,246,0.12)',
+            borderColor: 'rgba(59,130,246,0.35)',
+            color: '#3b82f6',
+          }}
+        >
+          {tag}
+          {!isReadOnly && (
+            <button
+              onClick={e => { e.stopPropagation(); onRemove(tag) }}
+              className="hover:text-red-400 transition-colors leading-none"
+              aria-label={`Retirer le tag ${tag}`}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {!isReadOnly && (
+        <button
+          onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
+          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-colors"
+          aria-label="Ajouter un tag"
+        >
+          + tag
+        </button>
       )}
     </div>
   )
