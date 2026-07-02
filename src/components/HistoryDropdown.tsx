@@ -50,8 +50,10 @@ function HistoryDropdown({
   const [deleteFolderConfirmId, setDeleteFolderConfirmId] = useState<string | null>(null)
   const [isDeletingFolder, setIsDeletingFolder] = useState(false)
 
-  // Search
+  // Search + filtres de tri
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [untriagedOnly, setUntriagedOnly] = useState(false)
 
   // Drag-and-drop
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null)
@@ -73,6 +75,8 @@ function HistoryDropdown({
       setDeleteConfirmId(null)
       setDeleteFolderConfirmId(null)
       setSearchQuery('')
+      setActiveTag(null)
+      setUntriagedOnly(false)
     }
   }, [isOpen])
 
@@ -189,15 +193,31 @@ function HistoryDropdown({
     setDraggingNoteId(null)
   }
 
-  // ---- Search filter ----
+  // ---- Search + filtres ----
   const q = searchQuery.toLowerCase().trim()
-  const filteredNotes = q
-    ? notes.filter(n =>
-        n.title.toLowerCase().includes(q) ||
-        n.tags.some(t => t.toLowerCase().includes(q)) ||
-        n.messages?.some(m => m.tags?.some(t => t.toLowerCase().includes(q)))
-      )
-    : notes
+  // Non triée = aucun tag ET aucun jugement posé — la matière brute à reprendre
+  const isUntriaged = (n: AcademicNote) =>
+    (n.tags?.length ?? 0) === 0 && (n.annotations?.length ?? 0) === 0
+  const matchesTag = (n: AcademicNote, tag: string) =>
+    n.tags.includes(tag) || !!n.messages?.some(m => m.tags?.includes(tag))
+
+  const hasFilters = !!q || !!activeTag || untriagedOnly
+  const filteredNotes = notes.filter(n =>
+    (!q ||
+      n.title.toLowerCase().includes(q) ||
+      n.tags.some(t => t.toLowerCase().includes(q)) ||
+      n.messages?.some(m => m.tags?.some(t => t.toLowerCase().includes(q)))) &&
+    (!activeTag || matchesTag(n, activeTag)) &&
+    (!untriagedOnly || isUntriaged(n))
+  )
+
+  const untriagedCount = notes.filter(isUntriaged).length
+  const tagCounts = new Map<string, number>()
+  for (const n of notes) {
+    const noteTags = new Set<string>([...n.tags, ...(n.messages ?? []).flatMap(m => m.tags ?? [])])
+    for (const t of noteTags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)
+  }
+  const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
 
   // ---- Computed groups ----
   const notesByFolder = (folderId: string) => filteredNotes.filter(n => n.folderId === folderId)
@@ -304,6 +324,38 @@ function HistoryDropdown({
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Titre, tag…" />
         </div>
 
+        {/* Filtres de tri — file « à trier » + tags les plus utilisés */}
+        {(untriagedCount > 0 || topTags.length > 0) && (
+          <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border">
+            {untriagedCount > 0 && (
+              <button
+                onClick={() => setUntriagedOnly(v => !v)}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded-full border transition-colors ${
+                  untriagedOnly
+                    ? 'border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                    : 'border-amber-500/30 text-amber-600/80 dark:text-amber-400/80 hover:bg-amber-500/10'
+                }`}
+                title="Notes sans tag ni notation — à reprendre"
+              >
+                À trier · {untriagedCount}
+              </button>
+            )}
+            {topTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                className={`px-2 py-0.5 text-[11px] rounded-full border transition-colors ${
+                  activeTag === tag
+                    ? 'border-primary/40 bg-primary/10 text-foreground font-medium'
+                    : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {notes.length === 0 ? (
@@ -312,19 +364,23 @@ function HistoryDropdown({
               <p className="text-muted-foreground">Aucune note trouvée</p>
               <p className="text-sm text-muted-foreground/80 mt-1">Créez votre première note pour commencer</p>
             </div>
-          ) : searchQuery.trim() ? (
-            // ── Mode recherche — liste plate ──
+          ) : hasFilters ? (
+            // ── Mode recherche/filtre — liste plate ──
             <div className="p-2 space-y-1">
               {filteredNotes.length === 0 ? (
                 <div className="flex flex-col items-center py-10 text-center px-4">
                   <Search size={32} className="text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground">Aucun résultat</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">pour « {searchQuery} »</p>
+                  {searchQuery.trim() && (
+                    <p className="text-xs text-muted-foreground/60 mt-1">pour « {searchQuery} »</p>
+                  )}
                 </div>
               ) : (
                 <>
                   <p className="text-[11px] text-muted-foreground px-2 py-1">
-                    {filteredNotes.length} résultat{filteredNotes.length > 1 ? 's' : ''}
+                    {untriagedOnly
+                      ? `${filteredNotes.length} note${filteredNotes.length > 1 ? 's' : ''} à trier — ouvre, tague, note`
+                      : `${filteredNotes.length} résultat${filteredNotes.length > 1 ? 's' : ''}`}
                   </p>
                   {filteredNotes.map(renderNoteItem)}
                 </>
@@ -493,7 +549,7 @@ function HistoryDropdown({
         {/* Footer */}
         <div className="border-t border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">
-            {searchQuery.trim()
+            {hasFilters
               ? `${filteredNotes.length} / ${notes.length} note${notes.length > 1 ? 's' : ''}`
               : `${notes.length} note${notes.length > 1 ? 's' : ''} au total${folders.length > 0 ? ` · ${folders.length} dossier${folders.length > 1 ? 's' : ''}` : ''}`
             }

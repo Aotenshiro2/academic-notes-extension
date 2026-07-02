@@ -54,6 +54,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [notationTarget, setNotationTarget] = useState<{ tradeRef?: string } | null>(null)
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
+  const [addingConcept, setAddingConcept] = useState(false)
+  const [conceptDraft, setConceptDraft] = useState('')
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   const isFirstLoad = useRef(true)
 
@@ -231,6 +233,25 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
+
+  // ---- Concepts éditables ----
+  const handleAddConcept = useCallback(async () => {
+    if (!note) return
+    const name = conceptDraft.trim()
+    setAddingConcept(false)
+    setConceptDraft('')
+    if (!name || note.concepts.includes(name)) return
+    await storage.saveNote({ ...note, concepts: [...note.concepts, name] })
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, conceptDraft, onNoteUpdate])
+
+  const handleRemoveConcept = useCallback(async (concept: string) => {
+    if (!note) return
+    await storage.saveNote({ ...note, concepts: note.concepts.filter(c => c !== concept) })
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
 
   if (isLoading) {
     return (
@@ -571,19 +592,49 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         />
       )}
 
-      {/* Concepts */}
+      {/* Concepts — extraits par la smart capture, corrigeables à la main */}
       {note.concepts.length > 0 && (
         <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
           <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">Concepts</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {note.concepts.map((concept, index) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {note.concepts.map((concept) => (
               <span
-                key={index}
-                className="px-2 py-0.5 text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-full"
+                key={concept}
+                className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-full"
               >
                 {concept}
+                <button
+                  onClick={() => handleRemoveConcept(concept)}
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
+                  title="Retirer ce concept"
+                  aria-label={`Retirer le concept ${concept}`}
+                >
+                  <X size={9} />
+                </button>
               </span>
             ))}
+            {addingConcept ? (
+              <input
+                autoFocus
+                value={conceptDraft}
+                onChange={e => setConceptDraft(e.target.value)}
+                onBlur={handleAddConcept}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleAddConcept() }
+                  if (e.key === 'Escape') { setAddingConcept(false); setConceptDraft('') }
+                }}
+                placeholder="concept…"
+                className="px-2 py-0.5 text-xs bg-blue-500/10 rounded-full border border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500/20 w-24 text-blue-700 dark:text-blue-300"
+              />
+            ) : (
+              <button
+                onClick={() => setAddingConcept(true)}
+                className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-blue-600/50 dark:text-blue-400/50 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors"
+                title="Ajouter un concept"
+              >
+                <Plus size={10} />
+              </button>
+            )}
           </div>
         </div>
       )}
