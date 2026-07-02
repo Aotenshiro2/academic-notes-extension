@@ -21,6 +21,7 @@ import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
+import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
@@ -333,6 +334,19 @@ function App() {
       return response?.dataUrl || null
     } catch (error) {
       console.error('Error taking screenshot:', error)
+      return null
+    }
+  }
+
+  // Capture d'une app externe (Zoom, desktop, etc.) via getDisplayMedia
+  const handleExternalScreenshot = async (): Promise<string | null> => {
+    try {
+      return await captureExternalScreen()
+    } catch (error) {
+      // L'utilisateur a annulé le sélecteur ou la permission a été refusée
+      if ((error as DOMException)?.name !== 'NotAllowedError') {
+        console.error('Erreur capture externe:', error)
+      }
       return null
     }
   }
@@ -768,6 +782,7 @@ function App() {
             onChange={setEditorContent}
             placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
             onInsertScreenshot={handleScreenshot}
+            onInsertExternalScreenshot={handleExternalScreenshot}
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}
