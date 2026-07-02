@@ -713,8 +713,15 @@ function App() {
                 return result
               }}
               onPullFromJournal={async () => {
-                const { notes: journalNotes, error } = await pullFromJournal()
+                const { notes: journalNotes, folders: journalFolders, error } = await pullFromJournal()
                 if (error) return { imported: 0, skipped: 0, error }
+                // Restaurer d'abord l'arborescence des dossiers (ids stables)
+                const knownFolderIds = new Set(folders.map(f => f.id))
+                for (const folder of journalFolders ?? []) {
+                  if (!knownFolderIds.has(folder.id)) {
+                    await storage.saveFolder(folder)
+                  }
+                }
                 const existingIds = new Set(notes.map(n => n.id))
                 const existingUrls = new Set(notes.map(n => n.url).filter(Boolean))
                 let imported = 0

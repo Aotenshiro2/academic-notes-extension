@@ -87,6 +87,16 @@ export interface SyncResult {
 async function toJournalPayload(note: AcademicNote, userId: string, accessToken: string) {
   const IMAGE_TYPES = new Set(['image', 'screenshot', 'capture'])
 
+  // Nom du dossier — import dynamique pour éviter le cycle storage → sync
+  let folderName: string | null = null
+  if (note.folderId) {
+    try {
+      const { default: storage } = await import('./storage')
+      const settings = await storage.getSettings()
+      folderName = settings.folders?.find(f => f.id === note.folderId)?.name ?? null
+    } catch { /* nom indisponible — le dossier sera upserté à une prochaine sync */ }
+  }
+
   // Upload séquentiel pour éviter de saturer Supabase Storage (les uploads parallèles causaient des 500)
   const processedContent = await uploadHtmlImages(note.content, userId, accessToken)
   const processedMessages: typeof note.messages = []
@@ -126,6 +136,7 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     concepts: note.concepts ?? [],
     trades: note.trades ?? [],
     folderId: note.folderId ?? null,
+    folderName,
     createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
     extensionNoteId: note.id,
@@ -279,7 +290,11 @@ export async function deleteJournalNotes(): Promise<{ ok: boolean; error?: strin
  * Récupère toutes les notes depuis le journal et les convertit en AcademicNote.
  * Utilisé pour restaurer les notes dans une nouvelle installation de l'extension.
  */
-export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?: string }> {
+export async function pullFromJournal(): Promise<{
+  notes: AcademicNote[]
+  folders?: { id: string; name: string; createdAt: number }[]
+  error?: string
+}> {
   const [session, token] = await Promise.all([getSession(), getBearerToken()])
   if (!token || !session) {
     return { notes: [], error: 'Non connecté — reconnecte-toi dans le compte.' }
@@ -327,12 +342,31 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
           tags: Array.isArray(jn.tags) ? jn.tags.filter((t: unknown) => typeof t === 'string') : [],
           concepts: Array.isArray(jn.concepts) ? jn.concepts.filter((c: unknown) => typeof c === 'string') : [],
           trades: Array.isArray(jn.trades) ? jn.trades : [],
+          folderId: typeof jn.folderId === 'string' ? jn.folderId : undefined,
         }
       })
 
-    return { notes }
+    // Dossiers — pour restaurer l'arborescence complète côté extension
+    let folders: { id: string; name: string; createdAt: number }[] = []
+    try {
+      const foldersRes = await fetch(`${JOURNAL_API}/api/folders`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (foldersRes.ok) {
+        const journalFolders: any[] = await foldersRes.json()
+        folders = journalFolders
+          .filter(f => f && typeof f.id === 'string' && typeof f.name === 'string')
+          .map(f => ({
+            id: f.id,
+            name: f.name,
+            createdAt: f.createdAt ? new Date(f.createdAt).getTime() : Date.now(),
+          }))
+      }
+    } catch { /* pas bloquant — les notes restent importables sans l'arborescence */ }
+
+    return { notes, folders }
   } catch (err) {
-    return { notes: [], error: err instanceof Error ? err.message : 'Erreur réseau' }
+    return { notes: [], folders: [], error: err instanceof Error ? err.message : 'Erreur réseau' }
   }
 }
 

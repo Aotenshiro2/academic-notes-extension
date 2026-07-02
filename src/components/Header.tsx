@@ -67,8 +67,8 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
       <div className="flex items-center justify-between">
         {/* Titre */}
         <div>
-          <h1 className="text-lg font-semibold text-foreground">
-            Le Carnet du Trader <span className="text-sm font-normal text-muted-foreground">by AOK</span>
+          <h1 className="text-lg font-semibold text-foreground whitespace-nowrap">
+            Le Carnet du Trader
           </h1>
         </div>
 
