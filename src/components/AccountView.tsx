@@ -412,34 +412,15 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
           </div>
 
           {/* Lien vers le journal */}
-          {import.meta.env.PROD ? (
-            <div className="relative group w-full">
-              <button
-                disabled
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg
-                  border border-border text-sm text-muted-foreground/40 cursor-not-allowed
-                  bg-muted/30"
-              >
-                <ExternalLink size={14} />
-                Ouvrir Journal d'Études
-              </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded
-                bg-popover border border-border text-xs text-muted-foreground whitespace-nowrap
-                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
-                Bientôt disponible
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => chrome.tabs.create({ url: 'https://journal-d-etude-beta.vercel.app' })}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg
-                border border-border text-sm text-muted-foreground
-                hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ExternalLink size={14} />
-              Ouvrir Journal d'Études
-            </button>
-          )}
+          <button
+            onClick={() => chrome.tabs.create({ url: 'https://journal-d-etude-beta.vercel.app' })}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+              border border-border text-sm text-muted-foreground
+              hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ExternalLink size={14} />
+            Ouvrir Journal d'Études
+          </button>
         </>
       ) : (
         <>

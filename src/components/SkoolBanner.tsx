@@ -1,27 +1,33 @@
-import React, { useState } from 'react'
-import { X, ExternalLink } from 'lucide-react'
-
 function SkoolBanner() {
-  const [isVisible, setIsVisible] = useState(true)
-
-  if (!isVisible) return null
-
   const handleJoinCommunity = () => {
     chrome.tabs.create({ 
-      url: 'https://www.skool.com/aoknowledge-trading/about' 
+      url: 'https://aoknowledge.com' 
     })
   }
 
   return (
-    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-200/50 px-3 py-1">
+    <div
+      className="border-b px-3 py-1"
+      style={{
+        backgroundColor: '#1b1c1e',
+        borderColor: 'rgba(252, 223, 62, 0.28)'
+      }}
+    >
       <div className="flex items-center justify-between">
-        <span className="text-xs text-orange-800 font-medium">
+        <span
+          className="text-xs font-medium"
+          style={{ color: '#f6dc4b' }}
+        >
           Entourez-vous des meilleurs
         </span>
         
         <button
           onClick={handleJoinCommunity}
-          className="px-2 py-0.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+          className="px-2.5 py-0.5 text-xs font-semibold rounded transition-colors hover:opacity-90"
+          style={{
+            backgroundColor: '#fcdf3e',
+            color: '#111111'
+          }}
         >
           Rejoins-nous
         </button>

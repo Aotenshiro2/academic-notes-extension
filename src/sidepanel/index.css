@@ -6,37 +6,37 @@
 /* Variables CSS du design system AOKnowledge */
 @layer base {
   :root {
-    /* Couleurs principales — palette journal (#f1f3f4 / #e5e7e9) */
-    --background: 210 5% 95%;
+    /* Couleurs principales — palette journal exacte (#f1f3f4 / #e5e7e9) */
+    --background: 200 12% 95%;
     --foreground: 220 10% 15%;
-    --card: 210 3% 90%;
+    --card: 210 8% 91%;
     --card-foreground: 220 10% 15%;
-    --popover: 210 5% 95%;
+    --popover: 210 8% 91%;
     --popover-foreground: 220 10% 15%;
 
     /* Couleurs primaires */
     --primary: 220 10% 15%;
-    --primary-foreground: 210 5% 95%;
+    --primary-foreground: 200 12% 95%;
 
     /* Couleurs secondaires */
-    --secondary: 210 4% 92%;
+    --secondary: 210 7% 88%;
     --secondary-foreground: 220 10% 15%;
 
     /* Couleurs muted */
-    --muted: 210 4% 92%;
+    --muted: 210 7% 88%;
     --muted-foreground: 215 8% 46%;
 
     /* Couleurs accent */
-    --accent: 210 4% 92%;
+    --accent: 210 7% 88%;
     --accent-foreground: 220 10% 15%;
 
     /* Couleurs destructive */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 5% 95%;
 
-    /* Bordures */
-    --border: 210 5% 85%;
-    --input: 210 5% 85%;
+    /* Bordures — assez sombres pour être visibles sur #e5e7e9 */
+    --border: 210 8% 76%;
+    --input: 210 8% 76%;
     --ring: 220 10% 15%;
 
     /* Rayon des bordures */
@@ -48,25 +48,26 @@
   }
 
   .dark {
-    /* Palette journal (#202124 / #1b1c1e) */
+    /* Palette journal (#202124 fond / #1b1c1e cards) */
     --background: 225 6% 13%;
     --foreground: 210 10% 95%;
     --card: 220 5% 11%;
     --card-foreground: 210 10% 95%;
-    --popover: 225 6% 13%;
+    --popover: 220 5% 11%;
     --popover-foreground: 210 10% 95%;
     --primary: 210 10% 95%;
     --primary-foreground: 225 6% 13%;
-    --secondary: 220 4% 17%;
+    --secondary: 220 5% 16%;
     --secondary-foreground: 210 10% 95%;
-    --muted: 220 4% 17%;
+    --muted: 220 5% 16%;
     --muted-foreground: 215 8% 65%;
-    --accent: 220 4% 17%;
+    --accent: 220 5% 16%;
     --accent-foreground: 210 10% 95%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 10% 95%;
-    --border: 220 4% 20%;
-    --input: 220 4% 20%;
+    /* Bordures subtiles, cohérentes avec le journal */
+    --border: 220 5% 20%;
+    --input: 220 5% 20%;
     --ring: 210 8% 80%;
   }
   
@@ -119,7 +120,7 @@
   }
   
   .header-section {
-    @apply bg-card text-card-foreground;
+    @apply bg-background text-foreground;
   }
   
   .content-section {
