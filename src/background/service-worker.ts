@@ -58,7 +58,7 @@ function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'open-sidebar',
-      title: 'Ouvrir Trading Notes',
+      title: 'Ouvrir Le Carnet du Trader',
       contexts: ['page', 'selection']
     })
 

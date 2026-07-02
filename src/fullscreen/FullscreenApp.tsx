@@ -613,7 +613,7 @@ function FullscreenApp() {
       <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 border-r border-border bg-background overflow-hidden flex flex-col`}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-semibold text-foreground">Trading Notes</h1>
+            <h1 className="text-lg font-semibold text-foreground">Le Carnet du Trader</h1>
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1 rounded-md hover:bg-muted"
@@ -775,7 +775,7 @@ function FullscreenApp() {
                 )
               ) : (
                 <h2 className="text-lg font-semibold text-foreground">
-                  Trading Notes - Vue Étendue
+                  Le Carnet du Trader - Vue Étendue
                 </h2>
               )}
               {currentNote && !isEditingTitle && (
@@ -905,7 +905,7 @@ function FullscreenApp() {
                   <>
                     <BookOpen size={64} className="text-muted-foreground mb-6" />
                     <h3 className="text-2xl font-semibold text-foreground mb-4">
-                      Bienvenue dans Trading Notes
+                      Bienvenue dans Le Carnet du Trader
                     </h3>
                     <p className="text-muted-foreground max-w-md mb-6">
                       Sélectionnez une note dans la sidebar ou écrivez dans la zone ci-dessous.

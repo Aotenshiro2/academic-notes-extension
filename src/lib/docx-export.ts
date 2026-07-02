@@ -329,7 +329,7 @@ export async function buildDocxBlob(note: AcademicNote): Promise<{ blob: Blob; f
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: 'Trading Notes by AOKnowledge',
+                    text: 'Le Carnet du Trader by AOKnowledge',
                     color: 'AAAAAA',
                     size: 16,
                     font: 'Calibri',

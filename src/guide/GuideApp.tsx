@@ -356,7 +356,7 @@ export default function GuideApp() {
               <ArrowLeft size={18} />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Trading Notes</h1>
+              <h1 className="text-xl font-bold text-foreground">Le Carnet du Trader</h1>
               <p className="text-xs text-muted-foreground">Guide d'utilisation — v{version}</p>
             </div>
           </div>
@@ -458,7 +458,7 @@ export default function GuideApp() {
 
         {/* Footer */}
         <div className="text-center py-6 text-xs text-muted-foreground/60">
-          Trading Notes by AOKnowledge — v{version}
+          Le Carnet du Trader by AOKnowledge — v{version}
         </div>
       </main>
     </div>

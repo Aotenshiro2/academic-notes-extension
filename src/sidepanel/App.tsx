@@ -15,7 +15,6 @@ import EmptyNoteView from '@/components/EmptyNoteView'
 import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
 import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
-import SkoolBanner from '@/components/SkoolBanner'
 import SettingsView from '@/components/SettingsView'
 import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -653,9 +652,6 @@ function App() {
 
   return (
     <div className="sidebar-container">
-      {/* Bannière promo au-dessus du header */}
-      <SkoolBanner />
-      
       <Header
         onShowHistory={() => setShowHistoryDropdown(!showHistoryDropdown)}
         onHome={handleGoHome}
@@ -763,7 +759,7 @@ function App() {
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a')
                   a.href = url
-                  a.download = `trading-notes-backup-${new Date().toISOString().split('T')[0]}.json`
+                  a.download = `carnet-du-trader-backup-${new Date().toISOString().split('T')[0]}.json`
                   a.click()
                   URL.revokeObjectURL(url)
                 }}

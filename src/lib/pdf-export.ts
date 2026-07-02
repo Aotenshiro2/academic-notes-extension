@@ -439,7 +439,7 @@ export async function exportNoteToPDF(note: AcademicNote): Promise<void> {
     pdf.setFontSize(8)
     pdf.setTextColor(180, 180, 180)
     pdf.text(
-      `Trading Notes by AOKnowledge - Page ${i}/${totalPages}`,
+      `Le Carnet du Trader by AOKnowledge - Page ${i}/${totalPages}`,
       pageWidth / 2,
       pageHeight - 8,
       { align: 'center' }

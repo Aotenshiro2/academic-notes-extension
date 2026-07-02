@@ -68,7 +68,7 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
         {/* Titre */}
         <div>
           <h1 className="text-lg font-semibold text-foreground">
-            Trading Notes <span className="text-sm font-normal text-muted-foreground">by AOK</span>
+            Le Carnet du Trader <span className="text-sm font-normal text-muted-foreground">by AOK</span>
           </h1>
         </div>
 
