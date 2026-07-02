@@ -5,6 +5,7 @@ import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
 import MessageBlock from './MessageBlock'
 import MessageDetailPanel from './MessageDetailPanel'
+import TagPickerPopup from './TagPickerPopup'
 import type { AcademicNote, NoteMessage } from '@/types/academic'
 
 interface CurrentNoteViewProps {
@@ -21,9 +22,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [panelMessage, setPanelMessage] = useState<NoteMessage | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
-  const [addingTag, setAddingTag] = useState(false)
-  const [tagDraft, setTagDraft] = useState('')
-  const tagInputRef = useRef<HTMLInputElement>(null)
+  const [tagPickerOpen, setTagPickerOpen] = useState(false)
+  const [tagPickerPos, setTagPickerPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   const isFirstLoad = useRef(true)
 
@@ -37,7 +37,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || addingTag) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -142,16 +142,14 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
-  const handleAddTag = useCallback(async () => {
-    if (!note || !tagDraft.trim()) { setAddingTag(false); setTagDraft(''); return }
-    const newTag = tagDraft.trim().replace(/^#/, '')
-    if (!newTag || note.tags.includes(newTag)) { setAddingTag(false); setTagDraft(''); return }
+  const handleAddTag = useCallback(async (tagName: string) => {
+    if (!note) return
+    const newTag = tagName.trim().replace(/^#/, '')
+    if (!newTag || note.tags.includes(newTag)) return
     await storage.saveNote({ ...note, tags: [...note.tags, newTag] })
-    setAddingTag(false)
-    setTagDraft('')
     await loadNote()
     onNoteUpdate?.()
-  }, [note, tagDraft, onNoteUpdate])
+  }, [note, onNoteUpdate])
 
   const handleRemoveTag = useCallback(async (tag: string) => {
     if (!note) return
@@ -230,42 +228,44 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         )}
       </div>
 
-      {/* Tags éditables */}
+      {/* Tags de note — même taxonomie que les tags de messages (picker journal) */}
       <div className="flex flex-wrap items-center gap-1.5 pb-1">
         {note.tags.map((tag) => (
-          <button
+          <span
             key={tag}
-            onClick={() => handleRemoveTag(tag)}
-            className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors"
-            title="Supprimer ce tag"
+            className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full"
           >
             #{tag}
-            <X size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
+            <button
+              onClick={() => handleRemoveTag(tag)}
+              className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
+              title="Retirer ce tag"
+              aria-label={`Retirer le tag ${tag}`}
+            >
+              <X size={9} />
+            </button>
+          </span>
         ))}
-        {addingTag ? (
-          <input
-            ref={tagInputRef}
-            autoFocus
-            value={tagDraft}
-            onChange={e => setTagDraft(e.target.value)}
-            onBlur={handleAddTag}
-            onKeyDown={e => {
-              if (e.key === 'Enter') { e.preventDefault(); handleAddTag() }
-              if (e.key === 'Escape') { setAddingTag(false); setTagDraft('') }
-            }}
-            placeholder="tag..."
-            className="px-2 py-0.5 text-xs bg-muted rounded-full border border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20 w-20"
+        <button
+          onClick={e => {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+            setTagPickerOpen(true)
+          }}
+          className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors"
+          title="Ajouter un tag"
+        >
+          <Plus size={10} />
+          <span>tag</span>
+        </button>
+        {tagPickerOpen && (
+          <TagPickerPopup
+            position={tagPickerPos}
+            currentTags={note.tags}
+            onAdd={handleAddTag}
+            onRemove={handleRemoveTag}
+            onClose={() => setTagPickerOpen(false)}
           />
-        ) : (
-          <button
-            onClick={() => setAddingTag(true)}
-            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors"
-            title="Ajouter un tag"
-          >
-            <Plus size={10} />
-            <span>tag</span>
-          </button>
         )}
       </div>
 

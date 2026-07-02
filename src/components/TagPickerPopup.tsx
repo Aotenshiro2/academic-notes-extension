@@ -72,6 +72,17 @@ function TagPickerPopup({ position, currentTags, onAdd, onRemove, onClose }: Tag
   )
   const canCreate = inputValue.trim() && !allTags.some(t => t.name.toLowerCase() === inputValue.trim().toLowerCase())
 
+  // Grouper par catégorie (Thématique, Niveau, …) — les sans-catégorie en dernier
+  const grouped = filteredTags.reduce<Record<string, UserTag[]>>((acc, t) => {
+    const key = t.category?.trim() || ''
+    ;(acc[key] = acc[key] ?? []).push(t)
+    return acc
+  }, {})
+  const categories = Object.keys(grouped).sort((a, b) =>
+    a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)
+  )
+  const hasCategories = categories.some(c => c !== '')
+
   // Compute position — open below button if room, above if not
   const POPUP_HEIGHT = 240
   const spaceBelow = window.innerHeight - position.bottom - 8
@@ -106,32 +117,41 @@ function TagPickerPopup({ position, currentTags, onAdd, onRemove, onClose }: Tag
         />
       </div>
 
-      {/* Existing tags list */}
+      {/* Existing tags list — grouped by category */}
       <div className="max-h-44 overflow-y-auto py-1">
         {filteredTags.length === 0 && !canCreate && (
           <p className="px-3 py-2 text-xs text-muted-foreground/60">Aucun tag trouvé</p>
         )}
-        {filteredTags.map(tag => {
-          const isActive = currentTags.includes(tag.name)
-          return (
-            <button
-              key={tag.id}
-              onClick={() => handleToggleTag(tag.name)}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors text-left ${isActive ? 'bg-muted/30' : ''}`}
-            >
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: tag.color ?? '#3b82f6' }}
-              />
-              <span className={`flex-1 truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
-                {tag.name}
-              </span>
-              {isActive && (
-                <span className="text-[9px] text-muted-foreground">✓</span>
-              )}
-            </button>
-          )
-        })}
+        {categories.map(category => (
+          <div key={category || '__none__'}>
+            {hasCategories && (
+              <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
+                {category || 'Autres'}
+              </p>
+            )}
+            {grouped[category].map(tag => {
+              const isActive = currentTags.includes(tag.name)
+              return (
+                <button
+                  key={tag.id}
+                  onClick={() => handleToggleTag(tag.name)}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors text-left ${isActive ? 'bg-muted/30' : ''}`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: tag.color ?? '#3b82f6' }}
+                  />
+                  <span className={`flex-1 truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
+                    {tag.name}
+                  </span>
+                  {isActive && (
+                    <span className="text-[9px] text-muted-foreground">✓</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
 
         {/* Create new tag option */}
         {canCreate && (
