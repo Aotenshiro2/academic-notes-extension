@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -7,7 +7,7 @@ import MessageBlock from './MessageBlock'
 import MessageDetailPanel from './MessageDetailPanel'
 import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause } from '@/types/academic'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome } from '@/types/academic'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -21,6 +21,17 @@ const GRADE_TEXT_CLASS: Record<AnnotationGrade, string> = {
   A: 'text-green-600 dark:text-green-400',
   B: 'text-amber-600 dark:text-amber-400',
   C: 'text-red-600 dark:text-red-400',
+}
+
+const OUTCOME_LABEL: Record<TradeOutcome, string> = { gain: 'Gain', perte: 'Perte', be: 'BE' }
+const OUTCOME_CLASS: Record<TradeOutcome, string> = {
+  gain: 'text-green-600 dark:text-green-400',
+  perte: 'text-red-600 dark:text-red-400',
+  be: 'text-muted-foreground',
+}
+
+function formatTradeTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 interface CurrentNoteViewProps {
@@ -39,8 +50,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [titleDraft, setTitleDraft] = useState('')
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [tagPickerPos, setTagPickerPos] = useState({ top: 0, bottom: 0, left: 0 })
-  const [notationOpen, setNotationOpen] = useState(false)
+  // Cible de notation : {} = note entière, { tradeRef } = un segment de trade
+  const [notationTarget, setNotationTarget] = useState<{ tradeRef?: string } | null>(null)
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
+  const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   const isFirstLoad = useRef(true)
 
@@ -54,7 +67,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen || notationOpen) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -175,33 +188,49 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [note, onNoteUpdate])
 
-  // Annotation courante de la note (messageRef absent = jugement de la note entière)
+  // Annotation courante de la note (ni messageRef ni tradeRef = jugement de la note entière)
   const noteAnnotation: Annotation | undefined = useMemo(() => {
     return (note?.annotations ?? [])
-      .filter(a => !a.messageRef)
+      .filter(a => !a.messageRef && !a.tradeRef)
+      .sort((a, b) => b.createdAt - a.createdAt)[0]
+  }, [note])
+
+  const findTradeAnnotation = useCallback((tradeId: string): Annotation | undefined => {
+    return (note?.annotations ?? [])
+      .filter(a => a.tradeRef === tradeId)
       .sort((a, b) => b.createdAt - a.createdAt)[0]
   }, [note])
 
   const handleSaveNotation = useCallback(async (grade: AnnotationGrade, phrase: string, cause: AnnotationCause | null) => {
-    if (!note) return
-    const others = (note.annotations ?? []).filter(a => a.messageRef)
+    if (!note || !notationTarget) return
+    const tradeRef = notationTarget.tradeRef
+    const existing = tradeRef ? findTradeAnnotation(tradeRef) : noteAnnotation
+    const rest = (note.annotations ?? []).filter(a => a !== existing)
     // Re-jugement = même id (upsert idempotent côté journal, pas de doublon en relecture)
-    const updated: Annotation = noteAnnotation
-      ? { ...noteAnnotation, grade, phrase, causeCategory: cause ?? undefined }
+    const updated: Annotation = existing
+      ? { ...existing, grade, phrase, causeCategory: cause ?? undefined }
       : {
           id: crypto.randomUUID(),
           noteId: note.id,
+          tradeRef,
           grade,
           phrase,
           causeCategory: cause ?? undefined,
           createdAt: Date.now(),
           reviewDueAt: Date.now() + REVIEW_DELAY_MS,
         }
-    await storage.saveNote({ ...note, annotations: [...others, updated] })
+    await storage.saveNote({ ...note, annotations: [...rest, updated] })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
-  }, [note, noteAnnotation, onNoteUpdate])
+  }, [note, notationTarget, noteAnnotation, findTradeAnnotation, onNoteUpdate])
+
+  const handleCloseTrade = useCallback(async (tradeId: string, outcome: TradeOutcome) => {
+    await storage.closeTrade(noteId, tradeId, outcome)
+    setClosingTradeId(null)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
 
   if (isLoading) {
     return (
@@ -273,7 +302,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               onClick={e => {
                 const rect = e.currentTarget.getBoundingClientRect()
                 setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
-                setNotationOpen(true)
+                setNotationTarget({})
               }}
               className={`flex items-center justify-center w-[22px] h-[22px] rounded-full text-[11px] font-semibold flex-shrink-0 transition-colors ${
                 noteAnnotation
@@ -286,14 +315,6 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               {noteAnnotation ? noteAnnotation.grade : '±'}
             </button>
           </>
-        )}
-        {notationOpen && (
-          <NotationPopover
-            position={notationPos}
-            existing={noteAnnotation}
-            onSave={handleSaveNotation}
-            onClose={() => setNotationOpen(false)}
-          />
         )}
       </div>
 
@@ -344,7 +365,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           onClick={e => {
             const rect = e.currentTarget.getBoundingClientRect()
             setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
-            setNotationOpen(true)
+            setNotationTarget({})
           }}
           className="flex items-baseline gap-1.5 text-left w-full rounded hover:bg-muted/30 px-1 py-0.5 -mx-1 transition-colors"
           title="Modifier la notation"
@@ -381,21 +402,117 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </div>
       )}
 
-      {/* Contenu de la note — blocs messages */}
-      {note.messages && note.messages.length > 0 ? (
+      {/* Contenu de la note — blocs messages, segmentés par trade */}
+      {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) ? (
         <div className="space-y-3">
-          {note.messages.map(message => (
-            <MessageBlock
-              key={message.id}
-              message={message}
-              noteId={noteId}
-              onUpdate={handleUpdateMessage}
-              onDelete={handleDeleteMessage}
-              onTagsUpdate={loadNote}
-              onImageClick={handleImageClick}
-              onOpenPanel={() => setPanelMessage(message)}
-            />
-          ))}
+          {(() => {
+            const trades = note.trades ?? []
+            const tradesById = new Map(trades.map(t => [t.id, t]))
+            const tradeNumber = (id: string) => trades.findIndex(t => t.id === id) + 1
+            const seen = new Set<string>()
+            const items: React.ReactNode[] = []
+
+            const renderMarker = (trade: TradeSegment) => {
+              const n = tradeNumber(trade.id)
+              const tradeAnnotation = findTradeAnnotation(trade.id)
+              return (
+                <div key={`trade-${trade.id}`} className="flex items-center gap-2 pt-1">
+                  <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Crosshair size={10} />
+                    Trade {n} · {formatTradeTime(trade.startedAt)}
+                  </span>
+                  <span className="flex-1 border-t border-blue-500/20" />
+                  {closingTradeId === trade.id ? (
+                    <span className="flex items-center gap-1">
+                      {(['gain', 'perte', 'be'] as TradeOutcome[]).map(o => (
+                        <button
+                          key={o}
+                          onClick={() => handleCloseTrade(trade.id, o)}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border border-border hover:bg-muted transition-colors ${OUTCOME_CLASS[o]}`}
+                        >
+                          {OUTCOME_LABEL[o]}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setClosingTradeId(null)}
+                        className="p-0.5 text-muted-foreground/60 hover:text-foreground"
+                        aria-label="Annuler"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ) : !trade.closedAt ? (
+                    <>
+                      <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70">en cours</span>
+                      <button
+                        onClick={() => setClosingTradeId(trade.id)}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        Clore
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setClosingTradeId(trade.id)}
+                        className={`text-[10px] font-medium hover:underline underline-offset-2 ${trade.outcome ? OUTCOME_CLASS[trade.outcome] : 'text-muted-foreground/60'}`}
+                        title="Modifier le résultat"
+                      >
+                        {trade.outcome ? OUTCOME_LABEL[trade.outcome] : 'Résultat ?'}
+                      </button>
+                      <button
+                        onClick={e => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                          setNotationTarget({ tradeRef: trade.id })
+                        }}
+                        className={`flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold flex-shrink-0 transition-colors ${
+                          tradeAnnotation
+                            ? GRADE_BADGE_CLASS[tradeAnnotation.grade]
+                            : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                        }`}
+                        title={tradeAnnotation ? `${tradeAnnotation.grade} — ${tradeAnnotation.phrase}` : 'Noter ce trade'}
+                        aria-label={tradeAnnotation ? `Notation ${tradeAnnotation.grade} du trade ${n}` : `Noter le trade ${n}`}
+                      >
+                        {tradeAnnotation ? tradeAnnotation.grade : '±'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            }
+
+            for (const message of note.messages ?? []) {
+              const tRef = message.tradeRef
+              if (tRef && !seen.has(tRef) && tradesById.has(tRef)) {
+                seen.add(tRef)
+                items.push(renderMarker(tradesById.get(tRef)!))
+              }
+              items.push(
+                <div key={message.id} className={tRef && tradesById.has(tRef) ? 'border-l-2 border-blue-500/25 pl-2.5 ml-1' : undefined}>
+                  <MessageBlock
+                    message={message}
+                    noteId={noteId}
+                    onUpdate={handleUpdateMessage}
+                    onDelete={handleDeleteMessage}
+                    onTagsUpdate={loadNote}
+                    onImageClick={handleImageClick}
+                    onOpenPanel={() => setPanelMessage(message)}
+                  />
+                </div>
+              )
+            }
+
+            // Trades sans messages (fraîchement démarrés ou vides) — marqueur en fin de fil
+            for (const trade of trades) {
+              if (!seen.has(trade.id)) {
+                seen.add(trade.id)
+                items.push(renderMarker(trade))
+              }
+            }
+
+            return items
+          })()}
         </div>
       ) : note.content ? (
         /* Fallback pour anciennes notes sans messages */
@@ -414,6 +531,17 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           />
         </div>
       ) : null}
+
+      {/* Popover de notation — note entière ou segment de trade */}
+      {notationTarget && (
+        <NotationPopover
+          position={notationPos}
+          existing={notationTarget.tradeRef ? findTradeAnnotation(notationTarget.tradeRef) : noteAnnotation}
+          outcome={notationTarget.tradeRef ? (note.trades ?? []).find(t => t.id === notationTarget.tradeRef)?.outcome : undefined}
+          onSave={handleSaveNotation}
+          onClose={() => setNotationTarget(null)}
+        />
+      )}
 
       {/* Message Detail Panel overlay */}
       {panelMessage && (

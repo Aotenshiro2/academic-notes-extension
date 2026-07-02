@@ -7,6 +7,7 @@ export interface NoteMessage {
   content: string
   timestamp: number
   tags?: string[]
+  tradeRef?: string // segment de trade auquel ce bloc appartient (réassignable)
   metadata?: {
     sourceUrl?: string
     sourceTitle?: string
@@ -31,9 +32,10 @@ export interface Annotation {
   id: string
   noteId?: string        // id de la note extension (résolu via extensionNoteId côté journal)
   messageRef?: string    // NoteMessage.id si le jugement porte sur un message précis
+  tradeRef?: string      // TradeSegment.id si le jugement porte sur un trade
   grade: AnnotationGrade
   phrase: string         // « pourquoi ce trade/cette note mérite cette note »
-  causeCategory?: AnnotationCause
+  causeCategory?: AnnotationCause // MC1/Tendler — LE jugement des SL (mis en avant sur perte)
   createdAt: number
   reviewDueAt?: number   // échéance de relecture (~2 semaines)
   reviewedAt?: number    // relue le (absent = pas encore relue)
@@ -56,9 +58,23 @@ export interface AcademicNote {
   metadata: ContentMetadata
   tags: string[]
   concepts: string[]
-  annotations?: Annotation[] // notation A/B/C (note entière : messageRef absent)
+  annotations?: Annotation[] // notation A/B/C (note entière : messageRef/tradeRef absents)
+  trades?: TradeSegment[] // segments de trade de la séance (threads dans la note)
   screenshots?: Screenshot[]
   mindmapStructure?: MindmapNode[]
+}
+
+// ── Segments de trade ─────────────────────────────────────────────────────────
+// Un trade = une IDÉE de trade (A → B, invalidation SL / validation TP) ; il peut
+// contenir plusieurs positions (clôtures partielles). Un seul segment actif à la
+// fois : en démarrer un nouveau clôt le précédent ; les blocs restent réassignables.
+export type TradeOutcome = 'gain' | 'perte' | 'be'
+
+export interface TradeSegment {
+  id: string
+  startedAt: number
+  closedAt?: number
+  outcome?: TradeOutcome // saisi à la clôture (3 chips), modifiable ensuite
 }
 
 export type ContentType = 

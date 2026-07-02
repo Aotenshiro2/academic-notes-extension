@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import type { Annotation, AnnotationGrade, AnnotationCause } from '@/types/academic'
+import type { Annotation, AnnotationGrade, AnnotationCause, TradeOutcome } from '@/types/academic'
 
 interface NotationPopoverProps {
   position: { top: number; bottom: number; left: number }
   existing?: Annotation
+  outcome?: TradeOutcome // contexte trade : sur une perte, la cause est mise en avant (MC1/Tendler)
   onSave: (grade: AnnotationGrade, phrase: string, cause: AnnotationCause | null) => void
   onClose: () => void
 }
@@ -23,7 +24,7 @@ const CAUSES: { value: AnnotationCause; label: string }[] = [
 const POPUP_WIDTH = 264
 const POPUP_HEIGHT = 240
 
-function NotationPopover({ position, existing, onSave, onClose }: NotationPopoverProps) {
+function NotationPopover({ position, existing, outcome, onSave, onClose }: NotationPopoverProps) {
   const [grade, setGrade] = useState<AnnotationGrade | null>(existing?.grade ?? null)
   const [phrase, setPhrase] = useState(existing?.phrase ?? '')
   const [cause, setCause] = useState<AnnotationCause | null>(existing?.causeCategory ?? null)
@@ -115,7 +116,12 @@ function NotationPopover({ position, existing, onSave, onClose }: NotationPopove
         className="w-full px-2.5 py-1.5 text-xs bg-muted/40 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50"
       />
 
-      {/* Cause (optionnel) */}
+      {/* Cause — LE jugement des SL (MC1/Tendler), mis en avant sur une perte */}
+      {outcome === 'perte' && (
+        <p className="text-[10px] font-medium text-red-600 dark:text-red-400 px-0.5">
+          Cause du stop loss ?
+        </p>
+      )}
       <div className="flex items-center gap-1.5 flex-wrap">
         {CAUSES.map(c => (
           <button

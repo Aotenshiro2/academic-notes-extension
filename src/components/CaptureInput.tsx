@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize } from '@/lib/image-utils'
 
 export interface CaptureInputHandle {
@@ -17,6 +17,8 @@ interface CaptureInputProps {
   onSubmit?: (content: string) => void
   onSmartCapture?: () => void
   isSmartCapturing?: boolean
+  onStartTrade?: () => void
+  hasActiveTrade?: boolean
   className?: string
   currentPageInfo?: {
     url: string
@@ -33,6 +35,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   onSubmit,
   onSmartCapture,
   isSmartCapturing = false,
+  onStartTrade,
+  hasActiveTrade = false,
   currentPageInfo,
   className = ''
 }, ref) {
@@ -390,8 +394,28 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           />
         </div>
 
-        {/* Right buttons: + and send */}
+        {/* Right buttons: trade, + and send */}
         <div className="flex-shrink-0 flex items-center gap-1 self-end pb-2.5 pr-2.5">
+          {/* Trade button — démarre un segment (clôt l'actif s'il y en a un) */}
+          {onStartTrade && (
+            <button
+              type="button"
+              onClick={onStartTrade}
+              className={`
+                w-8 h-8 rounded-full flex items-center justify-center
+                transition-all duration-200
+                ${hasActiveTrade
+                  ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                  : 'text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10'
+                }
+              `}
+              title={hasActiveTrade ? 'Trade en cours — cliquer démarre le suivant' : 'Je prends un trade'}
+              aria-label="Démarrer un trade"
+            >
+              <Crosshair size={16} />
+            </button>
+          )}
+
           {/* Plus button */}
           <div className="relative" ref={menuRef}>
             <button

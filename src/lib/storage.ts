@@ -578,10 +578,14 @@ export const storage = {
     const note = await this.getNote(noteId)
     if (!note) return null
 
+    // Segment de trade actif → le bloc s'y rattache automatiquement
+    const activeTrade = (note.trades ?? []).find(t => !t.closedAt)
+
     const newMessage: NoteMessage = {
       ...message,
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ...(activeTrade && !message.tradeRef ? { tradeRef: activeTrade.id } : {})
     }
 
     // Initialize messages array if not present
@@ -606,6 +610,37 @@ export const storage = {
 
     await this.saveNote(updatedNote)
     return newMessage.id
+  },
+
+  // ---- TRADES (segments) ----
+  /** Démarre un segment de trade dans la note ; clôt l'actif s'il y en a un. */
+  async startTrade(noteId: string): Promise<string | null> {
+    const note = await this.getNote(noteId)
+    if (!note) return null
+    const now = Date.now()
+    const trades = (note.trades ?? []).map(t => t.closedAt ? t : { ...t, closedAt: now })
+    const newTrade = { id: crypto.randomUUID(), startedAt: now }
+    await this.saveNote({ ...note, trades: [...trades, newTrade] })
+    return newTrade.id
+  },
+
+  /** Clôt un segment (outcome optionnel : gain/perte/be). */
+  async closeTrade(noteId: string, tradeId: string, outcome?: import('@/types/academic').TradeOutcome): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const trades = (note.trades ?? []).map(t =>
+      t.id === tradeId ? { ...t, closedAt: t.closedAt ?? Date.now(), ...(outcome ? { outcome } : {}) } : t
+    )
+    await this.saveNote({ ...note, trades })
+  },
+
+  /** Clôt silencieusement le segment actif (fermeture/changement de note). */
+  async closeActiveTrade(noteId: string): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const active = (note.trades ?? []).find(t => !t.closedAt)
+    if (!active) return
+    await this.closeTrade(noteId, active.id)
   },
 
   /**

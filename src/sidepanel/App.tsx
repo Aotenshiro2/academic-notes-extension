@@ -233,6 +233,54 @@ function App() {
     setCurrentNoteId(null)
   }
 
+  // ---- Trades ----
+  // Fermer/quitter la note clôt silencieusement le segment actif
+  const prevNoteIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevNoteIdRef.current
+    if (prev && prev !== currentNoteId) {
+      storage.closeActiveTrade(prev).catch(() => {})
+    }
+    prevNoteIdRef.current = currentNoteId
+  }, [currentNoteId])
+
+  // Démarrer un trade : dans la note courante, ou dans une note de séance créée à la volée
+  const handleStartTrade = async () => {
+    try {
+      let noteId = currentNoteId
+      if (!noteId) {
+        const newNoteId = Date.now().toString()
+        const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+        const newNote: AcademicNote = {
+          id: newNoteId,
+          title: `Séance du ${today}`,
+          content: '',
+          url: '',
+          timestamp: Date.now(),
+          type: 'manual',
+          tags: [],
+          concepts: [],
+          screenshots: [],
+          metadata: { domain: '', title: `Séance du ${today}`, language: 'fr' }
+        }
+        await storage.saveNote(newNote)
+        noteId = newNoteId
+        setCurrentNoteId(newNoteId)
+      }
+      await storage.startTrade(noteId)
+      await loadData()
+      setNoteRefreshTrigger(Date.now())
+      setTimeout(() => {
+        editorRef.current?.focus()
+        if (noteDisplayRef.current) {
+          noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
+        }
+      }, 100)
+    } catch (error) {
+      console.error('Error starting trade:', error)
+    }
+  }
+
   // ---- Folder handlers ----
   const handleFolderCreate = async (name: string) => {
     await storage.saveFolder({ id: crypto.randomUUID(), name, createdAt: Date.now() })
@@ -786,6 +834,8 @@ function App() {
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}
+            onStartTrade={handleStartTrade}
+            hasActiveTrade={!!currentNote?.trades?.some(t => !t.closedAt)}
             currentPageInfo={currentPageInfo || undefined}
             className="w-full"
           />

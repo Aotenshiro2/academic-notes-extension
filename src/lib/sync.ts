@@ -124,6 +124,7 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     // Jugements au niveau note — persistés côté journal (NoteTag / Note.concepts)
     tags: note.tags ?? [],
     concepts: note.concepts ?? [],
+    trades: note.trades ?? [],
     folderId: note.folderId ?? null,
     createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
@@ -203,6 +204,7 @@ async function syncAnnotations(note: AcademicNote, token: string): Promise<void>
           id: a.id,
           noteId: note.id, // extensionNoteId — résolu côté serveur
           messageRef: a.messageRef ?? null,
+          tradeRef: a.tradeRef ?? null,
           grade: a.grade,
           phrase: a.phrase,
           causeCategory: a.causeCategory ?? null,
@@ -324,6 +326,7 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
           metadata: { domain },
           tags: Array.isArray(jn.tags) ? jn.tags.filter((t: unknown) => typeof t === 'string') : [],
           concepts: Array.isArray(jn.concepts) ? jn.concepts.filter((c: unknown) => typeof c === 'string') : [],
+          trades: Array.isArray(jn.trades) ? jn.trades : [],
         }
       })
 
