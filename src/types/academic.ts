@@ -6,6 +6,7 @@ export interface NoteMessage {
   type: NoteMessageType
   content: string
   timestamp: number
+  tags?: string[]
   metadata?: {
     sourceUrl?: string
     sourceTitle?: string

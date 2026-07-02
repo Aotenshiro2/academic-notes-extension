@@ -1,7 +1,6 @@
 import type { AcademicNote } from '@/types/academic'
 import { getSession, getBearerToken } from './auth'
 import { compressImage } from './image-utils'
-import { supabase, SUPABASE_URL } from './supabase'
 
 const JOURNAL_API = 'https://journal-d-etude-beta.vercel.app'
 
@@ -24,10 +23,8 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
 }
 
 /**
- * Compresse et uploade une data URL vers Supabase Storage via fetch direct.
- * Utilise le Bearer token explicitement pour éviter les problèmes d'auth
- * du client JS Supabase dans le contexte Chrome extension.
- * Retourne l'URL publique, ou null si l'upload échoue.
+ * Uploade une image via le proxy du journal (POST /api/upload-image).
+ * Le proxy utilise la service role Supabase côté serveur → plus de 500.
  * Déduplication automatique : même image = même hash = même fichier (upsert).
  */
 async function uploadImageToStorage(dataUrl: string, userId: string, accessToken: string): Promise<string | null> {
@@ -37,26 +34,23 @@ async function uploadImageToStorage(dataUrl: string, userId: string, accessToken
     try {
       compressed = await compressImage(dataUrl, SYNC_IMG_OPTIONS)
     } catch {
-      // Canvas indisponible (service worker MV3) — upload sans compression
       compressed = dataUrl
     }
     const hash = await shortHash(compressed)
-    const { blob, ext } = dataUrlToBlob(compressed)
-    const path = `${userId}/images/${hash}.${ext}`
-    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/extension-images/${path}`, {
+    const { ext } = dataUrlToBlob(compressed)
+    const path = `images/${hash}.${ext}`
+
+    const response = await fetch(`${JOURNAL_API}/api/upload-image`, {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': blob.type,
-        'x-upsert': 'true',
       },
-      body: blob,
+      body: JSON.stringify({ imageDataUrl: compressed, path }),
     })
-    if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText)
-      throw new Error(`${response.status} ${text}`)
-    }
-    return `${SUPABASE_URL}/storage/v1/object/public/extension-images/${path}`
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const { url } = await response.json()
+    return url as string
   } catch (err) {
     console.warn('[AOK Sync] Image upload failed:', err)
     return null
@@ -64,7 +58,7 @@ async function uploadImageToStorage(dataUrl: string, userId: string, accessToken
 }
 
 async function uploadHtmlImages(html: string, userId: string, accessToken: string): Promise<string> {
-  const regex = /(<img[^>]+src=")(data:[^"]+)("[^>]*>)/gi
+  const regex = /(<img[^>]+src=["'])(data:[^"']+)(["'][^>]*>)/gi
   const matches = [...html.matchAll(regex)]
   let result = html
   for (const match of matches) {
@@ -93,20 +87,22 @@ export interface SyncResult {
 async function toJournalPayload(note: AcademicNote, userId: string, accessToken: string) {
   const IMAGE_TYPES = new Set(['image', 'screenshot', 'capture'])
 
-  const [processedContent, processedMessages] = await Promise.all([
-    uploadHtmlImages(note.content, userId, accessToken),
-    Promise.all(
-      (note.messages ?? []).map(async (m) => {
-        if (IMAGE_TYPES.has(m.type) && m.content.startsWith('data:')) {
-          const url = await uploadImageToStorage(m.content, userId, accessToken)
-          if (url) return { ...m, content: url }
-          // Upload échoué → placeholder texte pour ne pas faire exploser le payload
-          return { ...m, type: 'text' as const, content: '[Image visible dans l\'extension — upload Supabase Storage échoué]' }
-        }
-        return m
-      })
-    ),
-  ])
+  // Upload séquentiel pour éviter de saturer Supabase Storage (les uploads parallèles causaient des 500)
+  const processedContent = await uploadHtmlImages(note.content, userId, accessToken)
+  const processedMessages: typeof note.messages = []
+  for (const m of note.messages ?? []) {
+    if (IMAGE_TYPES.has(m.type) && m.content.startsWith('data:')) {
+      const url = await uploadImageToStorage(m.content, userId, accessToken)
+      if (url) {
+        processedMessages.push({ ...m, content: url })
+      } else {
+        // Upload échoué → placeholder texte pour ne pas faire exploser le payload
+        processedMessages.push({ ...m, type: 'text' as const, content: '[Image visible dans l\'extension — upload Supabase Storage échoué]' })
+      }
+    } else {
+      processedMessages.push(m)
+    }
+  }
 
   // Fallback : si content est vide (Smart Capture), reconstruire depuis les messages texte
   let finalContent = processedContent
@@ -124,7 +120,7 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     sourceUrl: note.url || null,
     favicon: note.favicon ?? null,
     lastSyncAt: new Date().toISOString(),
-    messages: processedMessages,
+    messages: processedMessages.map(m => ({ ...m, tags: m.tags ?? [] })),
     folderId: note.folderId ?? null,
     createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
@@ -143,13 +139,6 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
     if (!token || !session) {
       return { success: false, error: 'Not authenticated' }
     }
-
-    // Charger la session dans l'état interne du client Supabase
-    // → nécessaire pour que storage.upload() parte avec le bon JWT (auth RLS)
-    await supabase.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token ?? '',
-    })
 
     const payload = await toJournalPayload(note, session.user.id, token)
 
@@ -302,6 +291,31 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
     return { notes }
   } catch (err) {
     return { notes: [], error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+export interface UserTag {
+  id: string
+  name: string
+  color: string
+  category?: string | null
+}
+
+/**
+ * Fetch all tags for the current user from the journal.
+ * Used by the tag picker in MessageBlock.
+ */
+export async function fetchUserTags(): Promise<UserTag[]> {
+  const token = await getBearerToken()
+  if (!token) return []
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/tags`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
   }
 }
 
