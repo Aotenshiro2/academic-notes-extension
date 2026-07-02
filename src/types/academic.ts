@@ -21,6 +21,24 @@ export interface NoteFolder {
   createdAt: number
 }
 
+// ── Notation (masterclass edge) ───────────────────────────────────────────────
+// Un jugement posé en 2e temps, découplé du résultat : grade + une phrase + cause.
+// Miroir du modèle Annotation du journal (apps/journal-d-etude, /api/annotations).
+export type AnnotationGrade = 'A' | 'B' | 'C'
+export type AnnotationCause = 'technique' | 'connaissance' | 'emotionnel'
+
+export interface Annotation {
+  id: string
+  noteId?: string        // id de la note extension (résolu via extensionNoteId côté journal)
+  messageRef?: string    // NoteMessage.id si le jugement porte sur un message précis
+  grade: AnnotationGrade
+  phrase: string         // « pourquoi ce trade/cette note mérite cette note »
+  causeCategory?: AnnotationCause
+  createdAt: number
+  reviewDueAt?: number   // échéance de relecture (~2 semaines)
+  reviewedAt?: number    // relue le (absent = pas encore relue)
+}
+
 export interface AcademicNote {
   id: string
   title: string

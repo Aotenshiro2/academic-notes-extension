@@ -121,6 +121,9 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     favicon: note.favicon ?? null,
     lastSyncAt: new Date().toISOString(),
     messages: processedMessages.map(m => ({ ...m, tags: m.tags ?? [] })),
+    // Jugements au niveau note — persistés côté journal (NoteTag / Note.concepts)
+    tags: note.tags ?? [],
+    concepts: note.concepts ?? [],
     folderId: note.folderId ?? null,
     createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
@@ -283,8 +286,8 @@ export async function pullFromJournal(): Promise<{ notes: AcademicNote[]; error?
           lastSyncAt: Date.now(),
           type: 'webpage' as const,
           metadata: { domain },
-          tags: [],
-          concepts: [],
+          tags: Array.isArray(jn.tags) ? jn.tags.filter((t: unknown) => typeof t === 'string') : [],
+          concepts: Array.isArray(jn.concepts) ? jn.concepts.filter((c: unknown) => typeof c === 'string') : [],
         }
       })
 
