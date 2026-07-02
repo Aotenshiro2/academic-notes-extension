@@ -91,8 +91,8 @@ const SimpleRichEditor = forwardRef<SimpleRichEditorHandle, SimpleRichEditorProp
       let processedDataUrl = dataUrl
       
       // Compresser l'image si elle est trop grande
-      if (originalSize > 300000) { // 300KB
-        processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.preview)
+      if (originalSize > 1500000) { // 1.5MB
+        processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.full)
         console.log(`Image compressée: ${formatFileSize(originalSize)} → ${formatFileSize(estimateImageSize(processedDataUrl))}`)
       }
       

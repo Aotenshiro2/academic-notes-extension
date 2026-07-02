@@ -35,8 +35,10 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 import TabPicker from '@/components/TabPicker'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
+import ImageLightbox from '@/components/ImageLightbox'
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
+import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
@@ -92,12 +94,34 @@ function FullscreenApp() {
     })
   }
 
-  // URL params pour récupérer l'ID de note
+  const [initialLightboxIndex, setInitialLightboxIndex] = React.useState<number | undefined>(undefined)
+  const [imageViewMode, setImageViewMode] = React.useState<{ images: string[]; currentIndex: number } | null>(null)
+  const [imageViewIndex, setImageViewIndex] = React.useState(0)
+
+  // URL params pour récupérer l'ID de note (et index lightbox depuis sidepanel)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
+
+    // Mode image viewer — ouvert depuis le sidepanel via clic image
+    if (urlParams.get('imageView') === '1') {
+      chrome.storage.session.get('pendingImageView').then((result) => {
+        const data = result.pendingImageView as { images: string[]; currentIndex: number } | undefined
+        if (data) {
+          setImageViewMode(data)
+          setImageViewIndex(data.currentIndex)
+          chrome.storage.session.remove('pendingImageView')
+        }
+      })
+      return
+    }
+
     const noteIdFromUrl = urlParams.get('noteId')
     if (noteIdFromUrl) {
       setCurrentNoteId(noteIdFromUrl)
+    }
+    const lightboxIndexFromUrl = urlParams.get('lightboxIndex')
+    if (lightboxIndexFromUrl !== null) {
+      setInitialLightboxIndex(parseInt(lightboxIndexFromUrl))
     }
 
     loadData()
@@ -389,9 +413,21 @@ function FullscreenApp() {
     }
   }
 
+  // Capture d'une app externe (Zoom, desktop, etc.) via getDisplayMedia
+  const handleExternalScreenshot = async (): Promise<string | null> => {
+    try {
+      return await captureExternalScreen()
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'NotAllowedError') {
+        console.error('Erreur capture externe:', error)
+      }
+      return null
+    }
+  }
+
   // Ouvrir le site web Journal d'Études
   const handleOpenWebsite = () => {
-    window.open('https://journal-detudes.aoknowledge.com', '_blank')
+    chrome.tabs.create({ url: 'https://journal-d-etude-beta.vercel.app' })
   }
 
   // Retourner au sidepanel
@@ -543,6 +579,22 @@ function FullscreenApp() {
       note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     )
+
+  // Mode image viewer (ouvert depuis le sidepanel via clic image)
+  if (imageViewMode) {
+    return (
+      <div className="fixed inset-0 bg-black">
+        <ImageLightbox
+          src={imageViewMode.images[imageViewIndex]}
+          alt="Image"
+          images={imageViewMode.images}
+          currentIndex={imageViewIndex}
+          onNavigate={setImageViewIndex}
+          onClose={() => window.close()}
+        />
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -839,6 +891,7 @@ function FullscreenApp() {
                   noteId={currentNoteId!}
                   onNoteUpdate={loadData}
                   refreshTrigger={noteRefreshTrigger}
+                  initialLightboxIndex={initialLightboxIndex}
                 />
               </div>
             ) : (
@@ -877,6 +930,7 @@ function FullscreenApp() {
             onChange={setEditorContent}
             placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
             onInsertScreenshot={handleScreenshot}
+            onInsertExternalScreenshot={handleExternalScreenshot}
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}

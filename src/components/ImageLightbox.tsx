@@ -140,15 +140,12 @@ function ImageLightbox({
       )}
 
       {/* Image container */}
-      <div className="max-w-[90vw] max-h-[90vh] overflow-auto">
+      <div className="overflow-auto" style={{ maxWidth: '90vw', maxHeight: '90vh' }}>
         <img
           src={displaySrc}
           alt={alt}
-          className="transition-transform duration-200 ease-out"
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center'
-          }}
+          className="block transition-[zoom] duration-200 ease-out"
+          style={{ zoom: scale }}
           draggable={false}
         />
       </div>

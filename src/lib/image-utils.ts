@@ -10,7 +10,9 @@ export interface ImageCompressionOptions {
 }
 
 /**
- * Compresse une image depuis un Data URL
+ * Compresse une image depuis un Data URL.
+ * Utilise OffscreenCanvas + createImageBitmap — compatibles service workers MV3
+ * et contextes de page normaux (popup, content script).
  */
 export async function compressImage(
   dataUrl: string,
@@ -23,43 +25,30 @@ export async function compressImage(
     format = 'jpeg'
   } = options
 
+  const [header, b64] = dataUrl.split(',')
+  const mime = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg'
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: mime })
+
+  const bitmap = await createImageBitmap(blob)
+  const { width, height } = calculateDimensions(bitmap.width, bitmap.height, maxWidth, maxHeight)
+
+  const canvas = new OffscreenCanvas(width, height)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    bitmap.close()
+    throw new Error('Impossible de créer le contexte OffscreenCanvas')
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+
+  const compressed = await canvas.convertToBlob({ type: `image/${format}`, quality })
+
   return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-
-      if (!ctx) {
-        reject(new Error('Impossible de créer le contexte canvas'))
-        return
-      }
-
-      // Calculer les nouvelles dimensions en conservant le ratio
-      let { width, height } = calculateDimensions(
-        img.width,
-        img.height,
-        maxWidth,
-        maxHeight
-      )
-
-      canvas.width = width
-      canvas.height = height
-
-      // Dessiner l'image redimensionnée
-      ctx.drawImage(img, 0, 0, width, height)
-
-      // Exporter avec compression
-      const mimeType = `image/${format}`
-      const compressedDataUrl = canvas.toDataURL(mimeType, quality)
-
-      resolve(compressedDataUrl)
-    }
-
-    img.onerror = () => {
-      reject(new Error('Erreur lors du chargement de l\'image'))
-    }
-
-    img.src = dataUrl
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Erreur FileReader'))
+    reader.readAsDataURL(compressed)
   })
 }
 
@@ -156,6 +145,12 @@ export const COMPRESSION_PRESETS = {
     maxWidth: 1200,
     maxHeight: 800,
     quality: 0.85,
+    format: 'jpeg' as const
+  },
+  screenshot: {
+    maxWidth: 1920,
+    maxHeight: 1080,
+    quality: 0.92,
     format: 'jpeg' as const
   }
 } as const

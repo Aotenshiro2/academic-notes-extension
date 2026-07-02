@@ -11,12 +11,13 @@ interface CurrentNoteViewProps {
   noteId: string
   onNoteUpdate?: () => void
   refreshTrigger?: number
+  initialLightboxIndex?: number
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightboxIndex }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(initialLightboxIndex ?? null)
   const [panelMessage, setPanelMessage] = useState<NoteMessage | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -101,8 +102,20 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
 
   const handleImageClick = useCallback((src: string) => {
     const idx = noteImages.indexOf(src)
-    setLightboxIndex(idx >= 0 ? idx : 0)
-  }, [noteImages])
+    const index = idx >= 0 ? idx : 0
+
+    if (window.innerWidth < 500 && note) {
+      // Contexte sidepanel — ouvrir dans un onglet plein écran
+      chrome.storage.session.set({
+        pendingImageView: { images: noteImages, currentIndex: index }
+      })
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('src/fullscreen/index.html') + '?imageView=1'
+      })
+    } else {
+      setLightboxIndex(index)
+    }
+  }, [noteImages, note])
 
   // Handlers for MessageBlock
   const handleUpdateMessage = useCallback(async (messageId: string, content: string) => {
@@ -286,8 +299,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger }: CurrentNoteVi
             <MessageBlock
               key={message.id}
               message={message}
+              noteId={noteId}
               onUpdate={handleUpdateMessage}
               onDelete={handleDeleteMessage}
+              onTagsUpdate={loadNote}
               onImageClick={handleImageClick}
               onOpenPanel={() => setPanelMessage(message)}
             />
