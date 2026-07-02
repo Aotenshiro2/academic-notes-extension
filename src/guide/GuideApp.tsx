@@ -64,6 +64,33 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.5.0',
+    title: 'Le Carnet du Trader — notation A/B/C, trades et tri',
+    items: [
+      'Nouveau nom : l\'extension devient « Le Carnet du Trader »',
+      'Notation : badge A/B/C à côté du titre — jugez votre vision (A = je reprendrais sans hésiter, B = flou, C = forcé) avec une phrase de justification, relecture programmée à 14 jours',
+      'Trades : bouton ⌖ « je prends un trade » — chaque trade devient un segment dans le fil (screenshots et notes rattachés), clôture Gain/Perte/BE, et SA propre notation',
+      'Sur une perte : catégorisez la cause du stop loss (technique / connaissance / émotionnel)',
+      'Tags unifiés : le même picker que le journal partout (note + messages), groupé par catégorie',
+      'File « À trier » : dans l\'historique, retrouvez d\'un clic les notes sans tag ni notation + filtre par tags les plus utilisés',
+      'Concepts éditables : corrigez à la main ce que la capture intelligente extrait',
+      'Capture externe : screenshot d\'une app hors navigateur (Zoom, plateforme de trading desktop)',
+      'Images : compression compatible service worker, visionneuse plein écran depuis le sidepanel',
+      'Sync : tags, concepts, trades et notations voyagent vers le Journal d\'Études ; upload d\'images fiabilisé via le proxy du journal',
+    ],
+  },
+  {
+    version: '1.4.12',
+    title: 'Recherche, stabilité et palette du journal',
+    items: [
+      'Nouveau : barre de recherche dans l\'historique des notes (titre + tags)',
+      'Nouveau : bouton « Reconstruire le journal » pour repartir d\'une sync propre',
+      'Fix : crash du service worker (keepAlive + quota de stockage dépassé)',
+      'Fix : la position de scroll est préservée à l\'ajout de messages ou lors d\'une mise à jour distante',
+      'Style : palette claire/sombre alignée sur celle du Journal d\'Études',
+    ],
+  },
+  {
     version: '1.4.8',
     title: 'Sync multi-fenêtres (5 écrans)',
     items: [
