@@ -6,7 +6,22 @@ import ImageLightbox from './ImageLightbox'
 import MessageBlock from './MessageBlock'
 import MessageDetailPanel from './MessageDetailPanel'
 import TagPickerPopup from './TagPickerPopup'
-import type { AcademicNote, NoteMessage } from '@/types/academic'
+import NotationPopover from './NotationPopover'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause } from '@/types/academic'
+
+const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
+
+const GRADE_BADGE_CLASS: Record<AnnotationGrade, string> = {
+  A: 'bg-green-500/15 text-green-600 dark:text-green-400',
+  B: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  C: 'bg-red-500/15 text-red-600 dark:text-red-400',
+}
+
+const GRADE_TEXT_CLASS: Record<AnnotationGrade, string> = {
+  A: 'text-green-600 dark:text-green-400',
+  B: 'text-amber-600 dark:text-amber-400',
+  C: 'text-red-600 dark:text-red-400',
+}
 
 interface CurrentNoteViewProps {
   noteId: string
@@ -24,6 +39,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [titleDraft, setTitleDraft] = useState('')
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [tagPickerPos, setTagPickerPos] = useState({ top: 0, bottom: 0, left: 0 })
+  const [notationOpen, setNotationOpen] = useState(false)
+  const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   const isFirstLoad = useRef(true)
 
@@ -37,7 +54,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen || notationOpen) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -158,6 +175,34 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [note, onNoteUpdate])
 
+  // Annotation courante de la note (messageRef absent = jugement de la note entière)
+  const noteAnnotation: Annotation | undefined = useMemo(() => {
+    return (note?.annotations ?? [])
+      .filter(a => !a.messageRef)
+      .sort((a, b) => b.createdAt - a.createdAt)[0]
+  }, [note])
+
+  const handleSaveNotation = useCallback(async (grade: AnnotationGrade, phrase: string, cause: AnnotationCause | null) => {
+    if (!note) return
+    const others = (note.annotations ?? []).filter(a => a.messageRef)
+    // Re-jugement = même id (upsert idempotent côté journal, pas de doublon en relecture)
+    const updated: Annotation = noteAnnotation
+      ? { ...noteAnnotation, grade, phrase, causeCategory: cause ?? undefined }
+      : {
+          id: crypto.randomUUID(),
+          noteId: note.id,
+          grade,
+          phrase,
+          causeCategory: cause ?? undefined,
+          createdAt: Date.now(),
+          reviewDueAt: Date.now() + REVIEW_DELAY_MS,
+        }
+    await storage.saveNote({ ...note, annotations: [...others, updated] })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, noteAnnotation, onNoteUpdate])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -224,7 +269,31 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             >
               <Edit3 size={13} />
             </button>
+            <button
+              onClick={e => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                setNotationOpen(true)
+              }}
+              className={`flex items-center justify-center w-[22px] h-[22px] rounded-full text-[11px] font-semibold flex-shrink-0 transition-colors ${
+                noteAnnotation
+                  ? GRADE_BADGE_CLASS[noteAnnotation.grade]
+                  : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+              }`}
+              title={noteAnnotation ? `${noteAnnotation.grade} — ${noteAnnotation.phrase}` : 'Noter (A/B/C + une phrase)'}
+              aria-label={noteAnnotation ? `Notation ${noteAnnotation.grade}, modifier` : 'Noter cette note'}
+            >
+              {noteAnnotation ? noteAnnotation.grade : '±'}
+            </button>
           </>
+        )}
+        {notationOpen && (
+          <NotationPopover
+            position={notationPos}
+            existing={noteAnnotation}
+            onSave={handleSaveNotation}
+            onClose={() => setNotationOpen(false)}
+          />
         )}
       </div>
 
@@ -268,6 +337,26 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           />
         )}
       </div>
+
+      {/* Notation visible — le « pourquoi » se relit à chaque passage */}
+      {noteAnnotation && (
+        <button
+          onClick={e => {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+            setNotationOpen(true)
+          }}
+          className="flex items-baseline gap-1.5 text-left w-full rounded hover:bg-muted/30 px-1 py-0.5 -mx-1 transition-colors"
+          title="Modifier la notation"
+        >
+          <span className={`text-[11px] font-semibold flex-shrink-0 ${GRADE_TEXT_CLASS[noteAnnotation.grade]}`}>
+            {noteAnnotation.grade}
+          </span>
+          <span className="text-[11px] text-muted-foreground italic leading-snug">
+            « {noteAnnotation.phrase} »
+          </span>
+        </button>
+      )}
 
       {/* Résumé */}
       {note.summary && (

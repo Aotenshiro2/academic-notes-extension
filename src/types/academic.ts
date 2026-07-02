@@ -56,6 +56,7 @@ export interface AcademicNote {
   metadata: ContentMetadata
   tags: string[]
   concepts: string[]
+  annotations?: Annotation[] // notation A/B/C (note entière : messageRef absent)
   screenshots?: Screenshot[]
   mindmapStructure?: MindmapNode[]
 }

@@ -172,11 +172,47 @@ export async function syncNoteToJournal(note: AcademicNote): Promise<SyncResult>
     }
 
     const data = await response.json()
+
+    // Pousser les annotations (notation A/B/C) — upsert idempotent par id client
+    await syncAnnotations(note, token)
+
     return { success: true, noteId: data.id }
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Network error'
     console.warn('[AOK Sync] ✗', note.title, '—', error)
     return { success: false, error }
+  }
+}
+
+/**
+ * Pousse les annotations d'une note vers le journal (POST /api/annotations).
+ * Idempotent : l'id client (uuid) fait office de clé d'upsert côté serveur.
+ * Non-bloquant : une annotation qui échoue repartira à la prochaine sync.
+ */
+async function syncAnnotations(note: AcademicNote, token: string): Promise<void> {
+  const annotations = note.annotations ?? []
+  for (const a of annotations) {
+    try {
+      await fetch(`${JOURNAL_API}/api/annotations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: a.id,
+          noteId: note.id, // extensionNoteId — résolu côté serveur
+          messageRef: a.messageRef ?? null,
+          grade: a.grade,
+          phrase: a.phrase,
+          causeCategory: a.causeCategory ?? null,
+          reviewDueAt: a.reviewDueAt ? new Date(a.reviewDueAt).toISOString() : undefined,
+          reviewedAt: a.reviewedAt ? new Date(a.reviewedAt).toISOString() : undefined,
+        }),
+      })
+    } catch (err) {
+      console.warn('[AOK Sync] Annotation sync failed:', err)
+    }
   }
 }
 
