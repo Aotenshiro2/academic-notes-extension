@@ -413,7 +413,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
 
           {/* Lien vers le journal */}
           <button
-            onClick={() => chrome.tabs.create({ url: 'https://journal-d-etude-beta.vercel.app' })}
+            onClick={() => chrome.tabs.create({ url: 'https://journal.aoknowledge.com' })}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg
               border border-border text-sm text-muted-foreground
               hover:text-foreground hover:bg-muted transition-colors"

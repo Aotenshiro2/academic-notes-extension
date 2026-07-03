@@ -427,7 +427,7 @@ function FullscreenApp() {
 
   // Ouvrir le site web Journal d'Études
   const handleOpenWebsite = () => {
-    chrome.tabs.create({ url: 'https://journal-d-etude-beta.vercel.app' })
+    chrome.tabs.create({ url: 'https://journal.aoknowledge.com' })
   }
 
   // Retourner au sidepanel
