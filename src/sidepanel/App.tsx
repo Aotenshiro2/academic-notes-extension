@@ -20,6 +20,7 @@ import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
+import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
@@ -48,6 +49,10 @@ function App() {
   const [isExporting, setIsExporting] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+
+  // Notes qui ne sont pas encore dans le journal (hors exclues volontaires)
+  const pendingSyncCount = notes.filter(n => !n.lastSyncAt && !n.syncExcluded).length
 
   // Charger les données initiales
   useEffect(() => {
@@ -145,6 +150,9 @@ function App() {
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
+
+      // État d'auth pour l'indicateur de sync (non bloquant)
+      getSession().then(s => setIsAuthed(!!s)).catch(() => setIsAuthed(false))
 
       // Backup notes to chrome.storage.local (protection against IndexedDB loss)
       if (loadedNotes.length > 0) {
@@ -860,6 +868,31 @@ function App() {
                 </svg>
                 FR
               </span>
+              <span className="text-muted-foreground/30">|</span>
+              {/* État de sync — l'échec silencieux de sync ne doit plus JAMAIS être invisible */}
+              <button
+                onClick={() => { setShowAccount(true); setShowSettings(false) }}
+                className={`px-1.5 py-0.5 text-[10px] rounded-full transition-colors ${
+                  isAuthed === false
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium'
+                    : pendingSyncCount > 0
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      : 'text-muted-foreground/50 hover:text-muted-foreground'
+                }`}
+                title={
+                  isAuthed === false
+                    ? 'Non connecté — les notes ne partent pas vers le journal. Cliquer pour se connecter.'
+                    : pendingSyncCount > 0
+                      ? `${pendingSyncCount} note${pendingSyncCount > 1 ? 's' : ''} pas encore dans le journal. Cliquer pour synchroniser.`
+                      : 'Toutes les notes sont dans le journal'
+                }
+              >
+                {isAuthed === false
+                  ? '⚠ sync hors ligne'
+                  : pendingSyncCount > 0
+                    ? `${pendingSyncCount} à synchroniser`
+                    : '✓ sync'}
+              </button>
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle compact />
