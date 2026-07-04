@@ -162,7 +162,11 @@ function HistoryDropdown({
   // ---- Drag-and-drop ----
   const handleDragStart = (e: React.DragEvent, noteId: string) => {
     setDraggingNoteId(noteId)
-    e.dataTransfer.setData('noteId', noteId)
+    e.dataTransfer.setData('noteId', noteId) // usage interne (déplacer vers un dossier)
+    // Pont vers le journal (journal.aoknowledge.com) : porté sur text/plain, le seul format
+    // qui traverse la frontière panneau d'extension ↔ page web. Résolu par extensionNoteId.
+    e.dataTransfer.setData('text/plain', `carnet-note:${noteId}`)
+    try { e.dataTransfer.setData('application/x-carnet-note', noteId) } catch { /* type custom parfois refusé */ }
     e.dataTransfer.effectAllowed = 'move'
   }
 
