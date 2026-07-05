@@ -17,6 +17,7 @@ import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import SettingsView from '@/components/SettingsView'
 import AccountView from '@/components/AccountView'
+import RitualView from '@/components/RitualView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
@@ -35,6 +36,7 @@ function App() {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
+  const [showRitual, setShowRitual] = useState(false)
   const [notes, setNotes] = useState<AcademicNote[]>([])
   const [folders, setFolders] = useState<NoteFolder[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
@@ -658,10 +660,19 @@ function App() {
   // Obtenir le titre de la note courante
   const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
+  if (showRitual) {
+    return (
+      <div className="sidebar-container">
+        <RitualView onClose={() => setShowRitual(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="sidebar-container">
       <Header
         onShowHistory={() => setShowHistoryDropdown(!showHistoryDropdown)}
+        onShowRitual={() => setShowRitual(true)}
         onHome={handleGoHome}
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}

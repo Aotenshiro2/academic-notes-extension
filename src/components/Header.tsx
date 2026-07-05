@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown } from 'lucide-react'
+import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown, Sunrise } from 'lucide-react'
 
 function GoogleDriveIcon({ size = 14 }: { size?: number }) {
   return (
@@ -16,6 +16,7 @@ function GoogleDriveIcon({ size = 14 }: { size?: number }) {
 
 interface HeaderProps {
   onShowHistory?: () => void
+  onShowRitual?: () => void
   onHome?: () => void
   onFullscreen?: () => void
   onExportPDF?: () => void
@@ -25,7 +26,7 @@ interface HeaderProps {
   isExporting?: boolean
 }
 
-function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, isExporting = false }: HeaderProps) {
+function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, isExporting = false }: HeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const canExport = !!(onExportPDF || onExportDocx)
@@ -123,6 +124,15 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
               </div>
             )}
           </div>
+
+          <button
+            onClick={onShowRitual}
+            className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-500/10 rounded-md transition-colors"
+            title="Rituel de séance (warmup / cooldown)"
+            aria-label="Rituel de séance"
+          >
+            <Sunrise size={18} />
+          </button>
 
           <button
             onClick={onAnalyze}

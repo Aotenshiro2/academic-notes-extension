@@ -64,6 +64,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.0',
+    title: 'Rituel de séance + pont vers le journal',
+    items: [
+      'Nouveau : Rituel de séance — un warmup avant (état, pensée dominante, objectif du jour) et un cooldown après (erreurs, leçon, recentrage), avec la jauge d\'émotion accumulée. Synchronisé dans le journal.',
+      'Nouveau : glisse une note de l\'historique directement sur le canvas du Journal d\'Études.',
+      'Amélioration : indicateur permanent d\'état de synchronisation dans le pied de page.',
+      'Correction : identité stable en développement + synchronisation des dossiers.',
+      'Correction : « Ouvrir le journal » pointe désormais vers journal.aoknowledge.com.',
+    ],
+  },
+  {
     version: '1.5.0',
     title: 'Le Carnet du Trader — notation A/B/C, trades et tri',
     items: [
