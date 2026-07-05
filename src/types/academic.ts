@@ -75,6 +75,16 @@ export interface TradeSegment {
   startedAt: number
   closedAt?: number
   outcome?: TradeOutcome // saisi à la clôture (3 chips), modifiable ensuite
+  cooldown?: TradeCooldown // débrief mental de fin de trade (mental game)
+}
+
+// Cooldown par trade (Tendler) : le débrief court après chaque trade fermé —
+// distinct de la note A/B/C (jugement) : ici l'émotion, l'erreur, la leçon.
+export interface TradeCooldown {
+  emotion?: string
+  error?: string
+  lesson?: string
+  doneAt?: number
 }
 
 export type ContentType = 

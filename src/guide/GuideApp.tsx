@@ -67,7 +67,8 @@ const CHANGELOG = [
     version: '1.6.0',
     title: 'Rituel de séance + pont vers le journal',
     items: [
-      'Nouveau : Rituel de séance — un warmup avant (état, pensée dominante, objectif du jour) et un cooldown après (erreurs, leçon, recentrage), avec la jauge d\'émotion accumulée. Synchronisé dans le journal.',
+      'Nouveau : Rituel de séance — lance ton warmup quand tu es prêt à trader (état physique/émotionnel, pensée dominante, objectif du jour, jauge d\'émotion). Synchronisé dans le journal.',
+      'Nouveau : Cooldown par trade — après chaque trade fermé, un débrief court (émotion, erreur, leçon) à côté de sa note A/B/C.',
       'Nouveau : glisse une note de l\'historique directement sur le canvas du Journal d\'Études.',
       'Amélioration : indicateur permanent d\'état de synchronisation dans le pied de page.',
       'Correction : identité stable en développement + synchronisation des dossiers.',

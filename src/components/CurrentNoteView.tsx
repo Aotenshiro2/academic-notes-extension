@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -7,7 +7,8 @@ import MessageBlock from './MessageBlock'
 import MessageDetailPanel from './MessageDetailPanel'
 import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome } from '@/types/academic'
+import CooldownPopover from './CooldownPopover'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown } from '@/types/academic'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -54,6 +55,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [notationTarget, setNotationTarget] = useState<{ tradeRef?: string } | null>(null)
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
+  const [cooldownTradeId, setCooldownTradeId] = useState<string | null>(null)
+  const [cooldownPos, setCooldownPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [addingConcept, setAddingConcept] = useState(false)
   const [conceptDraft, setConceptDraft] = useState('')
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
@@ -69,7 +72,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -233,6 +236,16 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
+
+  // Cooldown par trade : débrief mental rattaché au segment (mental game), persisté avec la note
+  const handleSaveCooldown = useCallback(async (tradeId: string, cooldown: TradeCooldown) => {
+    if (!note) return
+    const trades = (note.trades ?? []).map(t => t.id === tradeId ? { ...t, cooldown: { ...cooldown, doneAt: Date.now() } } : t)
+    await storage.saveNote({ ...note, trades })
+    setCooldownTradeId(null)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
 
   // ---- Concepts éditables ----
   const handleAddConcept = useCallback(async () => {
@@ -497,6 +510,22 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                       >
                         {tradeAnnotation ? tradeAnnotation.grade : '±'}
                       </button>
+                      <button
+                        onClick={e => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setCooldownPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                          setCooldownTradeId(trade.id)
+                        }}
+                        className={`flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 transition-colors ${
+                          trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson)
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                            : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                        }`}
+                        title={trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson) ? 'Cooldown fait — modifier' : 'Cooldown du trade (débrief mental)'}
+                        aria-label="Cooldown du trade"
+                      >
+                        <Moon size={11} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -561,6 +590,16 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           outcome={notationTarget.tradeRef ? (note.trades ?? []).find(t => t.id === notationTarget.tradeRef)?.outcome : undefined}
           onSave={handleSaveNotation}
           onClose={() => setNotationTarget(null)}
+        />
+      )}
+
+      {/* Popover de cooldown — le débrief mental d'un trade (distinct de la note A/B/C) */}
+      {cooldownTradeId && (
+        <CooldownPopover
+          position={cooldownPos}
+          existing={(note.trades ?? []).find(t => t.id === cooldownTradeId)?.cooldown}
+          onSave={(cd) => handleSaveCooldown(cooldownTradeId, cd)}
+          onClose={() => setCooldownTradeId(null)}
         />
       )}
 
