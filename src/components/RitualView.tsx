@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { ArrowLeft, Sunrise, Moon, CheckCircle2, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, Sunrise, Loader2, Plus } from 'lucide-react'
 import { getRituals, createRitual, updateRitual, type Ritual, type RitualPatch } from '@/lib/ritual'
 
-type TextKey = 'physical' | 'emotional' | 'dominantThought' | 'objective' | 'errors' | 'lesson' | 'recenter'
+// Écran dédié « rituel de séance » = espace pour PRÉPARER / passer en revue son warmup
+// à froid (hors note). Le warmup d'une séance donnée se lance, lui, directement depuis
+// la note (WarmupCard) ; le cooldown est attaché à chaque trade. Cet écran ne clôt donc
+// plus une séance — un warmup est un état qu'on pose, pas un process avec une fin.
+
+type TextKey = 'physical' | 'emotional' | 'dominantThought' | 'objective'
 
 const WARMUP: { key: TextKey; label: string; hint: string }[] = [
   { key: 'physical', label: 'État physique', hint: 'Fatigué ? En forme ? Tendu ? Bien dormi ?' },
   { key: 'emotional', label: 'État émotionnel', hint: 'Anxieux, excité, détendu, irritable…' },
   { key: 'dominantThought', label: 'Pensée dominante', hint: 'Performance ? Un objectif ? Une peur ? Une attente ?' },
   { key: 'objective', label: 'Objectif du jour (qualitatif)', hint: 'Respecter mon plan, exécuter, journaler — pas un chiffre.' },
-]
-const COOLDOWN: { key: TextKey; label: string; hint: string }[] = [
-  { key: 'errors', label: 'Erreurs repérées', hint: 'Overtrading, non-respect du plan, revenge…' },
-  { key: 'lesson', label: 'Leçon — ce que je retiens', hint: 'Qu\'aurais-je fait autrement ? Un pattern repéré ?' },
-  { key: 'recenter', label: 'Comment je me recentre', hint: 'Douche, sport, marche, respiration…' },
 ]
 
 function Field({ label, hint, def, onSave, tint }: { label: string; hint: string; def: string; onSave: (v: string) => void; tint: string }) {
@@ -77,14 +77,6 @@ export default function RitualView({ onClose }: { onClose: () => void }) {
     updateRitual(active.id, patch).then(r => { if (!r) setOffline(true) })
   }
 
-  const close = async () => {
-    if (!active) return
-    setBusy(true)
-    await updateRitual(active.id, { closed: true })
-    setActive(null)
-    setBusy(false)
-  }
-
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="header-section px-4 py-3 flex items-center gap-2">
@@ -98,19 +90,18 @@ export default function RitualView({ onClose }: { onClose: () => void }) {
         {loading ? (
           <div className="flex justify-center py-10 text-muted-foreground"><Loader2 size={20} className="animate-spin" /></div>
         ) : offline ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Impossible de joindre le journal (hors ligne ou déconnecté). Reconnecte-toi, ta séance se synchronisera.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">Impossible de joindre le journal (hors ligne ou déconnecté). Reconnecte-toi, ton rituel se synchronisera.</p>
         ) : !active ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-3 opacity-40">🌅</div>
-            <p className="text-sm text-foreground mb-1">Prêt à trader ?</p>
-            <p className="text-xs text-muted-foreground mb-5 max-w-xs mx-auto">Quelques secondes pour te situer avant d’ouvrir les graphiques. Ça change tout.</p>
+            <p className="text-sm text-foreground mb-1">Préparer mon warmup</p>
+            <p className="text-xs text-muted-foreground mb-5 max-w-xs mx-auto">Poser à froid ce qui compte avant de trader. En séance, tu lanceras ton warmup directement depuis ta note.</p>
             <button onClick={start} disabled={busy} className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Démarrer ma séance
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Préparer
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Warmup */}
             <div>
               <div className="flex items-center gap-1.5 mb-2.5">
                 <Sunrise size={14} style={{ color: '#3b82f6' }} />
@@ -122,21 +113,7 @@ export default function RitualView({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* Cooldown */}
-            <div className="pt-3 border-t border-border">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Moon size={14} style={{ color: '#f59e0b' }} />
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#f59e0b' }}>Après la séance</span>
-              </div>
-              <div className="space-y-2.5">
-                {COOLDOWN.map(f => <Field key={f.key} label={f.label} hint={f.hint} def={active[f.key] ?? ''} onSave={v => save({ [f.key]: v })} tint="#f59e0b" />)}
-              </div>
-              <button onClick={close} disabled={busy} className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg mt-3 bg-green-600 text-white disabled:opacity-50">
-                <CheckCircle2 size={13} /> Clôturer la séance
-              </button>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground text-center pt-1">Historique et analyse dans le journal → Rituel de séance.</p>
+            <p className="text-[11px] text-muted-foreground text-center pt-1">Le débrief se fait trade par trade (cooldown) ; l'analyse est dans le journal → Rituel de séance.</p>
           </div>
         )}
       </div>

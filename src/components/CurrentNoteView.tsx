@@ -8,7 +8,8 @@ import MessageDetailPanel from './MessageDetailPanel'
 import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown } from '@/types/academic'
+import WarmupCard from './WarmupCard'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup } from '@/types/academic'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -247,6 +248,17 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [note, onNoteUpdate])
 
+  // Warmup de séance : le rituel d'avant-séance, lancé depuis la note (le pendant du
+  // cooldown-par-trade). Patch fusionné + doneAt posé au 1er remplissage. Vit sur la note.
+  const handleSaveWarmup = useCallback(async (patch: Partial<NoteWarmup>) => {
+    if (!note) return
+    const warmup: NoteWarmup = { ...(note.warmup ?? {}), ...patch, doneAt: note.warmup?.doneAt ?? Date.now() }
+    await storage.saveNote({ ...note, warmup })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
+
   // ---- Concepts éditables ----
   const handleAddConcept = useCallback(async () => {
     if (!note) return
@@ -412,6 +424,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           </span>
         </button>
       )}
+
+      {/* Warmup de séance — lancé depuis la note quand on est prêt à trader (le cooldown, lui, est par trade) */}
+      <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} />
 
       {/* Résumé */}
       {note.summary && (
