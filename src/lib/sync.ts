@@ -80,6 +80,17 @@ export interface SyncResult {
   error?: string
 }
 
+// Warmups à synchroniser : les entrées multi-séances + le legacy note.warmup
+// (converti en entrée avec id stable pour l'idempotence côté journal)
+function collectWarmups(note: AcademicNote) {
+  const list = [...(note.warmups ?? [])]
+  const w = note.warmup
+  if (w && (w.physical || w.emotional || w.dominantThought || w.objective || w.emotionLevel !== undefined)) {
+    list.unshift({ ...w, id: w.id ?? `legacy-${note.id}`, startedAt: w.startedAt ?? w.doneAt ?? note.timestamp })
+  }
+  return list
+}
+
 /**
  * Convertit une AcademicNote en payload pour POST /api/notes.
  * Les images base64 sont uploadées vers Supabase Storage et remplacées par leurs URLs.
@@ -135,6 +146,7 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     tags: note.tags ?? [],
     concepts: note.concepts ?? [],
     trades: note.trades ?? [],
+    warmups: collectWarmups(note),
     folderId: note.folderId ?? null,
     folderName,
     createdAt: new Date(note.timestamp).toISOString(),
@@ -342,6 +354,7 @@ export async function pullFromJournal(): Promise<{
           tags: Array.isArray(jn.tags) ? jn.tags.filter((t: unknown) => typeof t === 'string') : [],
           concepts: Array.isArray(jn.concepts) ? jn.concepts.filter((c: unknown) => typeof c === 'string') : [],
           trades: Array.isArray(jn.trades) ? jn.trades : [],
+          warmups: Array.isArray(jn.warmups) ? jn.warmups.filter((w: unknown) => w && typeof w === 'object') : undefined,
           folderId: typeof jn.folderId === 'string' ? jn.folderId : undefined,
         }
       })
