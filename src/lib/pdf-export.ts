@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import type { AcademicNote } from '@/types/academic'
+import { buildExportHtml } from './export-flow'
 
 /**
  * Remplace les caractères Unicode non supportés par des équivalents ASCII
@@ -324,11 +325,11 @@ export async function exportNoteToPDF(note: AcademicNote): Promise<void> {
   pdf.line(margin, yPos, pageWidth - margin, yPos)
   yPos += 8
 
-  // --- Contenu ---
+  // --- Contenu — fil complet reconstruit (messages + trades/jugements/cooldowns + warmups) ---
   pdf.setTextColor(0, 0, 0)
   pdf.setFontSize(11)
 
-  const blocks = parseHtmlContent(note.content)
+  const blocks = parseHtmlContent(buildExportHtml(note))
 
   for (const block of blocks) {
     switch (block.type) {

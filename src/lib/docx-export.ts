@@ -13,6 +13,7 @@ import {
   PageNumber,
 } from 'docx'
 import type { AcademicNote } from '@/types/academic'
+import { buildExportHtml } from './export-flow'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -306,8 +307,8 @@ export async function buildDocxBlob(note: AcademicNote): Promise<{ blob: Blob; f
     })
   )
 
-  // Contenu
-  const blocks = parseHtmlToDocxBlocks(note.content)
+  // Contenu — fil complet reconstruit (messages + trades/jugements/cooldowns + warmups)
+  const blocks = parseHtmlToDocxBlocks(buildExportHtml(note))
   const contentParagraphs = await blocksToParagraphs(blocks)
 
   const doc = new Document({
