@@ -1,0 +1,59 @@
+{
+  "title": "Séance NY — NQ — 10 juillet",
+  "content": "<p>Analyse HTF : biais vendeur, DOL sous les equal lows d'hier.</p>",
+  "source": "extension",
+  "sourceUrl": "https://www.tradingview.com/chart/xyz/",
+  "favicon": "https://www.tradingview.com/favicon.ico",
+  "messages": [
+    {
+      "id": "3f2a1c9e-8b47-4c11-9d3a-caa011223344",
+      "type": "text",
+      "content": "Ouverture NY : le prix respecte le FVG H1, j'attends le sweep des lows.",
+      "timestamp": 1783087200000,
+      "tags": ["FVG", "Liquidité"]
+    },
+    {
+      "id": "7cd94b02-11aa-4e0f-a1a1-bb5566778899",
+      "type": "screenshot",
+      "content": "https://<projet-supabase>.supabase.co/storage/v1/object/public/extension-images/images/ab12cd34ef56gh78.jpg",
+      "timestamp": 1783087260000,
+      "tags": [],
+      "tradeRef": "trade-001",
+      "metadata": {
+        "sourceUrl": "https://www.tradingview.com/chart/xyz/",
+        "sourceTitle": "NQ1! — TradingView",
+        "dimensions": { "width": 1200, "height": 675 }
+      }
+    },
+    {
+      "id": "9e8d7c6b-5a49-4838-2716-ffeeddccbbaa",
+      "type": "text",
+      "content": "Entrée short après le sweep, SL au-dessus du breaker.",
+      "timestamp": 1783087320000,
+      "tags": ["Breaker"],
+      "tradeRef": "trade-001"
+    }
+  ],
+  "tags": ["Session NY", "NQ"],
+  "concepts": ["Breaker", "Draw on Liquidity"],
+  "trades": [
+    {
+      "id": "trade-001",
+      "startedAt": 1783087290000,
+      "closedAt": 1783089000000,
+      "outcome": "gain",
+      "cooldown": {
+        "emotion": "Calme, un peu d'impatience avant l'entrée",
+        "error": "Entré 2 points trop tôt",
+        "lesson": "Attendre la clôture de la bougie de confirmation",
+        "doneAt": 1783089120000
+      }
+    }
+  ],
+  "folderId": "0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0",
+  "folderName": "Séances NY",
+  "createdAt": "2026-07-10T13:20:00.000Z",
+  "lastSyncAt": "2026-07-10T15:30:00.000Z",
+  "extensionVersion": "1.6.0",
+  "extensionNoteId": "550e8400-e29b-41d4-a716-446655440000"
+}
