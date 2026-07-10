@@ -5,45 +5,52 @@
 0. **Pont Edgyx** — dossier d'analyse envoyé à Geoffrey (voir
    `docs/edgyx-bridge/`), en attente de son retour de besoins. L'implémentation
    suivra les allers-retours.
-1. **🐛 Bug content-script (bloquant, repéré par Codex — HANDOFF 2026-07-10 14:43)**
-2. **Warmup à la demande, multi-séances**
+1. ~~🐛 Bug content-script~~ ✅ **corrigé le 10/07/2026** (voir ci-dessous)
+2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026** (voir ci-dessous)
 3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)*
-4. **Fonctionnalité DOL — Draw on Liquidity**
+4. **Fonctionnalité DOL — Draw on Liquidity** ← prochaine tâche extension
 5. *(côté journal : compteur de journalisation des concepts)*
 
-> Ne pas générer le zip v1.6.0 tant que les points 1 et 2 ne sont pas traités
-> (les derniers packages datent de la v1.5.0).
+> Le zip v1.6.0 peut maintenant être généré (points 1 et 2 traités) —
+> à faire après validation manuelle dans Brave/Chrome.
 
-### 1. 🐛 Bug : content script buildé en ESM (erreur Brave/Chrome)
+### ✅ 1. Bug content script ESM — corrigé le 10/07/2026
 
-Diagnostic Codex (2026-07-10) : `dist/manifest.json` déclare
-`content/content-script.js` dans `content_scripts`, mais le fichier généré
-commence par `import{_ as v}from"../chunks/preload-helper-….js"`. Chrome/Brave
-injecte les content scripts en **scripts classiques**, pas en modules ES →
-`Cannot use import statement outside a module`.
+Diagnostic Codex confirmé : le content script buildé commençait par un import
+ESM alors que Chrome/Brave l'injecte en script classique.
 
-Racine : `src/content/content-script.ts` fait `await import('../lib/storage.js')`
-et la config Vite/Rollup garde du code-splitting (`chunkFileNames: 'chunks/…'`).
+Correctif appliqué (option propre de Codex) :
+- Le content script n'importe plus `storage` (l'`await import(...)` est
+  supprimé) — il ne fait plus que de l'extraction DOM et du messaging. En
+  bonus, ça corrige un second bug latent : Dexie dans un content script
+  ouvrait l'IndexedDB de l'ORIGINE DE LA PAGE (notes éparpillées par site),
+  pas celle de l'extension.
+- Les 3 flux de capture du service worker (page, sélection, screenshot) qui
+  déléguaient la sauvegarde au content script (`tabs.sendMessage SAVE_NOTE`)
+  sauvegardent maintenant directement via `storage.saveNote()` dans le SW
+  (même origine que le sidepanel → même IndexedDB).
+- Le SW gère aussi le message `SAVE_NOTE` (sélection de zone du content script).
+- `manifest.json` : `"background.type": "module"` (le SW peut charger ses
+  chunks ES — supporté Chrome/Brave MV3).
+- Vérifié après build : `dist/content/content-script.js` sans aucun `import`
+  ni référence `chunks/`.
+- [ ] Reste : recharger l'extension dans Brave et vérifier que l'erreur de
+      `brave://extensions` a disparu + tester une capture de page (menu
+      contextuel) et une sélection de zone (Ctrl+Shift+glisser).
 
-Correctifs possibles :
-- [ ] Option propre : ne plus importer `storage` dans le content script —
-      extraire le DOM côté content script et envoyer au service worker
-      (qui gère le stockage).
-- [ ] Alternative : build séparé du content script en IIFE single-file.
-- [ ] Vérifier après rebuild : plus de `import` top-level ni de `../chunks/`
-      dans `dist/content/content-script.js`, recharger dans Brave.
+### ✅ 2. Warmup à la demande, multi-séances — fait le 10/07/2026
 
-### 2. Warmup à la demande, multi-séances
-
-**Constat actuel :** le warmup s'affiche en haut de la note, une seule fois.
-
-**Voulu :**
-- [ ] Le warmup s'affiche à l'endroit et au moment où on décide de le lancer
-      (inline dans le fil de la note, comme un segment de trade), pas figé en
-      haut de note.
-- [ ] Plusieurs warmups possibles dans une même note : une journée peut
-      contenir plusieurs séances de trading journalées dans la même note —
-      un warmup par séance, lancé à la demande.
+- Nouveau modèle : `note.warmups[]` (chaque entrée a `id` + `startedAt`) ;
+  `note.warmup` legacy toujours lu/éditable (affiché en haut si rempli),
+  plus alimenté.
+- Le bouton « Lancer mon warmup » (haut de note) crée une entrée ancrée à
+  l'instant du clic : la carte apparaît DANS le fil, à sa position
+  chronologique (comme un segment de trade), dépliée, avec l'heure de
+  lancement dans l'en-tête.
+- Plusieurs lancements = plusieurs cartes = plusieurs séances dans la même
+  note.
+- [ ] Reste : valider l'UX en réel ; décider si le warmup doit remonter dans
+      la sync journal (`/api/notes` ne transporte pas encore `warmups`).
 
 ### 4. Fonctionnalité DOL — Draw on Liquidity
 

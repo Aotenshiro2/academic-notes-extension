@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -61,6 +61,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [addingConcept, setAddingConcept] = useState(false)
   const [conceptDraft, setConceptDraft] = useState('')
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
+  // Dernier warmup lancé dans cette session d'affichage → sa carte s'ouvre dépliée
+  const [freshWarmupId, setFreshWarmupId] = useState<string | null>(null)
   const isFirstLoad = useRef(true)
 
   // Recharger la note quand noteId change
@@ -249,11 +251,32 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   }, [note, onNoteUpdate])
 
   // Warmup de séance : le rituel d'avant-séance, lancé depuis la note (le pendant du
-  // cooldown-par-trade). Patch fusionné + doneAt posé au 1er remplissage. Vit sur la note.
+  // cooldown-par-trade). Multi-séances : chaque lancement crée une entrée ancrée dans
+  // le fil (startedAt) — une journée peut contenir plusieurs séances dans la même note.
+  // note.warmup = legacy (unique, affiché en haut) : toujours éditable, plus alimenté.
   const handleSaveWarmup = useCallback(async (patch: Partial<NoteWarmup>) => {
     if (!note) return
     const warmup: NoteWarmup = { ...(note.warmup ?? {}), ...patch, doneAt: note.warmup?.doneAt ?? Date.now() }
     await storage.saveNote({ ...note, warmup })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
+
+  const handleLaunchWarmup = useCallback(async () => {
+    if (!note) return
+    const entry: NoteWarmup = { id: crypto.randomUUID(), startedAt: Date.now(), doneAt: Date.now() }
+    setFreshWarmupId(entry.id!)
+    await storage.saveNote({ ...note, warmups: [...(note.warmups ?? []), entry] })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, onNoteUpdate])
+
+  const handleSaveWarmupEntry = useCallback(async (warmupId: string, patch: Partial<NoteWarmup>) => {
+    if (!note) return
+    const warmups = (note.warmups ?? []).map(w => w.id === warmupId ? { ...w, ...patch } : w)
+    await storage.saveNote({ ...note, warmups })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
@@ -425,8 +448,21 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </button>
       )}
 
-      {/* Warmup de séance — lancé depuis la note quand on est prêt à trader (le cooldown, lui, est par trade) */}
-      <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} />
+      {/* Warmup legacy (ancien modèle : un seul, en haut de note) — affiché seulement s'il est rempli */}
+      {!!(note.warmup && (note.warmup.physical || note.warmup.emotional || note.warmup.dominantThought || note.warmup.objective || note.warmup.emotionLevel !== undefined)) && (
+        <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} />
+      )}
+
+      {/* Lancer un warmup : il s'ancre dans le fil au moment du clic — une note peut en
+          contenir plusieurs (une séance = un warmup, plusieurs séances par jour possibles) */}
+      <button
+        onClick={handleLaunchWarmup}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/5 transition-colors"
+      >
+        <Sunrise size={15} className="flex-shrink-0" />
+        <span className="text-xs font-medium">Lancer mon warmup</span>
+        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">te situer avant de trader — s'ajoute au fil</span>
+      </button>
 
       {/* Résumé */}
       {note.summary && (
@@ -451,8 +487,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </div>
       )}
 
-      {/* Contenu de la note — blocs messages, segmentés par trade */}
-      {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) ? (
+      {/* Contenu de la note — blocs messages, segmentés par trade, warmups ancrés dans le fil */}
+      {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) || (note.warmups && note.warmups.length > 0) ? (
         <div className="space-y-3">
           {(() => {
             const trades = note.trades ?? []
@@ -460,6 +496,26 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             const tradeNumber = (id: string) => trades.findIndex(t => t.id === id) + 1
             const seen = new Set<string>()
             const items: React.ReactNode[] = []
+
+            // Warmups ancrés dans le fil : insérés chronologiquement entre les messages,
+            // à l'endroit où ils ont été lancés (startedAt)
+            const flowWarmups = [...(note.warmups ?? [])].sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0))
+            let warmupIdx = 0
+            const renderWarmup = (w: NoteWarmup) => (
+              <WarmupCard
+                key={`warmup-${w.id}`}
+                warmup={w}
+                timeLabel={w.startedAt ? formatTradeTime(w.startedAt) : undefined}
+                defaultOpen={w.id === freshWarmupId || undefined}
+                onSave={patch => handleSaveWarmupEntry(w.id!, patch)}
+              />
+            )
+            const flushWarmupsBefore = (ts: number) => {
+              while (warmupIdx < flowWarmups.length && (flowWarmups[warmupIdx].startedAt ?? 0) <= ts) {
+                items.push(renderWarmup(flowWarmups[warmupIdx]))
+                warmupIdx++
+              }
+            }
 
             const renderMarker = (trade: TradeSegment) => {
               const n = tradeNumber(trade.id)
@@ -548,6 +604,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             }
 
             for (const message of note.messages ?? []) {
+              flushWarmupsBefore(message.timestamp)
               const tRef = message.tradeRef
               if (tRef && !seen.has(tRef) && tradesById.has(tRef)) {
                 seen.add(tRef)
@@ -574,6 +631,12 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 seen.add(trade.id)
                 items.push(renderMarker(trade))
               }
+            }
+
+            // Warmups postérieurs au dernier message (ex. fraîchement lancés) — fin de fil
+            while (warmupIdx < flowWarmups.length) {
+              items.push(renderWarmup(flowWarmups[warmupIdx]))
+              warmupIdx++
             }
 
             return items

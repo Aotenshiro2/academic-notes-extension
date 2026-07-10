@@ -26,11 +26,15 @@ function gaugeStyle(v: number) {
 interface WarmupCardProps {
   warmup?: NoteWarmup
   onSave: (patch: Partial<NoteWarmup>) => void
+  /** Heure de lancement affichée dans l'en-tête (warmups multiples dans le fil) */
+  timeLabel?: string
+  /** Ouvre la carte dès le rendu (warmup fraîchement lancé) */
+  defaultOpen?: boolean
 }
 
-export default function WarmupCard({ warmup, onSave }: WarmupCardProps) {
+export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen }: WarmupCardProps) {
   const filled = hasContent(warmup)
-  const [open, setOpen] = useState(filled)
+  const [open, setOpen] = useState(defaultOpen ?? filled)
   const [gauge, setGauge] = useState(warmup?.emotionLevel ?? 0)
 
   // Rien de rempli et replié → simple lanceur discret (le warmup n'est pas obligatoire)
@@ -54,6 +58,7 @@ export default function WarmupCard({ warmup, onSave }: WarmupCardProps) {
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-1.5 px-3 py-2">
         <Sunrise size={14} className="text-blue-500 flex-shrink-0" />
         <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Warmup</span>
+        {timeLabel && <span className="text-[10px] text-muted-foreground">· {timeLabel}</span>}
         {filled && <span className="text-[10px] font-medium ml-auto" style={{ color: g.color }}>{gauge} · {g.label}</span>}
         {open
           ? <ChevronDown size={13} className={`text-muted-foreground ${filled ? 'ml-1.5' : 'ml-auto'}`} />

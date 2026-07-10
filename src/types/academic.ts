@@ -60,7 +60,8 @@ export interface AcademicNote {
   concepts: string[]
   annotations?: Annotation[] // notation A/B/C (note entière : messageRef/tradeRef absents)
   trades?: TradeSegment[] // segments de trade de la séance (threads dans la note)
-  warmup?: NoteWarmup // rituel d'avant-séance, lancé depuis la note quand on est prêt à trader
+  warmup?: NoteWarmup // legacy : premier warmup (affiché en haut de note) — plus alimenté
+  warmups?: NoteWarmup[] // warmups de séance, ancrés dans le fil au moment du lancement
   screenshots?: Screenshot[]
   mindmapStructure?: MindmapNode[]
 }
@@ -91,7 +92,11 @@ export interface TradeCooldown {
 // Warmup de séance (Tendler) : se situer AVANT d'ouvrir les graphiques. Vit sur la
 // note (comme le cooldown vit sur le trade), lancé quand on se sent prêt à trader —
 // jamais imposé (une note de cours n'en a pas). Le cooldown, lui, est par trade.
+// Une même note peut contenir PLUSIEURS warmups (plusieurs séances dans la journée) :
+// chacun s'ancre dans le fil au moment où il est lancé (startedAt).
 export interface NoteWarmup {
+  id?: string              // absent sur le warmup legacy unique (note.warmup)
+  startedAt?: number       // ancrage chronologique dans le fil (absent = legacy, affiché en haut)
   physical?: string        // état physique
   emotional?: string       // état émotionnel
   dominantThought?: string // pensée dominante
