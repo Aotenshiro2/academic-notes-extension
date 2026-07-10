@@ -1,5 +1,6 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
+import { storage } from '@/lib/storage'
 
 // Fallback pour les navigateurs Chromium sans sidePanel (Opera, etc.)
 async function openSidePanel(tabId: number): Promise<void> {
@@ -225,6 +226,14 @@ async function handleMessage(
         }
         break
 
+      case 'SAVE_NOTE': {
+        // Sauvegarde demandée par le content script (sélection de zone) —
+        // le stockage vit ici, dans l'origine de l'extension.
+        const noteId = await storage.saveNote(message.payload.note)
+        sendResponse({ success: true, noteId })
+        break
+      }
+
       case 'SMART_CAPTURE':
         // Get current active tab if tabId not provided (sidepanel doesn't have sender.tab)
         let smartCaptureTabId = tabId
@@ -299,11 +308,8 @@ async function capturePage(tabId: number): Promise<CaptureResult> {
       screenshots: []
     }
 
-    // Sauvegarder dans IndexedDB via le content script
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'SAVE_NOTE',
-      payload: { note }
-    })
+    // Sauvegarder dans IndexedDB (origine extension, partagée avec le sidepanel)
+    await storage.saveNote(note)
 
     return { success: true, note }
   } catch (error) {
@@ -336,10 +342,7 @@ async function captureSelection(tabId: number, selectedText: string): Promise<Ca
       screenshots: []
     }
 
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'SAVE_NOTE',
-      payload: { note }
-    })
+    await storage.saveNote(note)
 
     return { success: true, note }
   } catch (error) {
@@ -371,10 +374,7 @@ async function takeScreenshot(tabId: number): Promise<CaptureResult> {
       screenshots: []
     }
 
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'SAVE_NOTE',
-      payload: { note }
-    })
+    await storage.saveNote(note)
 
     return { success: true, note }
   } catch (error) {

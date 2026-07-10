@@ -1,17 +1,9 @@
-import type { ExtensionMessage, AcademicNote } from '@/types/academic'
+import type { ExtensionMessage } from '@/types/academic'
 
-// Interface pour communication avec le storage depuis le content script
-let storage: any = null
-
-// Initialisation du module storage
-async function initStorage() {
-  if (!storage) {
-    // Importer dynamiquement le module storage
-    const storageModule = await import('../lib/storage.js')
-    storage = storageModule.default
-  }
-  return storage
-}
+// IMPORTANT : ce fichier est injecté par Chrome/Brave en script CLASSIQUE
+// (pas un module ES). Aucun import runtime n'est autorisé ici — seuls les
+// `import type` (effacés à la compilation) le sont. Le stockage vit dans le
+// service worker : ce script extrait le DOM et lui envoie les données.
 
 // Écouter les messages du background script
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
@@ -21,14 +13,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
 
 async function handleContentMessage(message: ExtensionMessage, sendResponse: (response: any) => void) {
   try {
-    await initStorage()
-    
     switch (message.type) {
-      case 'SAVE_NOTE':
-        const result = await storage.saveNote(message.payload.note)
-        sendResponse({ success: true, noteId: result })
-        break
-
       case 'EXTRACT_CONTENT':
         const contentData = extractPageContent()
         sendResponse(contentData)
@@ -39,8 +24,8 @@ async function handleContentMessage(message: ExtensionMessage, sendResponse: (re
     }
   } catch (error) {
     console.error('Content script error:', error)
-    sendResponse({ 
-      error: error instanceof Error ? error.message : 'Content script error' 
+    sendResponse({
+      error: error instanceof Error ? error.message : 'Content script error'
     })
   }
 }
