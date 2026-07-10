@@ -49,8 +49,14 @@ Correctif appliqué (option propre de Codex) :
   lancement dans l'en-tête.
 - Plusieurs lancements = plusieurs cartes = plusieurs séances dans la même
   note.
-- [ ] Reste : valider l'UX en réel ; décider si le warmup doit remonter dans
-      la sync journal (`/api/notes` ne transporte pas encore `warmups`).
+- ✅ Sync journal (10/07/2026) : les warmups remontent via `/api/notes`
+      (colonne `Note.warmups` JSONB créée et migration appliquée en base) ;
+      le pull les restaure. Les cooldowns remontaient déjà (dans `trades`).
+- ✅ Exports (10/07/2026) : PDF/DOCX/Drive reconstruisent le fil complet
+      (module `export-flow.ts`) — marqueurs Trade 1/2/3 avec heure + résultat,
+      jugement A/B/C, cooldown, warmups à leur position chronologique.
+- ✅ Version 1.6.1 (package.json + manifest).
+- [ ] Reste : valider l'UX en réel (Brave) puis générer le zip v1.6.1.
 
 ### 4. Fonctionnalité DOL — Draw on Liquidity
 
