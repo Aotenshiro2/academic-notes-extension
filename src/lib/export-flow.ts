@@ -93,7 +93,11 @@ export function buildExportHtml(note: AcademicNote): string {
     (note.annotations ?? []).filter(a => a.tradeRef === id).sort((a, b) => b.createdAt - a.createdAt)[0]
   const seenTrades = new Set<string>()
 
-  const warmups = [...(note.warmups ?? [])].sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0))
+  // Ne pas exporter les warmups vides (lancés mais jamais remplis) : un titre
+  // seul sans info n'apporte rien au document
+  const warmups = [...(note.warmups ?? [])]
+    .filter(warmupFilled)
+    .sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0))
   let warmupIdx = 0
   const flushWarmupsBefore = (ts: number) => {
     while (warmupIdx < warmups.length && (warmups[warmupIdx].startedAt ?? 0) <= ts) {

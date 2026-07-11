@@ -254,33 +254,39 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // cooldown-par-trade). Multi-séances : chaque lancement crée une entrée ancrée dans
   // le fil (startedAt) — une journée peut contenir plusieurs séances dans la même note.
   // note.warmup = legacy (unique, affiché en haut) : toujours éditable, plus alimenté.
+  // Toujours repartir de la note FRAÎCHE (storage) et non du state : remplir
+  // plusieurs champs à la suite déclenche des blurs rapprochés, et un state
+  // périmé écraserait le champ sauvegardé juste avant.
   const handleSaveWarmup = useCallback(async (patch: Partial<NoteWarmup>) => {
-    if (!note) return
-    const warmup: NoteWarmup = { ...(note.warmup ?? {}), ...patch, doneAt: note.warmup?.doneAt ?? Date.now() }
-    await storage.saveNote({ ...note, warmup })
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    const warmup: NoteWarmup = { ...(fresh.warmup ?? {}), ...patch, doneAt: fresh.warmup?.doneAt ?? Date.now() }
+    await storage.saveNote({ ...fresh, warmup })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
-  }, [note, onNoteUpdate])
+  }, [noteId, onNoteUpdate])
 
   const handleLaunchWarmup = useCallback(async () => {
-    if (!note) return
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
     const entry: NoteWarmup = { id: crypto.randomUUID(), startedAt: Date.now(), doneAt: Date.now() }
     setFreshWarmupId(entry.id!)
-    await storage.saveNote({ ...note, warmups: [...(note.warmups ?? []), entry] })
+    await storage.saveNote({ ...fresh, warmups: [...(fresh.warmups ?? []), entry] })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
-  }, [note, onNoteUpdate])
+  }, [noteId, onNoteUpdate])
 
   const handleSaveWarmupEntry = useCallback(async (warmupId: string, patch: Partial<NoteWarmup>) => {
-    if (!note) return
-    const warmups = (note.warmups ?? []).map(w => w.id === warmupId ? { ...w, ...patch } : w)
-    await storage.saveNote({ ...note, warmups })
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    const warmups = (fresh.warmups ?? []).map(w => w.id === warmupId ? { ...w, ...patch } : w)
+    await storage.saveNote({ ...fresh, warmups })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
-  }, [note, onNoteUpdate])
+  }, [noteId, onNoteUpdate])
 
   // ---- Concepts éditables ----
   const handleAddConcept = useCallback(async () => {

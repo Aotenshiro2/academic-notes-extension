@@ -581,12 +581,18 @@ function App() {
     }
   }
 
+  // Exports : toujours relire la note depuis le storage — le state `notes` de
+  // l'App peut être en retard sur les dernières éditions (warmup, cooldown…)
+  const freshCurrentNote = async () =>
+    currentNote ? (await storage.getNote(currentNote.id)) ?? currentNote : null
+
   // Fonction pour exporter la note courante en PDF
   const handleExportPDF = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToPDF(currentNote)
+      await exportNoteToPDF(fresh)
     } catch (error) {
       console.error('Error exporting PDF:', error)
       alert('Erreur lors de l\'export PDF')
@@ -596,10 +602,11 @@ function App() {
   }
 
   const handleExportDocx = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToDocx(currentNote)
+      await exportNoteToDocx(fresh)
     } catch (error) {
       console.error('Error exporting DOCX:', error)
       alert('Erreur lors de l\'export Google Docs')
@@ -609,10 +616,11 @@ function App() {
   }
 
   const handleExportDrive = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToDrive(currentNote)
+      await exportNoteToDrive(fresh)
     } catch (error) {
       console.error('Error exporting to Drive:', error)
       alert('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
