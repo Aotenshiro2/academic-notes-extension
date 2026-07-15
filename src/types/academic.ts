@@ -62,6 +62,7 @@ export interface AcademicNote {
   trades?: TradeSegment[] // segments de trade de la séance (threads dans la note)
   warmup?: NoteWarmup // legacy : premier warmup (affiché en haut de note) — plus alimenté
   warmups?: NoteWarmup[] // warmups de séance, ancrés dans le fil au moment du lancement
+  dols?: DolLevel[] // niveaux DOL (Draw on Liquidity) épinglés en haut de la note
   screenshots?: Screenshot[]
   mindmapStructure?: MindmapNode[]
 }
@@ -105,7 +106,25 @@ export interface NoteWarmup {
   doneAt?: number
 }
 
-export type ContentType = 
+// ── DOL — Draw on Liquidity (ICT / Smart Money) ──────────────────────────────
+// Le niveau/la zone de liquidité qui attire le prix, défini pendant l'analyse HTF
+// AVANT la séance. Épinglé en haut de la note pour ne jamais perdre la vision HTF
+// une fois plongé dans les LTF. Statut mis à jour au fil de la séance.
+export type DolStatus = 'actif' | 'atteint' | 'invalide'
+export type DolBias = 'haussier' | 'baissier'
+
+export interface DolLevel {
+  id: string
+  price: string        // saisie libre (« 23 450 », « 1.0850 »…) — pas de parsing imposé
+  bias: DolBias        // direction vers laquelle le prix est attiré
+  instrument?: string  // « NQ », « EURUSD »…
+  comment?: string     // « sous les equal lows d'hier »…
+  status: DolStatus
+  createdAt: number
+  updatedAt?: number
+}
+
+export type ContentType =
   | 'article' 
   | 'pdf' 
   | 'video' 

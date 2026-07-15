@@ -1,4 +1,4 @@
-import type { AcademicNote, NoteWarmup, TradeSegment, Annotation, TradeOutcome } from '@/types/academic'
+import type { AcademicNote, NoteWarmup, TradeSegment, Annotation, TradeOutcome, DolLevel } from '@/types/academic'
 
 // Reconstruit le fil COMPLET de la note en HTML pour les exports (PDF, DOCX, Drive) :
 // messages + segments de trade (résultat, jugement A/B/C, cooldown) + warmups,
@@ -61,6 +61,22 @@ function tradeHtml(t: TradeSegment, n: number, annotation?: Annotation): string 
   return lines.join('')
 }
 
+const DOL_STATUS_LABEL: Record<string, string> = { actif: 'actif', atteint: 'atteint', invalide: 'invalidé' }
+
+function dolsHtml(dols: DolLevel[]): string {
+  const lines: string[] = ['<h3>DOL — Draw on Liquidity</h3>']
+  for (const d of dols) {
+    const parts: string[] = [d.bias === 'haussier' ? 'Biais haussier' : 'Biais baissier']
+    if (d.instrument) parts.push(esc(d.instrument))
+    parts.push(esc(d.price))
+    let line = parts.join(' · ')
+    if (d.comment) line += ` — ${esc(d.comment)}`
+    line += ` (${DOL_STATUS_LABEL[d.status] ?? d.status})`
+    lines.push(`<p>${line}</p>`)
+  }
+  return lines.join('')
+}
+
 function messageHtml(content: string, isImage: boolean): string {
   if (isImage) return `<img src="${content}" alt="Capture"/>`
   const trimmed = content.trim()
@@ -76,6 +92,9 @@ function messageHtml(content: string, isImage: boolean): string {
 export function buildExportHtml(note: AcademicNote): string {
   const IMAGE_TYPES = new Set(['image', 'screenshot', 'capture'])
   const parts: string[] = []
+
+  // DOL — la cible HTF de la séance, en tête de document
+  if (note.dols && note.dols.length > 0) parts.push(dolsHtml(note.dols))
 
   // Warmup legacy (ancien modèle : un seul, en haut de note)
   if (warmupFilled(note.warmup)) parts.push(warmupHtml(note.warmup!))

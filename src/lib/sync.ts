@@ -147,6 +147,7 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     concepts: note.concepts ?? [],
     trades: note.trades ?? [],
     warmups: collectWarmups(note),
+    dols: note.dols ?? [],
     folderId: note.folderId ?? null,
     folderName,
     createdAt: new Date(note.timestamp).toISOString(),
@@ -355,6 +356,7 @@ export async function pullFromJournal(): Promise<{
           concepts: Array.isArray(jn.concepts) ? jn.concepts.filter((c: unknown) => typeof c === 'string') : [],
           trades: Array.isArray(jn.trades) ? jn.trades : [],
           warmups: Array.isArray(jn.warmups) ? jn.warmups.filter((w: unknown) => w && typeof w === 'object') : undefined,
+          dols: Array.isArray(jn.dols) ? jn.dols.filter((d: unknown) => d && typeof d === 'object') : undefined,
           folderId: typeof jn.folderId === 'string' ? jn.folderId : undefined,
         }
       })

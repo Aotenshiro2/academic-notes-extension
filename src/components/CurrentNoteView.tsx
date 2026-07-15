@@ -9,7 +9,8 @@ import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
 import WarmupCard from './WarmupCard'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup } from '@/types/academic'
+import DolBar from './DolBar'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -288,6 +289,40 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
 
+  // ---- DOL (Draw on Liquidity) : niveaux épinglés en haut de la note ----
+  // Même règle que les warmups : toujours repartir de la note fraîche du storage.
+  const handleAddDol = useCallback(async (dol: Omit<DolLevel, 'id' | 'createdAt' | 'status'>) => {
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    const entry: DolLevel = { ...dol, id: crypto.randomUUID(), status: 'actif', createdAt: Date.now() }
+    await storage.saveNote({ ...fresh, dols: [...(fresh.dols ?? []), entry] })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
+  const handleCycleDolStatus = useCallback(async (dolId: string) => {
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    const NEXT: Record<string, DolLevel['status']> = { actif: 'atteint', atteint: 'invalide', invalide: 'actif' }
+    const dols = (fresh.dols ?? []).map(d =>
+      d.id === dolId ? { ...d, status: NEXT[d.status] ?? 'actif', updatedAt: Date.now() } : d
+    )
+    await storage.saveNote({ ...fresh, dols })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
+  const handleDeleteDol = useCallback(async (dolId: string) => {
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    await storage.saveNote({ ...fresh, dols: (fresh.dols ?? []).filter(d => d.id !== dolId) })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
   // ---- Concepts éditables ----
   const handleAddConcept = useCallback(async () => {
     if (!note) return
@@ -453,6 +488,17 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           </span>
         </button>
       )}
+
+      {/* DOL — Draw on Liquidity : la cible HTF, épinglée (sticky) pour rester
+          sous les yeux pendant toute la séance, même en scrollant le fil */}
+      <div className={(note.dols?.length ?? 0) > 0 ? 'sticky top-0 z-20 bg-background pb-1 -mt-1 pt-1' : undefined}>
+        <DolBar
+          dols={note.dols ?? []}
+          onAdd={handleAddDol}
+          onCycleStatus={handleCycleDolStatus}
+          onDelete={handleDeleteDol}
+        />
+      </div>
 
       {/* Warmup legacy (ancien modèle : un seul, en haut de note) — affiché seulement s'il est rempli */}
       {!!(note.warmup && (note.warmup.physical || note.warmup.emotional || note.warmup.dominantThought || note.warmup.objective || note.warmup.emotionLevel !== undefined)) && (
