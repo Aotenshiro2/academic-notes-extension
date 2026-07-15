@@ -128,8 +128,8 @@ function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF
           <button
             onClick={onShowRitual}
             className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-500/10 rounded-md transition-colors"
-            title="Rituel de séance (warmup / cooldown)"
-            aria-label="Rituel de séance"
+            title="Lancer un warmup (crée une note de séance si besoin)"
+            aria-label="Lancer un warmup"
           >
             <Sunrise size={18} />
           </button>

@@ -69,6 +69,7 @@ const CHANGELOG = [
     items: [
       'Nouveau : DOL — Draw on Liquidity. Pose ton niveau de liquidité cible (biais, instrument, prix, commentaire) pendant l\'analyse HTF ; il reste épinglé en haut de la note pendant toute la séance pour ne jamais perdre ta direction. Statut actif / atteint / invalidé en un clic.',
       'Amélioration : warmup à la demande et multi-séances — lance-en autant que tu veux dans une même note ; chacun s\'ancre dans le fil au moment où tu le lances.',
+      'Amélioration : le bouton warmup (☀ en haut) crée une note de séance à la volée si tu es sur l\'accueil — plus besoin d\'ouvrir une note d\'abord.',
       'Amélioration : les exports PDF/Word/Drive contiennent désormais TOUT — trades (Trade 1/2/3 avec heure et résultat), jugements A/B/C, cooldowns, warmups et DOL.',
       'Synchronisation : warmups et DOL remontent maintenant dans le Journal d\'Études.',
       'Correction : le content script ne provoque plus d\'erreur au chargement (Brave/Chrome).',

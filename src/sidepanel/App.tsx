@@ -17,7 +17,6 @@ import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import SettingsView from '@/components/SettingsView'
 import AccountView from '@/components/AccountView'
-import RitualView from '@/components/RitualView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
@@ -36,7 +35,6 @@ function App() {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
-  const [showRitual, setShowRitual] = useState(false)
   const [notes, setNotes] = useState<AcademicNote[]>([])
   const [folders, setFolders] = useState<NoteFolder[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
@@ -240,6 +238,40 @@ function App() {
   // Fonction pour retourner à l'accueil (au lieu de créer une note vide)
   const handleGoHome = () => {
     setCurrentNoteId(null)
+  }
+
+  // Bouton rituel du header : lance un warmup. Depuis l'accueil (aucune note ouverte),
+  // il crée une note de séance à la volée et y pose le warmup ; dans une note, il ajoute
+  // simplement un warmup au fil. Remplace l'ancien écran RitualView (sans vraie UX).
+  const handleRitualWarmup = async () => {
+    const warmupEntry = { id: crypto.randomUUID(), startedAt: Date.now(), doneAt: Date.now() }
+    if (!currentNoteId) {
+      const newNoteId = Date.now().toString()
+      const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+      const newNote: AcademicNote = {
+        id: newNoteId,
+        title: `Séance du ${today}`,
+        content: '',
+        url: '',
+        timestamp: Date.now(),
+        type: 'manual',
+        tags: [],
+        concepts: [],
+        screenshots: [],
+        warmups: [warmupEntry],
+        metadata: { domain: '', title: `Séance du ${today}`, language: 'fr' },
+      }
+      await storage.saveNote(newNote)
+      setCurrentNoteId(newNoteId)
+    } else {
+      // Note ouverte : relire la version fraîche pour ne rien écraser, puis ajouter
+      const fresh = await storage.getNote(currentNoteId)
+      if (fresh) {
+        await storage.saveNote({ ...fresh, warmups: [...(fresh.warmups ?? []), warmupEntry] })
+      }
+    }
+    await loadData()
+    setNoteRefreshTrigger(Date.now())
   }
 
   // ---- Trades ----
@@ -668,19 +700,11 @@ function App() {
   // Obtenir le titre de la note courante
   const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
-  if (showRitual) {
-    return (
-      <div className="sidebar-container">
-        <RitualView onClose={() => setShowRitual(false)} />
-      </div>
-    )
-  }
-
   return (
     <div className="sidebar-container">
       <Header
         onShowHistory={() => setShowHistoryDropdown(!showHistoryDropdown)}
-        onShowRitual={() => setShowRitual(true)}
+        onShowRitual={handleRitualWarmup}
         onHome={handleGoHome}
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}
