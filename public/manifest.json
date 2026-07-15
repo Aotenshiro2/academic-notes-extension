@@ -60,11 +60,5 @@
       "description": "Quick capture current page"
     }
   },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwUb+/HWf0QWM9Yqk5ggTCvBbS1SDNQ2JyOJ2TBK4ZXjiOgg3XaLvnUidb/Rap7RFlAjAmohszPQWWcuNjryegpkRTg/CLmmgVB9PlIo1Tv13paTcdwPipK+Hr1msNgPqNBjJezCypBaIqNvk8sAGCqmvVXjl0cQcqsD1k44aQY4Vsv3OeRdNIMtkfBZeR8RiCglG278CC9585caCNqP1A/pwmQBNu2NXmHalTIM+Jw+6ROndXnzY+GwAGxnaVoanfqQfeFE2MBTKpMysIY7EwHSfrgBxj17iN+Co/1Uv6Gtrc8+ln3RdSGe8Yu1Pd1NGFht9Q1harJhwC3O+N6cbcwIDAQAB",
-  "oauth2": {
-    "client_id": "__REPLACE_WITH_CHROME_EXTENSION_OAUTH_CLIENT_ID__.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/drive.file"
-    ]
-  }
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwUb+/HWf0QWM9Yqk5ggTCvBbS1SDNQ2JyOJ2TBK4ZXjiOgg3XaLvnUidb/Rap7RFlAjAmohszPQWWcuNjryegpkRTg/CLmmgVB9PlIo1Tv13paTcdwPipK+Hr1msNgPqNBjJezCypBaIqNvk8sAGCqmvVXjl0cQcqsD1k44aQY4Vsv3OeRdNIMtkfBZeR8RiCglG278CC9585caCNqP1A/pwmQBNu2NXmHalTIM+Jw+6ROndXnzY+GwAGxnaVoanfqQfeFE2MBTKpMysIY7EwHSfrgBxj17iN+Co/1Uv6Gtrc8+ln3RdSGe8Yu1Pd1NGFht9Q1harJhwC3O+N6cbcwIDAQAB"
 }
