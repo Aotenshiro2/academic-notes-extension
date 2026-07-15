@@ -1,8 +1,10 @@
 import type { AcademicNote } from '@/types/academic'
 import { buildDocxBlob } from './docx-export'
 
+// client_id public (pas un secret). L'échange code→token se fait côté serveur
+// (proxy journal) pour ne PAS embarquer de client_secret dans le bundle.
 const GOOGLE_DRIVE_CLIENT_ID = '963294596205-jvg0o7mi11ngfvqcq6thncmboemnalmq.apps.googleusercontent.com'
-const GOOGLE_DRIVE_CLIENT_SECRET = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_SECRET as string
+const JOURNAL_API = 'https://journal-d-etude-beta.vercel.app'
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -60,26 +62,21 @@ async function getDriveToken(): Promise<string> {
   const code = new URL(responseUrl).searchParams.get('code')
   if (!code) throw new Error('Aucun code retourné par Google')
 
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+  // Échange code→token via le proxy journal : le client_secret vit sur le serveur
+  // (Vercel), jamais dans le bundle. PKCE (code_verifier) transmis pour l'échange.
+  const tokenRes = await fetch(`${JOURNAL_API}/api/drive-token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: GOOGLE_DRIVE_CLIENT_ID,
-      client_secret: GOOGLE_DRIVE_CLIENT_SECRET,
-      redirect_uri: redirectUrl,
-      grant_type: 'authorization_code',
-      code_verifier: codeVerifier,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, codeVerifier, redirectUri: redirectUrl }),
   })
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text().catch(() => tokenRes.statusText)
-    throw new Error(`Erreur token Google : ${tokenRes.status} ${text}`)
+    throw new Error(`Erreur échange token : ${tokenRes.status} ${text}`)
   }
 
   const { access_token } = await tokenRes.json()
-  if (!access_token) throw new Error('Pas d\'access_token dans la réponse Google')
+  if (!access_token) throw new Error('Pas d\'access_token dans la réponse')
   return access_token
 }
 

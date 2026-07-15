@@ -64,6 +64,14 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.3',
+    title: 'Export Drive sécurisé (sans secret embarqué)',
+    items: [
+      'Sécurité : l\'export Google Drive ne contient plus aucun secret dans l\'extension. L\'authentification passe par launchWebAuthFlow (compatible Chrome, Brave, Opera, Edge) et l\'échange de jeton se fait côté serveur.',
+      'Aucun changement visible : l\'export Drive fonctionne comme avant, sur tous les navigateurs.',
+    ],
+  },
+  {
     version: '1.6.2',
     title: 'DOL, warmups multi-séances et exports complets',
     items: [
