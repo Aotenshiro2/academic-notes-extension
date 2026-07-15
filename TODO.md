@@ -5,14 +5,29 @@
 0. **Pont Edgyx** — dossier d'analyse envoyé à Geoffrey (voir
    `docs/edgyx-bridge/`), en attente de son retour de besoins. L'implémentation
    suivra les allers-retours.
-1. ~~🐛 Bug content-script~~ ✅ **corrigé le 10/07/2026** (voir ci-dessous)
-2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026** (voir ci-dessous)
-3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)*
-4. **Fonctionnalité DOL — Draw on Liquidity** ← prochaine tâche extension
+1. ~~🐛 Bug content-script~~ ✅ **corrigé le 10/07/2026**
+2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026**
+3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)* ← prochaine tâche
+4. ~~Fonctionnalité DOL — Draw on Liquidity~~ ✅ **fait le 10/07/2026** (v1.6.2, voir plus bas)
 5. *(côté journal : compteur de journalisation des concepts)*
 
-> Le zip v1.6.0 peut maintenant être généré (points 1 et 2 traités) —
-> à faire après validation manuelle dans Brave/Chrome.
+> ⚠️ AVANT de générer le zip v1.6.2 et AVANT tout push : voir
+> `docs/v1.6.2-drive-oauth.md` (Codex). Il reste 3 actions à faire avec Brice :
+> créer le client OAuth « Chrome Extension » + renseigner le client_id,
+> **roter l'ancien secret Drive** (compromis, embarqué ≥ v1.4.7), et
+> **nettoyer l'historique git** (le secret vit dans les commits v1.6.1
+> `3d6d872`/`9131321`, non poussés → GitHub Push Protection bloquera sinon).
+
+### ✅ 4. DOL — Draw on Liquidity — fait le 10/07/2026 (v1.6.2)
+
+- Nouveau composant `DolBar` épinglé (sticky) en haut de la note : on pose un
+  ou plusieurs niveaux (biais haussier/baissier, instrument, prix, commentaire)
+  pendant l'analyse HTF ; ils restent visibles pendant toute la séance.
+- Statut par niveau : actif → atteint → invalidé (cycle au clic).
+- `note.dols[]` (type `DolLevel`) ; sync vers le journal (`Note.dols` JSONB,
+  migration `2026-07-10-dols.sql` appliquée) ; présent dans les exports
+  PDF/DOCX/Drive (en tête de document).
+- [ ] Reste : valider l'UX en réel dans Brave.
 
 ### ✅ 1. Bug content script ESM — corrigé le 10/07/2026
 
