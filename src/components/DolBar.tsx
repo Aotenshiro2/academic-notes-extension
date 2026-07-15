@@ -58,15 +58,15 @@ export default function DolBar({ dols, onAdd, onCycleStatus, onDelete }: DolBarP
   }
 
   if (dols.length === 0 && !adding) {
-    // Lanceur discret, même langage visuel que le warmup
+    // Lanceur compact et discret (pas de gros bloc en tête de note)
     return (
       <button
         onClick={() => setAdding(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/5 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-violet-600/80 dark:text-violet-400/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+        title="Poser un DOL — le niveau de liquidité qui attire le prix"
       >
-        <Magnet size={15} className="flex-shrink-0" />
-        <span className="text-xs font-medium">Poser mon DOL</span>
-        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">le niveau qui attire le prix — reste épinglé</span>
+        <Magnet size={13} className="flex-shrink-0" />
+        Poser un DOL
       </button>
     )
   }

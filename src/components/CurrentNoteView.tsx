@@ -489,32 +489,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </button>
       )}
 
-      {/* DOL — Draw on Liquidity : la cible HTF, épinglée (sticky) pour rester
-          sous les yeux pendant toute la séance, même en scrollant le fil */}
-      <div className={(note.dols?.length ?? 0) > 0 ? 'sticky top-0 z-20 bg-background pb-1 -mt-1 pt-1' : undefined}>
-        <DolBar
-          dols={note.dols ?? []}
-          onAdd={handleAddDol}
-          onCycleStatus={handleCycleDolStatus}
-          onDelete={handleDeleteDol}
-        />
-      </div>
-
       {/* Warmup legacy (ancien modèle : un seul, en haut de note) — affiché seulement s'il est rempli */}
       {!!(note.warmup && (note.warmup.physical || note.warmup.emotional || note.warmup.dominantThought || note.warmup.objective || note.warmup.emotionLevel !== undefined)) && (
         <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} />
       )}
-
-      {/* Lancer un warmup : il s'ancre dans le fil au moment du clic — une note peut en
-          contenir plusieurs (une séance = un warmup, plusieurs séances par jour possibles) */}
-      <button
-        onClick={handleLaunchWarmup}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/5 transition-colors"
-      >
-        <Sunrise size={15} className="flex-shrink-0" />
-        <span className="text-xs font-medium">Lancer mon warmup</span>
-        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">te situer avant de trader — s'ajoute au fil</span>
-      </button>
 
       {/* Résumé */}
       {note.summary && (
@@ -711,6 +689,40 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           />
         </div>
       ) : null}
+
+      {/* Séance — en bas de note, discret : DOL (cible HTF) puis lanceur de warmup.
+          Le DOL reste en bas comme demandé ; les lanceurs sont compacts. */}
+      <div className="pt-1">
+        {(note.dols?.length ?? 0) > 0 && (
+          <div className="mb-2">
+            <DolBar
+              dols={note.dols ?? []}
+              onAdd={handleAddDol}
+              onCycleStatus={handleCycleDolStatus}
+              onDelete={handleDeleteDol}
+            />
+          </div>
+        )}
+        {/* Rangée d'actions compactes (lanceurs discrets) */}
+        <div className="flex flex-wrap items-center gap-1">
+          {(note.dols?.length ?? 0) === 0 && (
+            <DolBar
+              dols={[]}
+              onAdd={handleAddDol}
+              onCycleStatus={handleCycleDolStatus}
+              onDelete={handleDeleteDol}
+            />
+          )}
+          <button
+            onClick={handleLaunchWarmup}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+            title="Lancer un warmup — il s'ajoute dans le fil au moment du clic"
+          >
+            <Sunrise size={13} className="flex-shrink-0" />
+            Lancer un warmup
+          </button>
+        </div>
+      </div>
 
       {/* Popover de notation — note entière ou segment de trade */}
       {notationTarget && (
