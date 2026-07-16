@@ -18,6 +18,33 @@
 > **nettoyer l'historique git** (le secret vit dans les commits v1.6.1
 > `3d6d872`/`9131321`, non poussés → GitHub Push Protection bloquera sinon).
 
+### 6. Repenser les prompts d'analyse IA (demandé par Brice le 16/07/2026)
+
+**Constat :** les 3 prompts actuels (« analyse neutre », « mentorat AOKnowledge »,
+« orienté action ») sont trois variantes parallèles sans logique d'enchaînement.
+
+**Voulu :** un « prompt libre » + **3 prompts qui s'enchaînent** :
+- [ ] **Prompt libre** — l'élève écrit ce qu'il veut.
+- [ ] **1. Initialisation** — ouvre la conversation avec l'IA : donne le contexte
+      et définit le RÔLE de l'IA (le cadre de travail).
+- [ ] **2. Objectif précis** — celui qu'on utilise régulièrement quand on ajoute
+      des notes dans une conversation DÉJÀ existante (l'usage courant en séance).
+- [ ] **3. Ton de voix / coaching** — reprend le ton de Brice et sa manière de
+      coacher, pour que la réponse ait l'air de venir de lui.
+
+**Prérequis identifié par Brice :** publier une **page / documentation en ligne**
+que l'IA pourra consulter (les bons inputs, les bonnes techniques, le ton), pour
+que ses réponses sonnent AOKnowledge. À cadrer : où l'héberger (site AOK ?
+journal ?), quel contenu, et comment le prompt y renvoie (URL dans le prompt).
+
+### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
+
+Même racine que le bug des `confirm()` : `alert()` est aussi supprimable par
+« ne plus afficher ce type de boîte ». Les `alert()` restants (`src/sidepanel/App.tsx`,
+erreurs d'export/capture/import) deviendraient alors **silencieux** pour l'élève
+concerné. Moins grave (message perdu, pas d'action bloquée) mais à traiter :
+demande un petit système de toasts.
+
 ### ✅ 4. DOL — Draw on Liquidity — fait le 10/07/2026 (v1.6.2)
 
 - Nouveau composant `DolBar` épinglé (sticky) en haut de la note : on pose un
