@@ -139,15 +139,21 @@ function ImageLightbox({
         </>
       )}
 
-      {/* Image container */}
+      {/* Image container — défile quand l'image dépasse (permet de se déplacer au zoom) */}
       <div className="overflow-auto" style={{ maxWidth: '90vw', maxHeight: '90vh' }}>
-        <img
-          src={displaySrc}
-          alt={alt}
-          className="block transition-[zoom] duration-200 ease-out"
-          style={{ zoom: scale }}
-          draggable={false}
-        />
+        {/* Le zoom vit sur le WRAPPER, pas sur l'image. Sur l'image, le `max-width: 100%`
+            (reset Tailwind) la plafonnait à la largeur du conteneur : au-delà d'environ
+            125% le zoom n'avait plus aucun effet. Ici l'image est bornée en unités
+            viewport (elle tient à 100%), et le wrapper zoomé multiplie vraiment le rendu. */}
+        <div style={{ zoom: scale }}>
+          <img
+            src={displaySrc}
+            alt={alt}
+            className="block"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', width: 'auto', height: 'auto' }}
+            draggable={false}
+          />
+        </div>
       </div>
 
       {/* Footer: counter + instructions */}
