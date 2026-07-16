@@ -64,6 +64,16 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.4',
+    title: 'Correctifs remontés par les élèves',
+    items: [
+      'Correction : sélectionner du texte n\'ouvre plus le sélecteur de tags tout seul. La sélection reste intacte — souligner (Ctrl+U), copier/coller et le clic droit refonctionnent. Un petit bouton « Taguer » apparaît si tu veux taguer le passage.',
+      'Correction : les confirmations de suppression sont maintenant des fenêtres de l\'extension. Si tu avais coché « ne plus afficher ce type de boîte » dans ton navigateur, supprimer une image ou une note redevient possible.',
+      'Correction : dans l\'image en plein écran, le zoom ne bloque plus vers 125% — il va jusqu\'à 300% et l\'image défile pour se déplacer dedans.',
+      'Correction : l\'envoi du PDF vers l\'IA choisit désormais le bon champ d\'import (l\'erreur « le fichier doit être GIF, WebP, PNG ou JPEG » ne devrait plus apparaître).',
+    ],
+  },
+  {
     version: '1.6.3',
     title: 'Export Drive sécurisé (sans secret embarqué)',
     items: [
