@@ -20,10 +20,10 @@ export const PROVIDERS: Record<AnalysisProvider, ProviderConfig> = {
     url: 'https://chatgpt.com/',
     prefillParam: 'q',
     prefillMaxLength: 7000,
+    // Un seul sélecteur suffit : l'injecteur choisit ensuite, parmi les champs
+    // trouvés, celui qui accepte réellement le PDF (jamais un champ image-only).
     fileInputSelectors: [
       'input[type="file"]',
-      'input[accept*="pdf"]',
-      'input[accept*="image"]',
     ],
     textareaSelectors: [
       '#prompt-textarea',

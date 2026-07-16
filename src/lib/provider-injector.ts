@@ -35,6 +35,45 @@ async function injectIntoProvider(
     })
   }
 
+  /**
+   * Choisit un champ fichier qui accepte RÉELLEMENT un PDF.
+   * Les pages IA exposent souvent plusieurs input[type=file], dont un réservé aux
+   * images (accept="image/*"). Y déposer un PDF déclenche « le fichier doit être
+   * GIF, WebP, PNG ou JPEG » — c'est ce que voyaient les élèves. On préfère donc un
+   * input qui mentionne le PDF, sinon un input sans restriction ; jamais un
+   * input image-only (dans ce cas on renvoie null → repli sur le glisser-déposer).
+   */
+  function findFileInput(selectors: string[]): HTMLInputElement | null {
+    const seen = new Set<HTMLInputElement>()
+    const candidates: HTMLInputElement[] = []
+    for (const s of selectors) {
+      for (const el of Array.from(document.querySelectorAll(s))) {
+        if (el instanceof HTMLInputElement && el.type === 'file' && !seen.has(el)) {
+          seen.add(el)
+          candidates.push(el)
+        }
+      }
+    }
+    const acceptsPdf = candidates.find(i => /pdf/i.test(i.accept || ''))
+    if (acceptsPdf) return acceptsPdf
+    const unrestricted = candidates.find(i => !(i.accept || '').trim())
+    if (unrestricted) return unrestricted
+    return null
+  }
+
+  function waitForFileInput(selectors: string[], maxAttempts = 10, interval = 800): Promise<HTMLInputElement | null> {
+    return new Promise((resolve) => {
+      let attempts = 0
+      const check = () => {
+        const el = findFileInput(selectors)
+        if (el) return resolve(el)
+        if (++attempts >= maxAttempts) return resolve(null)
+        setTimeout(check, interval)
+      }
+      check()
+    })
+  }
+
   function b64ToFile(b64: string, name: string, mime: string): File {
     const raw = atob(b64)
     const arr = new Uint8Array(raw.length)
@@ -57,12 +96,12 @@ async function injectIntoProvider(
   let pdfUploaded = false
   if (pdfBase64) {
     // Cliquer les triggers pour révéler le file input (Gemini, Claude, Grok…)
-    if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findEl(fileInputSelectors)) {
+    if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findFileInput(fileInputSelectors)) {
       await clickTriggerSteps(uploadTriggerSteps)
       await new Promise(r => setTimeout(r, 800))
     }
 
-    const fileInput = await waitFor(fileInputSelectors) as HTMLInputElement | null
+    const fileInput = await waitForFileInput(fileInputSelectors)
 
     if (fileInput) {
       try {
