@@ -49,7 +49,10 @@ CE QUE J'ATTENDS
 - Ne conclus pas à ma place.
 - Pose-moi les questions qui me font avancer.
 
-Confirme en une phrase que tu as compris ton rôle, puis attends ma première note.`,
+POUR COMMENCER
+Confirme en une phrase que tu as compris ton rôle, puis fais un premier état des lieux à partir de la note ci-dessous : ce que tu comprends de ma façon de travailler, ce qui ressort de cette séance, et les zones où il te manque de l'information pour m'aider vraiment.
+
+[CONTENU_DE_LA_NOTE]`,
 
   // 2. L'usage courant : une note de plus dans une conversation déjà cadrée par `init`.
   //    Court volontairement — le cadre est déjà posé, on demande une MISE À JOUR.
@@ -205,15 +208,12 @@ function AnalyzeNoteDialog({
     return PROMPTS[selectedPrompt]
   }
 
-  // Le prompt d'ouverture ne transporte AUCUNE note (ni texte ni PDF) : il cadre la
-  // conversation et demande à l'IA d'attendre. Y joindre la note contredirait sa
-  // dernière ligne (« attends ma première note ») et gâcherait la note en double.
+  // Le prompt d'ouverture part AVEC la note (et son PDF) : il cadre la conversation
+  // ET sert de premier état des lieux. Il se comporte donc comme les autres.
   const isOpener = selectedPrompt === 'init'
 
   const buildFullPrompt = (): string => {
     const promptText = getPromptText()
-
-    if (isOpener) return promptText
 
     if (isMultiNote) {
       const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
@@ -264,11 +264,10 @@ function AnalyzeNoteDialog({
       // Always copy full prompt to clipboard as backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // Generate PDF: combined multi-note PDF or single-note PDF (when images present).
-      // Jamais pour le prompt d'ouverture : il ne transporte pas de note.
+      // Generate PDF: combined multi-note PDF or single-note PDF (when images present)
       let cachedBase64: string | null = null
       let cachedFileName = ''
-      if (hasImages && !isOpener) {
+      if (hasImages) {
         let blob: Blob
         if (isMultiNote) {
           const selectedNotes = availableNotes
@@ -366,7 +365,7 @@ function AnalyzeNoteDialog({
 
   const PROMPT_OPTIONS: { type: PromptType; label: string; subtitle: string; icon: typeof MessageSquare }[] = [
     { type: 'custom', label: 'Prompt libre', subtitle: 'Écris ta propre consigne', icon: PenLine },
-    { type: 'init', label: '1. Lancer la conversation', subtitle: 'À envoyer en premier : pose le rôle de l\'IA', icon: MessageSquare },
+    { type: 'init', label: '1. Lancer la conversation', subtitle: 'Pose le rôle de l\'IA + premier état des lieux', icon: MessageSquare },
     { type: 'update', label: '2. Débriefer une séance', subtitle: 'Dans une conversation déjà lancée : évolutions et angles morts', icon: Target },
   ]
 
@@ -571,19 +570,20 @@ function AnalyzeNoteDialog({
             </div>
           )}
 
-          {/* Prompt d'ouverture : préciser qu'il part seul, sans la note */}
+          {/* Prompt d'ouverture : rappeler qu'il ne sert qu'une fois par conversation */}
           {isOpener && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
               <MessageSquare size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                Ce message part seul, sans ta note : il sert à cadrer l'IA. Envoie ensuite
-                « 2. Débriefer une séance » dans la même conversation.
+                À envoyer une seule fois, pour ouvrir la conversation : ta note part avec et
+                sert de premier état des lieux. Ensuite, utilise « 2. Débriefer une séance »
+                dans cette même conversation.
               </p>
             </div>
           )}
 
           {/* Image info callout — single note only */}
-          {hasImages && !isOpener && status === 'idle' && (
+          {hasImages && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
               <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-purple-700 dark:text-purple-300">
@@ -593,7 +593,7 @@ function AnalyzeNoteDialog({
           )}
 
           {/* Multi-note info callout */}
-          {isMultiNote && !isOpener && status === 'idle' && (
+          {isMultiNote && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
               <FileText size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
