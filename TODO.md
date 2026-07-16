@@ -18,24 +18,58 @@
 > **nettoyer l'historique git** (le secret vit dans les commits v1.6.1
 > `3d6d872`/`9131321`, non poussés → GitHub Push Protection bloquera sinon).
 
-### 6. Repenser les prompts d'analyse IA (demandé par Brice le 16/07/2026)
+### 6. Prompts d'analyse IA — chaîne logique (16/07/2026)
 
-**Constat :** les 3 prompts actuels (« analyse neutre », « mentorat AOKnowledge »,
-« orienté action ») sont trois variantes parallèles sans logique d'enchaînement.
+Les anciens prompts (« analyse neutre », « mentorat », « orienté action ») étaient
+trois variantes parallèles faites par défaut. Remplacés par une **chaîne**.
 
-**Voulu :** un « prompt libre » + **3 prompts qui s'enchaînent** :
-- [ ] **Prompt libre** — l'élève écrit ce qu'il veut.
-- [ ] **1. Initialisation** — ouvre la conversation avec l'IA : donne le contexte
-      et définit le RÔLE de l'IA (le cadre de travail).
-- [ ] **2. Objectif précis** — celui qu'on utilise régulièrement quand on ajoute
-      des notes dans une conversation DÉJÀ existante (l'usage courant en séance).
-- [ ] **3. Ton de voix / coaching** — reprend le ton de Brice et sa manière de
-      coacher, pour que la réponse ait l'air de venir de lui.
+- ✅ **Prompt libre** — inchangé, remonté en premier.
+- ✅ **1. Lancer la conversation** (`init`) — pose le rôle de l'IA + la clé de
+      lecture d'une note (A/B/C = qualité de la décision et JAMAIS le résultat,
+      warmup/cooldown, DOL). Part **seul, sans note ni PDF** (il finit par
+      « attends ma première note ») — cf. `isOpener` dans AnalyzeNoteDialog.
+- ✅ **2. Débriefer une séance** (`update`) — l'usage courant dans une conversation
+      déjà cadrée : points saillants, **évolutions** depuis les notes précédentes,
+      **angles morts**, écarts A/B/C vs résultats, UNE priorité. Sélectionné par défaut.
+- [ ] **3. « Ce que Brice en penserait »** (`aq`/`aok`) — VOLONTAIREMENT PAS
+      IMPLÉMENTÉ tant que la doctrine n'existe pas : mieux vaut pas de prompt qu'un
+      faux Brice.
 
-**Prérequis identifié par Brice :** publier une **page / documentation en ligne**
-que l'IA pourra consulter (les bons inputs, les bonnes techniques, le ton), pour
-que ses réponses sonnent AOKnowledge. À cadrer : où l'héberger (site AOK ?
-journal ?), quel contenu, et comment le prompt y renvoie (URL dans le prompt).
+#### Prérequis du prompt 3 : le document de doctrine
+
+**Corpus cartographié le 16/07/2026** (ne pas repartir de zéro, ne pas s'arrêter
+à la première source — c'est l'erreur commise) :
+- `D:\1_Ecriture\Systeme\archives-anciens-textes\chatgpt\verbatims-brice\` — 100
+  fichiers de dictées brutes, dont **`000-corrections-et-exigences.md`** : 369
+  corrections de Brice + une **hiérarchie de fiabilité** des archives. Pièce
+  maîtresse (« une correction ne ment jamais »).
+- `...\chatgpt\eleves\methode-etm.md` + `D:\3_Pedagogie\ETM - Elite Trader
+  Mentorship\Document de Référence Onboarding ETM.docx` — la méthode.
+- `D:\3_Pedagogie\PDF - workbook\` (e-books), `Masterclass\` (dont « Perte »),
+  `FORMATION Aok\`.
+- `D:\1_Ecriture\Systeme\` : `instructions-portables.md` (voix déjà distillée),
+  `fiche-de-style.md`, `MANIFESTE.md`, `prompt-reference-brice-v11.md`, `echantillons\`.
+- Google Drive : ~20 sessions « … Coaching ETM /w Brice — Notes par Gemini ».
+  ⚠️ Le **verbatim complet est DANS ces docs** (sous le résumé), horodaté et avec
+  les locuteurs (`**Brice DELANNAY:**`). Les fichiers « Transcription » ne sont
+  que le chat texte (inutilisables).
+- `apps/.../v3/public/transcripts/` — 352 transcriptions YouTube, déjà publiées
+  (`aoknowledge.com/transcripts/*.txt`, HTTP 200).
+- Volumineux et à ne PAS charger en contexte principal : `chatgpt\export\` (142 Mo),
+  `chatgpt\dumps\` (11,6 Mo).
+
+⚠️ **Contrainte de confidentialité** : les coachings sont des séances privées de
+clients nommés (leurs pertes, leur psychologie). La doctrine sera publique → elle
+ne doit contenir **aucune donnée d'élève** : pas de noms, pas de cas, pas de
+chiffres, pas de citation identifiable. Filtrer sur les tours de parole de Brice
+ne suffit pas : ses répliques évoquent leur situation. Réécrire en principes.
+
+**Livraison du doc à l'IA** (décidé avec Brice) : ne PAS compter sur l'IA pour
+naviguer vers une URL (toutes ne le font pas, et une page web lue par une IA est
+un vecteur d'injection). C'est **l'extension qui récupère le doc et le joint** à
+la conversation, comme elle joint déjà le PDF de la note → marche sur n'importe
+quelle IA, reste relisible, toujours à jour, et contenu contrôlé de bout en bout.
+Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note.
 
 ### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
 

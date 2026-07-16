@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
+import { X, Sparkles, Copy, ExternalLink, MessageSquare, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
 import type { AcademicNote, AnalysisProvider, NoteFolder } from '@/types/academic'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib/pdf-export'
@@ -16,69 +16,55 @@ interface AnalyzeNoteDialogProps {
   folders?: NoteFolder[]
 }
 
-type PromptType = 'neutral' | 'pedagogical' | 'action' | 'custom'
+// Les prompts forment une CHAÎNE, pas trois variantes parallèles :
+//   1. `init`   — ouvre la conversation et pose le rôle de l'IA (une fois)
+//   2. `update` — envoie une note dans cette conversation déjà cadrée (usage courant)
+//   3. (à venir) `aok` — « ce que Brice en penserait », adossé à la doctrine AOKnowledge.
+//      Volontairement absent tant que le document de doctrine n'existe pas : mieux vaut
+//      pas de prompt du tout qu'un faux Brice.
+type PromptType = 'init' | 'update' | 'custom'
 type SendStatus = 'idle' | 'loading' | 'success' | 'fallback' | 'thread-fallback'
 type LoadingPhase = 'preparing' | 'opening' | 'loading' | 'injecting'
 
 const PROMPTS: Record<Exclude<PromptType, 'custom'>, string> = {
-  neutral: `Voici une note prise pendant un apprentissage ou une analyse.
+  // 1. À envoyer une seule fois, au début d'une conversation. Pose le cadre et le rôle
+  //    pour que les débriefs suivants (`update`) puissent rester courts.
+  init: `Je suis un trader formé chez Ao Knowledge. Dans cette conversation, je vais te partager au fil du temps mes notes de séance, prises avec l'extension Le Carnet du Trader.
 
-Ton rôle :
-- M'aider à clarifier ce que j'ai compris
-- Mettre en évidence les idées clés
-- Identifier les zones floues ou implicites
-- Me proposer des pistes de réflexion, sans conclure à ma place
+TON RÔLE
+Tu es un partenaire de raisonnement, pas un gourou.
+- Tu ne donnes jamais de signal, jamais de prévision, jamais de validation de stratégie.
+- Tu m'aides à voir ce que je ne vois pas : mes angles morts, mes raccourcis, l'écart entre ce que le marché faisait et ce que j'ai voulu y voir.
+- Tu distingues toujours les faits (ce qui est écrit dans ma note), mes interprétations, et tes hypothèses. Quand une information manque, tu le dis au lieu de combler.
 
-Contraintes :
-- Ne reformule pas tout inutilement
-- Ne surinterprète pas
-- Si certaines informations manquent, signale-le clairement
+COMMENT LIRE MES NOTES
+- Une note = une séance. Elle peut contenir des trades numérotés (heure, résultat), des captures d'écran, des tags et des concepts.
+- Un jugement A/B/C porte sur la QUALITÉ DE MA DÉCISION, jamais sur le résultat : A = je le reprendrais sans hésiter, B = c'était flou, C = c'était forcé. Un trade gagnant peut être noté C, un trade perdant peut être noté A. Ne confonds jamais les deux : c'est le cœur de la méthode.
+- Un « warmup » est mon état avant de trader (physique, émotionnel, pensée dominante, objectif de séance).
+- Un « cooldown » est mon débrief juste après un trade (émotion, erreur, leçon).
+- Un « DOL » (Draw on Liquidity) est le niveau de liquidité vers lequel j'attends que le prix soit attiré.
 
-Structure ta réponse en 3 parties maximum :
-1. Ce qui est clair et bien compris
-2. Ce qui mérite d'être approfondi ou questionné
-3. Une ou deux questions utiles pour aller plus loin
+CE QUE J'ATTENDS
+- Ne me reformule pas ma note : je l'ai écrite, je la connais.
+- Ne conclus pas à ma place.
+- Pose-moi les questions qui me font avancer.
 
-Voici la note :
-[CONTENU_DE_LA_NOTE]`,
+Confirme en une phrase que tu as compris ton rôle, puis attends ma première note.`,
 
-  pedagogical: `Voici une note issue d'un cours ou d'une analyse de marché.
+  // 2. L'usage courant : une note de plus dans une conversation déjà cadrée par `init`.
+  //    Court volontairement — le cadre est déjà posé, on demande une MISE À JOUR.
+  update: `Voici ma nouvelle note de séance. Fais-moi une mise à jour, pas une analyse repartie de zéro.
 
-Adopte une posture de mentor expérimenté.
-Ton objectif n'est pas d'avoir raison, mais de m'aider à mieux raisonner.
-
-Points d'attention :
-- Distingue les faits, les observations et les interprétations
-- Replace les concepts dans une logique de contexte et de narration
-- Signale les raccourcis mentaux possibles (espoir, anticipation excessive, biais de confirmation)
-
-Si des éléments visuels sont présents (screenshots, graphiques) :
-- Utilise-les comme supports de raisonnement
-- Ne fais pas d'analyse technique exhaustive si l'information manque
-
-Structure recommandée :
-1. Lecture globale de la situation
-2. Ce que le marché *devait faire* vs ce que j'ai peut-être voulu voir
-3. Un axe de progression concret pour les prochaines situations similaires
-
-Voici la note :
-[CONTENU_DE_LA_NOTE]`,
-
-  action: `Voici une note d'apprentissage ou d'analyse.
-
-Ton rôle est de m'aider à en extraire une leçon actionnable.
+Dis-moi :
+1. Les points qui ressortent de cette séance.
+2. Ce qui a évolué depuis mes notes précédentes : progrès réels, régressions, ce que je répète.
+3. Mes angles morts : ce que je ne vois pas, ce que j'évite, ce que je répète sans le nommer.
 
 Contraintes :
-- Une seule leçon principale
-- Pas de généralités vagues
-- Pas de conseils irréalistes
+- Appuie-toi sur ce que tu as déjà vu de moi dans cette conversation.
+- Si tu vois un écart entre mes jugements A/B/C et mes résultats, signale-le.
+- Termine par UNE seule chose à travailler en priorité à la prochaine séance.
 
-Format attendu :
-- Leçon centrale (1 phrase claire)
-- Pourquoi cette leçon est importante
-- Comment je peux la tester ou l'appliquer concrètement
-
-Voici la note :
 [CONTENU_DE_LA_NOTE]`
 }
 
@@ -141,7 +127,7 @@ function AnalyzeNoteDialog({
   availableNotes = [],
   folders = [],
 }: AnalyzeNoteDialogProps) {
-  const [selectedPrompt, setSelectedPrompt] = useState<PromptType>('neutral')
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptType>('update')
   const [customPrompt, setCustomPrompt] = useState('')
   const [provider, setProvider] = useState<AnalysisProvider>(defaultProvider)
   const [status, setStatus] = useState<SendStatus>('idle')
@@ -219,8 +205,15 @@ function AnalyzeNoteDialog({
     return PROMPTS[selectedPrompt]
   }
 
+  // Le prompt d'ouverture ne transporte AUCUNE note (ni texte ni PDF) : il cadre la
+  // conversation et demande à l'IA d'attendre. Y joindre la note contredirait sa
+  // dernière ligne (« attends ma première note ») et gâcherait la note en double.
+  const isOpener = selectedPrompt === 'init'
+
   const buildFullPrompt = (): string => {
     const promptText = getPromptText()
+
+    if (isOpener) return promptText
 
     if (isMultiNote) {
       const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
@@ -271,10 +264,11 @@ function AnalyzeNoteDialog({
       // Always copy full prompt to clipboard as backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // Generate PDF: combined multi-note PDF or single-note PDF (when images present)
+      // Generate PDF: combined multi-note PDF or single-note PDF (when images present).
+      // Jamais pour le prompt d'ouverture : il ne transporte pas de note.
       let cachedBase64: string | null = null
       let cachedFileName = ''
-      if (hasImages) {
+      if (hasImages && !isOpener) {
         let blob: Blob
         if (isMultiNote) {
           const selectedNotes = availableNotes
@@ -371,10 +365,9 @@ function AnalyzeNoteDialog({
   }
 
   const PROMPT_OPTIONS: { type: PromptType; label: string; subtitle: string; icon: typeof MessageSquare }[] = [
-    { type: 'neutral', label: 'Analyse neutre', subtitle: 'Clarifier, zones floues, pistes de réflexion', icon: MessageSquare },
-    { type: 'pedagogical', label: 'Mentor AOKnowledge', subtitle: 'Faits vs interprétations, biais, progression', icon: GraduationCap },
-    { type: 'action', label: 'Orientée action', subtitle: 'Extraire une leçon actionnable', icon: Target },
-    { type: 'custom', label: 'Prompt libre', subtitle: 'Écrivez votre propre consigne', icon: PenLine },
+    { type: 'custom', label: 'Prompt libre', subtitle: 'Écris ta propre consigne', icon: PenLine },
+    { type: 'init', label: '1. Lancer la conversation', subtitle: 'À envoyer en premier : pose le rôle de l\'IA', icon: MessageSquare },
+    { type: 'update', label: '2. Débriefer une séance', subtitle: 'Dans une conversation déjà lancée : évolutions et angles morts', icon: Target },
   ]
 
   const pickerNotes = availableNotes.filter(n =>
@@ -578,8 +571,19 @@ function AnalyzeNoteDialog({
             </div>
           )}
 
+          {/* Prompt d'ouverture : préciser qu'il part seul, sans la note */}
+          {isOpener && status === 'idle' && (
+            <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
+              <MessageSquare size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Ce message part seul, sans ta note : il sert à cadrer l'IA. Envoie ensuite
+                « 2. Débriefer une séance » dans la même conversation.
+              </p>
+            </div>
+          )}
+
           {/* Image info callout — single note only */}
-          {hasImages && status === 'idle' && (
+          {hasImages && !isOpener && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
               <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-purple-700 dark:text-purple-300">
@@ -589,7 +593,7 @@ function AnalyzeNoteDialog({
           )}
 
           {/* Multi-note info callout */}
-          {isMultiNote && status === 'idle' && (
+          {isMultiNote && !isOpener && status === 'idle' && (
             <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
               <FileText size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
