@@ -24,10 +24,9 @@ Les anciens prompts (« analyse neutre », « mentorat », « orienté action »
 trois variantes parallèles faites par défaut. Remplacés par une **chaîne**.
 
 - ✅ **Prompt libre** — inchangé, remonté en premier.
-- ✅ **1. Lancer la conversation** (`init`) — pose le rôle de l'IA + la clé de
+- ✅ **1. Lancer la conversation** (`init`) — pose le rôle de l.IA + la clé de
       lecture d'une note (A/B/C = qualité de la décision et JAMAIS le résultat,
-      warmup/cooldown, DOL). Part **seul, sans note ni PDF** (il finit par
-      « attends ma première note ») — cf. `isOpener` dans AnalyzeNoteDialog.
+      warmup/cooldown, DOL). **Part AVEC la note et son PDF** (il cadre l IA ET sert de premier etat des lieux — decision de Brice 16/07) — cf. `isOpener`, qui ne sert plus qu a l encart d aide.
 - ✅ **2. Débriefer une séance** (`update`) — l'usage courant dans une conversation
       déjà cadrée : points saillants, **évolutions** depuis les notes précédentes,
       **angles morts**, écarts A/B/C vs résultats, UNE priorité. Sélectionné par défaut.
