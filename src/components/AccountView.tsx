@@ -3,6 +3,7 @@ import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, Chevr
 import type { Settings as SettingsType, AcademicNote } from '@/types/academic'
 import type { VerifySyncResult } from '@/lib/sync'
 import { getUser, signInWithGoogle, signOut, signInWithEmail, signUpWithEmail, sendPasswordResetEmail } from '@/lib/auth'
+import ConfirmDialog from './ConfirmDialog'
 import type { User } from '@/lib/supabase'
 
 interface AccountViewProps {
@@ -33,6 +34,8 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
   const [verifyResult, setVerifyResult] = useState<VerifySyncResult | null>(null)
   const [verifyTime, setVerifyTime] = useState<number | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
+  // Action destructrice en attente de confirmation (boîte de l'app)
+  const [pendingAction, setPendingAction] = useState<'resync' | 'rebuild' | 'pull' | null>(null)
 
   // Auth state
   const [authMode, setAuthMode] = useState<AuthMode>('signin')
@@ -151,8 +154,10 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
     setSyncing(false)
   }
 
-  const handleForceResyncAll = async () => {
-    if (!confirm('Cela va renvoyer TOUTES les notes vers le journal, y compris celles déjà envoyées et celles exclues. Continuer ?')) return
+  // Confirmations via une boîte de l'app, jamais `confirm()` natif : le navigateur
+  // permet de cocher « ne plus afficher », ce qui rendrait ces actions inutilisables.
+  const runForceResyncAll = async () => {
+    setPendingAction(null)
     setSyncing(true)
     setSyncResult(null)
     const result = await onForceResyncAll()
@@ -160,8 +165,8 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
     setSyncing(false)
   }
 
-  const handleRebuildJournal = async () => {
-    if (!confirm('Cela va supprimer toutes tes notes dans le journal en ligne, puis les renvoyer depuis l\'extension. Continue ?')) return
+  const runRebuildJournal = async () => {
+    setPendingAction(null)
     setRebuilding(true)
     setSyncResult(null)
     const result = await onRebuildJournal()
@@ -169,14 +174,39 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
     setRebuilding(false)
   }
 
-  const handlePullFromJournal = async () => {
-    if (!confirm('Récupérer toutes les notes depuis le journal ? Les notes déjà présentes localement seront ignorées.')) return
+  const runPullFromJournal = async () => {
+    setPendingAction(null)
     setPulling(true)
     setPullResult(null)
     const result = await onPullFromJournal()
     setPullResult(result)
     setPulling(false)
   }
+
+  const CONFIRMS = {
+    resync: {
+      title: 'Tout renvoyer vers le journal ?',
+      message: 'Cela va renvoyer TOUTES les notes, y compris celles déjà envoyées et celles exclues.',
+      confirmLabel: 'Tout renvoyer',
+      run: runForceResyncAll,
+    },
+    rebuild: {
+      title: 'Reconstruire le journal ?',
+      message: 'Cela va supprimer toutes tes notes dans le journal en ligne, puis les renvoyer depuis l\'extension.',
+      confirmLabel: 'Reconstruire',
+      run: runRebuildJournal,
+    },
+    pull: {
+      title: 'Récupérer les notes du journal ?',
+      message: 'Les notes déjà présentes localement seront ignorées.',
+      confirmLabel: 'Récupérer',
+      run: runPullFromJournal,
+    },
+  } as const
+
+  const handleForceResyncAll = () => setPendingAction('resync')
+  const handleRebuildJournal = () => setPendingAction('rebuild')
+  const handlePullFromJournal = () => setPendingAction('pull')
 
   const handleSyncToggle = (enabled: boolean) => {
     onSettingsChange({
@@ -631,6 +661,15 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
           )}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingAction !== null}
+        title={pendingAction ? CONFIRMS[pendingAction].title : ''}
+        message={pendingAction ? CONFIRMS[pendingAction].message : ''}
+        confirmLabel={pendingAction ? CONFIRMS[pendingAction].confirmLabel : 'Confirmer'}
+        onConfirm={() => pendingAction && CONFIRMS[pendingAction].run()}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   )
 }

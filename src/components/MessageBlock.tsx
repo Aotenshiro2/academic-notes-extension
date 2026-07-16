@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react'
-import { Save, X, Trash2, GripVertical, ChevronUp, FileText } from 'lucide-react'
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { Save, X, Trash2, GripVertical, ChevronUp, FileText, Tag } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
 import { formatSmartDate } from '@/lib/date-utils'
 import storage from '@/lib/storage'
 import TagPickerPopup from './TagPickerPopup'
+import ConfirmDialog from './ConfirmDialog'
 import type { NoteMessage } from '@/types/academic'
 
 const COLLAPSE_THRESHOLD = 800 // characters of plain text
@@ -36,6 +37,10 @@ function MessageBlock({
   const [originalContent, setOriginalContent] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerPosition, setPickerPosition] = useState({ top: 0, bottom: 0, left: 0 })
+  // Bouton « tag » flottant proposé sur une sélection (n'ouvre PAS le picker tout seul :
+  // sinon la sélection est perdue et souligner / copier / clic droit devient impossible)
+  const [tagHint, setTagHint] = useState<{ top: number; bottom: number; left: number } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Detect if this text message is long enough to collapse
@@ -121,22 +126,50 @@ function MessageBlock({
     }
   }, [cancelEditing, saveChanges])
 
-  const handleDelete = useCallback(async () => {
-    if (confirm('Supprimer ce message ?')) {
-      await onDelete(message.id)
-    }
+  // Confirmation via une vraie boîte de l'app (jamais `confirm()` natif : le
+  // navigateur laisse l'utilisateur cocher « ne plus afficher », ce qui rendait
+  // la suppression définitivement impossible sans aller dans les réglages Chrome)
+  const handleDelete = useCallback(() => setConfirmDelete(true), [])
+
+  const confirmDeleteNow = useCallback(async () => {
+    setConfirmDelete(false)
+    await onDelete(message.id)
   }, [message.id, onDelete])
 
+  // Sur une sélection, on propose seulement un petit bouton « tag » : la sélection
+  // reste intacte, donc souligner (Ctrl+U), copier/coller et le clic droit marchent.
   const handleMouseUp = useCallback(() => {
     if (!isEditing) return
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed) return
+    if (!selection || selection.isCollapsed) return setTagHint(null)
     if (!contentRef.current) return
     const range = selection.getRangeAt(0)
-    if (!contentRef.current.contains(range.commonAncestorContainer)) return
+    if (!contentRef.current.contains(range.commonAncestorContainer)) return setTagHint(null)
     const rect = range.getBoundingClientRect()
-    setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+    setTagHint({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+  }, [isEditing])
+
+  // Ouvre le picker depuis le bouton flottant (mousedown neutralisé en amont pour
+  // que le clic ne détruise pas la sélection en cours)
+  const openTagPicker = useCallback(() => {
+    if (tagHint) setPickerPosition(tagHint)
+    setTagHint(null)
     setPickerOpen(true)
+  }, [tagHint])
+
+  // Le bouton disparaît dès que la sélection est vidée (clic ailleurs, Échap…)
+  useEffect(() => {
+    if (!tagHint) return
+    const onSelectionChange = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) setTagHint(null)
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => document.removeEventListener('selectionchange', onSelectionChange)
+  }, [tagHint])
+
+  useEffect(() => {
+    if (!isEditing) setTagHint(null)
   }, [isEditing])
 
   const handleAddTag = useCallback(async (tagName: string) => {
@@ -344,6 +377,21 @@ function MessageBlock({
         />
       </div>
 
+      {/* Bouton « tag » flottant sur la sélection — onMouseDown neutralisé pour ne pas
+          casser la sélection ; il n'apparaît que si l'utilisateur sélectionne du texte */}
+      {tagHint && !pickerOpen && (
+        <button
+          onMouseDown={e => e.preventDefault()}
+          onClick={openTagPicker}
+          className="fixed z-50 flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-border bg-popover text-foreground shadow-lg hover:bg-muted transition-colors -translate-x-1/2"
+          style={{ top: Math.max(tagHint.top - 34, 4), left: tagHint.left }}
+          title="Taguer la sélection"
+        >
+          <Tag size={11} />
+          Taguer
+        </button>
+      )}
+
       {pickerOpen && (
         <TagPickerPopup
           position={pickerPosition}
@@ -353,6 +401,14 @@ function MessageBlock({
           onClose={() => setPickerOpen(false)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Supprimer ce bloc ?"
+        message="Ce contenu sera retiré de la note. Action définitive."
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
 
       {/* Editing controls */}
       {isEditing && (

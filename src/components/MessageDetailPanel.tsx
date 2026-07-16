@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react'
 import { X, Edit3, Trash2, Save } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
+import ConfirmDialog from './ConfirmDialog'
 import type { NoteMessage } from '@/types/academic'
 
 interface MessageDetailPanelProps {
@@ -20,6 +21,7 @@ function MessageDetailPanel({
 }: MessageDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Extract title from first <strong> tag in content
@@ -38,11 +40,13 @@ function MessageDetailPanel({
     onClose()
   }
 
-  const handleDelete = async () => {
-    if (confirm('Supprimer ce message ?')) {
-      await onDelete(message.id)
-      onClose()
-    }
+  // Boîte de l'app, pas `confirm()` natif (bloquable définitivement par le navigateur)
+  const handleDelete = () => setConfirmDelete(true)
+
+  const confirmDeleteNow = async () => {
+    setConfirmDelete(false)
+    await onDelete(message.id)
+    onClose()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -149,6 +153,14 @@ function MessageDetailPanel({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Supprimer ce bloc ?"
+        message="Ce contenu sera retiré de la note. Action définitive."
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </>
   )
 }

@@ -5,6 +5,7 @@ import SimpleRichEditor from './SimpleRichEditor'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
+import ConfirmDialog from './ConfirmDialog'
 
 interface NoteDetailModalProps {
   note: AcademicNote | null
@@ -30,6 +31,8 @@ function NoteDetailModal({
   const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Réinitialiser les données quand la note change
   useEffect(() => {
@@ -86,18 +89,23 @@ function NoteDetailModal({
     }
   }
 
-  const handleDelete = async () => {
+  // Boîte de l'app, pas `confirm()` natif (bloquable définitivement par le navigateur)
+  const handleDelete = () => {
     if (!note) return
-    
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette note définitivement ?')) {
-      try {
-        await storage.deleteNote(note.id)
-        onDelete(note.id)
-        onClose()
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
-        alert('Erreur lors de la suppression de la note')
-      }
+    setDeleteError(null)
+    setConfirmDelete(true)
+  }
+
+  const confirmDeleteNow = async () => {
+    if (!note) return
+    setConfirmDelete(false)
+    try {
+      await storage.deleteNote(note.id)
+      onDelete(note.id)
+      onClose()
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error)
+      setDeleteError('Erreur lors de la suppression de la note.')
     }
   }
 
@@ -371,6 +379,20 @@ function NoteDetailModal({
           alt="Note image"
           onClose={() => setLightboxImage(null)}
         />
+      )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Supprimer cette note ?"
+        message="La note et son contenu seront supprimés définitivement."
+        onConfirm={confirmDeleteNow}
+        onCancel={() => setConfirmDelete(false)}
+      />
+
+      {deleteError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] px-3 py-2 rounded-lg bg-destructive text-destructive-foreground text-xs shadow-lg">
+          {deleteError}
+        </div>
       )}
     </div>
   )

@@ -17,6 +17,7 @@ import {
 import type { AcademicNote, ContentType } from '@/types/academic'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
+import ConfirmDialog from './ConfirmDialog'
 
 interface NotesListProps {
   notes: AcademicNote[]
@@ -29,6 +30,8 @@ interface NotesListProps {
 }
 
 function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, isLoadingMore, onToggleSyncExcluded }: NotesListProps) {
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
+
   const getContentTypeIcon = (type: ContentType) => {
     switch (type) {
       case 'article': return <FileText size={16} className="text-primary" />
@@ -71,14 +74,18 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
     }
   }
 
-  const handleDeleteNote = async (noteId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
-      try {
-        await storage.deleteNote(noteId)
-        onRefresh()
-      } catch (error) {
-        console.error('Error deleting note:', error)
-      }
+  // Boîte de l'app, pas `confirm()` natif (bloquable définitivement par le navigateur)
+  const handleDeleteNote = (noteId: string) => setPendingDeleteId(noteId)
+
+  const confirmDeleteNote = async () => {
+    const noteId = pendingDeleteId
+    setPendingDeleteId(null)
+    if (!noteId) return
+    try {
+      await storage.deleteNote(noteId)
+      onRefresh()
+    } catch (error) {
+      console.error('Error deleting note:', error)
     }
   }
 
@@ -305,6 +312,14 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={pendingDeleteId !== null}
+        title="Supprimer cette note ?"
+        message="La note et son contenu seront supprimés. Action définitive."
+        onConfirm={confirmDeleteNote}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   )
 }
