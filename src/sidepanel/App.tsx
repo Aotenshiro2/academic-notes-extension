@@ -54,6 +54,23 @@ function App() {
   // Notes qui ne sont pas encore dans le journal (hors exclues volontaires)
   const pendingSyncCount = notes.filter(n => !n.lastSyncAt && !n.syncExcluded).length
 
+  // Rattrapage automatique : l'auto-sync à la sauvegarde échoue en silence si la
+  // session est absente/expirée à ce moment-là, et RIEN ne réessayait ensuite —
+  // les notes restaient « à synchroniser » jusqu'au clic manuel (bug signalé par
+  // Brice le 17/07). Ici : dès que le panel s'ouvre connecté avec des notes en
+  // attente, on les renvoie en arrière-plan (une seule tentative par ouverture).
+  const autoRetryDoneRef = useRef(false)
+  useEffect(() => {
+    if (autoRetryDoneRef.current || isAuthed !== true || pendingSyncCount === 0) return
+    autoRetryDoneRef.current = true
+    const pending = notes.filter(n => !n.lastSyncAt && !n.syncExcluded)
+    console.log(`[AOK AutoSync] Rattrapage de ${pending.length} note(s) en attente`)
+    forceSyncAll(pending, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
+      .then(r => { if (r.synced > 0) loadData() })
+      .catch(err => console.warn('[AOK AutoSync] Rattrapage échoué:', err))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, pendingSyncCount])
+
   // Charger les données initiales
   useEffect(() => {
     loadData()

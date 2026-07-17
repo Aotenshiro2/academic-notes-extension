@@ -13,6 +13,34 @@ async function shortHash(str: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+// ── Cache local des uploads (hash → URL) ─────────────────────────────────────
+// Avant : CHAQUE sync recompressait et re-téléversait TOUTES les images d'une
+// note, même déjà en ligne (le serveur dédupliquait, mais le payload partait
+// quand même) → « Tout renvoyer » et les re-syncs étaient interminables.
+// chrome.storage.local (et pas localStorage) : le service worker synque aussi.
+const UPLOAD_CACHE_KEY = 'aokUploadedImages'
+const UPLOAD_CACHE_MAX = 1000
+
+async function getUploadCache(): Promise<Record<string, string>> {
+  try {
+    const r = await chrome.storage.local.get(UPLOAD_CACHE_KEY)
+    return (r[UPLOAD_CACHE_KEY] as Record<string, string>) ?? {}
+  } catch { return {} }
+}
+
+async function rememberUpload(hash: string, url: string): Promise<void> {
+  try {
+    const cache = await getUploadCache()
+    cache[hash] = url
+    const keys = Object.keys(cache)
+    if (keys.length > UPLOAD_CACHE_MAX) {
+      // Purge simple des plus anciens (ordre d'insertion des clés)
+      for (const k of keys.slice(0, keys.length - UPLOAD_CACHE_MAX)) delete cache[k]
+    }
+    await chrome.storage.local.set({ [UPLOAD_CACHE_KEY]: cache })
+  } catch { /* cache best-effort */ }
+}
+
 function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
   const [header, b64] = dataUrl.split(',')
   const mime = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg'
@@ -30,6 +58,11 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
 async function uploadImageToStorage(dataUrl: string, userId: string, accessToken: string): Promise<string | null> {
   if (!dataUrl.startsWith('data:')) return null
   try {
+    // Cache sur l'image BRUTE : évite compression ET upload si déjà envoyée
+    const origHash = await shortHash(dataUrl)
+    const cached = (await getUploadCache())[origHash]
+    if (cached) return cached
+
     let compressed: string
     try {
       compressed = await compressImage(dataUrl, SYNC_IMG_OPTIONS)
@@ -50,6 +83,7 @@ async function uploadImageToStorage(dataUrl: string, userId: string, accessToken
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const { url } = await response.json()
+    await rememberUpload(origHash, url as string)
     return url as string
   } catch (err) {
     console.warn('[AOK Sync] Image upload failed:', err)

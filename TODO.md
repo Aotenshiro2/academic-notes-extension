@@ -26,6 +26,21 @@
 - Sync : les blocs texte vides ne partent plus (l'API journal les refuse
   aussi) ; nettoyage one-shot fait en base (59 supprimés).
 
+### ✅ v1.6.8–1.6.9 — œil métadonnées + sync réparée (17/07/2026)
+
+- v1.6.8 : bouton « Métadonnées » (œil) dans la vue note — visible par défaut
+  dans l'extension, masqué par défaut dans le journal. Côté journal : 185
+  blocs meta legacy migrés en base + normalisation à la sync.
+- v1.6.9 : **rattrapage auto des notes en attente** — l'auto-sync à la
+  sauvegarde échouait en silence (session absente/expirée) et rien ne
+  réessayait → les notes restaient « à synchroniser » jusqu'au clic manuel.
+  Désormais : à l'ouverture du panel connecté, les notes en attente partent
+  toutes seules.
+- v1.6.9 : **cache local des uploads d'images** (hash → URL,
+  chrome.storage.local) — avant, CHAQUE sync recompressait et re-téléversait
+  toutes les images même déjà en ligne, d'où « Envoyer les nouvelles » aussi
+  lent que « Tout renvoyer ». Une image déjà envoyée ne repart plus jamais.
+
 ### 📋 Backlog — capture intelligente à retravailler (noté le 17/07/2026)
 
 - [ ] La smart capture injecte encore un tas de métadonnées dans le CONTENU
