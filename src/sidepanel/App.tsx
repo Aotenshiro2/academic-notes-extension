@@ -171,6 +171,22 @@ function App() {
   }
 
   // Fonction pour ajouter du contenu à la note courante (maintenant avec support HTML)
+  // Screenshot avec une note ouverte : image + bloc meta DIRECTEMENT dans la note
+  // (contrat 0.1.2 — une métadonnée n'est jamais du contenu, et l'éditeur reste propre).
+  // Retourne false si aucune note ouverte → CaptureInput garde son flux éditeur.
+  const handleScreenshotToNote = async (dataUrl: string, metaText: string): Promise<boolean> => {
+    if (!currentNoteId) return false
+    await storage.addMessageToNote(currentNoteId, {
+      type: 'image',
+      content: dataUrl,
+      metadata: { alt: 'Capture d\'écran' }
+    })
+    await storage.addMessageToNote(currentNoteId, { type: 'meta', content: metaText })
+    await loadData()
+    setNoteRefreshTrigger(Date.now())
+    return true
+  }
+
   const handleAddContent = async (content: string, noteId: string | null) => {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -885,6 +901,7 @@ function App() {
             placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
             onInsertScreenshot={handleScreenshot}
             onInsertExternalScreenshot={handleExternalScreenshot}
+            onScreenshotToNote={handleScreenshotToNote}
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}

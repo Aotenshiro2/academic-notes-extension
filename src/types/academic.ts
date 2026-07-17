@@ -1,5 +1,7 @@
 // Message types for individual note entries
-export type NoteMessageType = 'text' | 'image' | 'capture' | 'screenshot'
+// 'meta' = métadonnées de capture (date, titre, URL) — jamais du contenu :
+// affichable/masquable dans les visualisateurs, exclu du travail sur canvas
+export type NoteMessageType = 'text' | 'image' | 'capture' | 'screenshot' | 'meta'
 
 export interface NoteMessage {
   id: string

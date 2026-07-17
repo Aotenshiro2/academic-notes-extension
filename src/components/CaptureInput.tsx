@@ -14,6 +14,10 @@ interface CaptureInputProps {
   placeholder?: string
   onInsertScreenshot?: () => Promise<string | null>
   onInsertExternalScreenshot?: () => Promise<string | null>
+  /** Note ouverte : l'image (+ sa métadonnée date/titre/URL) part DIRECTEMENT
+   *  dans la note en blocs image+meta — plus rien ne transite par l'éditeur.
+   *  Retourne false si aucune note n'est ouverte → fallback insertion éditeur. */
+  onScreenshotToNote?: (dataUrl: string, metaText: string) => Promise<boolean>
   onSubmit?: (content: string) => void
   onSmartCapture?: () => void
   isSmartCapturing?: boolean
@@ -32,6 +36,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   placeholder = 'Écrivez ou capturez...',
   onInsertScreenshot,
   onInsertExternalScreenshot,
+  onScreenshotToNote,
   onSubmit,
   onSmartCapture,
   isSmartCapturing = false,
@@ -183,6 +188,10 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
             processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.screenshot)
           }
           const currentDate = new Date().toLocaleString('fr-FR')
+          // Note ouverte → blocs image+meta directement dans la note, éditeur intact
+          if (onScreenshotToNote && await onScreenshotToNote(processedDataUrl, `📅 ${currentDate} • 🖥️ Capture externe`)) {
+            return
+          }
           const screenshotHtml = `
             <img src="${processedDataUrl}" alt="Capture externe" style="max-width: 100%; height: auto; margin: 8px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
             <p style="font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 12px; font-style: italic;">
@@ -238,6 +247,11 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           const currentDate = new Date().toLocaleString('fr-FR')
           const pageUrl = currentPageInfo?.url || 'Page inconnue'
           const pageTitle = currentPageInfo?.title || 'Titre inconnu'
+
+          // Note ouverte → blocs image+meta directement dans la note, éditeur intact
+          if (onScreenshotToNote && await onScreenshotToNote(processedDataUrl, `📅 ${currentDate} • 🌐 ${pageTitle} (${pageUrl})`)) {
+            return
+          }
 
           const screenshotHtml = `
             <img src="${processedDataUrl}" alt="Capture d'écran" style="max-width: 100%; height: auto; margin: 8px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />

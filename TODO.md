@@ -12,6 +12,30 @@
 5. *(côté journal : compteur de journalisation des concepts)* — la même donnée sert aussi
    à l'agrégation du mode mentorat (section 8) : moins cosmétique qu'il n'y paraît.
 
+### ✅ v1.6.7 — contrat de données 0.1.2 + fix popup (17/07/2026, zip généré)
+
+- Nouveau type de bloc **`meta`** (date • titre • URL de capture) : jamais du
+  contenu — ligne discrète dans l'extension, masqué par défaut côté journal
+  (œil pour afficher), jamais recopié dans `note.content`, exclu du canvas.
+- **Screenshot avec note ouverte** : l'image + sa métadonnée partent
+  DIRECTEMENT dans la note en blocs image+meta — la capture bar reste propre
+  (avant : tout était injecté dans l'éditeur, cf. capture d'écran de Brice).
+- **🐛 Popup de suppression réparé** : le `ConfirmDialog` n'était rendu que
+  dans la branche texte de `MessageBlock` — supprimer une image ou un long
+  texte replié ne montrait RIEN. Dialog ajouté aux trois branches.
+- Sync : les blocs texte vides ne partent plus (l'API journal les refuse
+  aussi) ; nettoyage one-shot fait en base (59 supprimés).
+
+### 📋 Backlog — capture intelligente à retravailler (noté le 17/07/2026)
+
+- [ ] La smart capture injecte encore un tas de métadonnées dans le CONTENU
+      (préfixe `<strong>pageTitle</strong>`, blocs « Prix : », « RPNL : »,
+      résidus « 💬 53 »…). À faire migrer vers des blocs `meta` / champs
+      structurés quand on retravaillera la capture intelligente. (Décision
+      Brice : pas prioritaire, on s'en fiche un peu pour l'instant.)
+- [ ] Pouvoir taguer un bloc `meta` n'a pas de sens — vérifier que l'UI ne le
+      propose pas quand on retravaillera la capture.
+
 > ⚠️ AVANT de générer le zip v1.6.2 et AVANT tout push : voir
 > `docs/v1.6.2-drive-oauth.md` (Codex). Il reste 3 actions à faire avec Brice :
 > créer le client OAuth « Chrome Extension » + renseigner le client_id,

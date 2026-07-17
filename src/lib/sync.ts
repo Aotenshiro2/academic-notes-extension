@@ -112,6 +112,11 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
   const processedContent = await uploadHtmlImages(note.content, userId, accessToken)
   const processedMessages: typeof note.messages = []
   for (const m of note.messages ?? []) {
+    // Contrat 0.1.2 : un bloc texte vide ne part JAMAIS vers le journal
+    // (l'audit du 17/07 a trouvé 59 blocs vides en base — 8 % du texte)
+    if (m.type === 'text' && !m.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()) {
+      continue
+    }
     if (IMAGE_TYPES.has(m.type) && m.content.startsWith('data:')) {
       const url = await uploadImageToStorage(m.content, userId, accessToken)
       if (url) {

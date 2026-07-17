@@ -187,7 +187,7 @@ function MessageBlock({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     // For standalone image messages, open lightbox
-    if (message.type !== 'text' && onImageClick) {
+    if (message.type !== 'text' && message.type !== 'meta' && onImageClick) {
       e.stopPropagation()
       onImageClick(message.content)
       return
@@ -209,6 +209,35 @@ function MessageBlock({
       startEditing()
     }
   }, [message, isEditing, isReadOnly, isLongText, isCollapsed, startEditing, onImageClick])
+
+  // Render meta message — métadonnée de capture (date, titre, URL) : ligne
+  // discrète, pas de tags, pas d'édition ; suppression possible
+  if (message.type === 'meta') {
+    return (
+      <div className="group relative mb-2 flex items-start gap-1.5">
+        <p className="flex-1 text-[11px] italic text-muted-foreground/60 leading-relaxed break-all">
+          {message.content}
+        </p>
+        {!isReadOnly && (
+          <button
+            onClick={handleDelete}
+            className="p-1 text-muted-foreground/40 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            title="Supprimer cette métadonnée"
+            aria-label="Supprimer cette métadonnée"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
+        <ConfirmDialog
+          isOpen={confirmDelete}
+          title="Supprimer cette métadonnée ?"
+          message="La ligne de contexte (date, page, URL) sera retirée de la note."
+          onConfirm={confirmDeleteNow}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      </div>
+    )
+  }
 
   // Render image message
   if (message.type !== 'text') {
@@ -258,6 +287,16 @@ function MessageBlock({
             onClose={() => setPickerOpen(false)}
           />
         )}
+
+        {/* BUG FIX 1.6.7 : le dialog n'était rendu que dans la branche texte —
+            cliquer la poubelle d'une image ne montrait RIEN (suppression impossible) */}
+        <ConfirmDialog
+          isOpen={confirmDelete}
+          title="Supprimer cette image ?"
+          message="L'image sera retirée de la note. Action définitive."
+          onConfirm={confirmDeleteNow}
+          onCancel={() => setConfirmDelete(false)}
+        />
       </div>
     )
   }
@@ -307,6 +346,16 @@ function MessageBlock({
             <Trash2 size={11} />
           </button>
         )}
+
+        {/* BUG FIX 1.6.7 : même manque que la branche image — sans dialog ici,
+            supprimer un long texte replié était silencieusement impossible */}
+        <ConfirmDialog
+          isOpen={confirmDelete}
+          title="Supprimer ce bloc ?"
+          message="Ce contenu sera retiré de la note. Action définitive."
+          onConfirm={confirmDeleteNow}
+          onCancel={() => setConfirmDelete(false)}
+        />
       </div>
     )
   }

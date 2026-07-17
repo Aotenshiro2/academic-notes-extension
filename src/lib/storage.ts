@@ -592,14 +592,18 @@ export const storage = {
     const messages = note.messages || []
     messages.push(newMessage)
 
-    // Also update legacy content for backward compatibility
-    const contentToAdd = message.type === 'text'
-      ? message.content
-      : `<img src="${message.content}" alt="${message.metadata?.alt || 'Image'}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
+    // Also update legacy content for backward compatibility.
+    // Type 'meta' : JAMAIS dans content — une métadonnée n'est pas du contenu
+    // (contrat 0.1.2), elle ne vit que comme bloc masquable dans messages[].
+    const contentToAdd = message.type === 'meta'
+      ? ''
+      : message.type === 'text'
+        ? message.content
+        : `<img src="${message.content}" alt="${message.metadata?.alt || 'Image'}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
 
-    const updatedContent = note.content
-      ? `${note.content}<br><br>${contentToAdd}`
-      : contentToAdd
+    const updatedContent = contentToAdd
+      ? (note.content ? `${note.content}<br><br>${contentToAdd}` : contentToAdd)
+      : note.content
 
     const updatedNote: AcademicNote = {
       ...note,
