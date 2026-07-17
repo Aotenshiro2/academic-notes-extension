@@ -9,8 +9,8 @@
 2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026**
 3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)* ← prochaine tâche
 4. ~~Fonctionnalité DOL — Draw on Liquidity~~ ✅ **fait le 10/07/2026** (v1.6.2, voir plus bas)
-5. *(côté journal : compteur de journalisation des concepts)* — ⚠️ pas cosmétique :
-   c'est une **source de données du mode mentorat** (section 8).
+5. *(côté journal : compteur de journalisation des concepts)* — la même donnée sert aussi
+   à l'agrégation du mode mentorat (section 8) : moins cosmétique qu'il n'y paraît.
 
 > ⚠️ AVANT de générer le zip v1.6.2 et AVANT tout push : voir
 > `docs/v1.6.2-drive-oauth.md` (Codex). Il reste 3 actions à faire avec Brice :
@@ -151,6 +151,25 @@ espace (options de pilotage, prompts préparés) a une identité et justifie qu'
 C'est aussi plus juste fonctionnellement : un plan n'est pas un one-shot — c'est le créer,
 le mettre à jour, constater un palier.
 
+#### L'architecture commerciale — précisée par Brice (17/07)
+
+**Ne pas se tromper de modèle. L'extension et le journal partagent LA MÊME base Supabase.**
+L'extension alimente la base ; le métier du journal (SaaS payant, trading journal) est de
+prendre ces données et de les **travailler**. Le journal n'est donc pas propriétaire des
+données : c'en est un consommateur, parmi d'autres.
+
+**Conséquence : le mentorat ne dépend PAS du journal.** Il lit la même base, directement.
+- Le mode mentorat est une **option de l'extension**. Point.
+- Le journal est un **SaaS séparé**.
+- **Les deux sont indépendants** : on peut prendre l'un sans l'autre, ou les deux. Certains
+  ne voudront que le mentorat, et c'est très bien.
+- ❌ Ne PAS en faire un palier du journal (erreur d'analyse de Claude, corrigée par Brice).
+
+**La friction de facturation est assumée, et c'est délibéré.** Il y aura plein de petits
+modules et d'autres apps à venir. Un gros bundle qui comprendrait le tout (pourquoi pas
+jusqu'à l'accès au Live Club) viendra **plus tard**. Aujourd'hui ce n'est pas le sujet :
+ne pas sur-concevoir la facturation maintenant.
+
 #### Ce qui rend l'extension nécessaire (le vrai « moat »)
 
 Conclusion de la discussion Brice/Claude du 17/07. **Ne PAS brider le prompt** : un prompt
@@ -161,10 +180,11 @@ Elle ne vaut rien sans les données, et les données sont chez nous :
 - les jugements A/B/C **avec leur cause** (technique / connaissance / émotionnel),
 - le champ « erreur » des cooldowns → *combien de fois il répète la même erreur*,
 - les jauges d'émotion des warmups, les DOL, les résultats de trades,
-- **le nombre de fois qu'un concept a été journalé** → c'est la priorité 5 du backlog
-  (compteur de concepts, côté journal). **Ce n'est donc pas un gadget : c'est une source
-  de données du mentorat.** La matière est déjà en base, l'agrégation est constructible
-  sans toucher au modèle.
+- **le nombre de fois qu'un concept a été journalé** — la même donnée nourrit deux choses :
+  le compteur affiché dans le journal (priorité 5 du backlog) et l'agrégation du mentorat.
+  Attention : ce n'est PAS une dépendance — le mentorat calcule depuis la base, il n'attend
+  pas que la feature du journal soit livrée. Simplement, la donnée compte plus qu'on ne le
+  croyait quand la priorité 5 a été rangée en bas de pile.
 
 Exemple de ce qu'un prompt copié ne produira jamais : « sur tes 40 derniers trades : 12
 notés C, dont 9 de cause émotionnelle, et 8 de ces 9 après une séance où ta jauge de
@@ -194,12 +214,8 @@ paliers et la continuité entre conversations. **On ne lui retire rien, on arrê
 2. **Où vit le plan et le suivi ?** Le journal semble l'endroit naturel : il a déjà la
    base, les notes, les annotations, et c'est là que vit la relecture.
 3. **Que contient exactement la doctrine ETM** livrée à 5,99 € — cf. le risque stratégique.
-4. **⚠️ Le journal sera un SaaS payant** (info Brice, 17/07). Or le mentorat s'appuie sur
-   les données du journal → **il faut donc le journal pour l'avoir**, et le prix réel
-   devient *journal + 5,99 €*, pas 5,99 €. Donc : le mentorat est-il un add-on du journal,
-   une option de l'extension, ou un **palier supérieur du journal** ? Deux lignes de
-   facturation à 5,99 € coûtent plus de friction qu'elles ne rapportent. Instinct Claude :
-   un palier du journal. À trancher par Brice, qui seul a le modèle du journal en tête.
+4. ~~Le mentorat est-il un palier du journal ?~~ **TRANCHÉ par Brice le 17/07 : NON.**
+   Voir « L'architecture commerciale » ci-dessous.
 
 ### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
 
