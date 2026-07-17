@@ -94,23 +94,66 @@ libre.
 
 **Hypothèse de prix (Brice) :** ~5-6 €/mois si payé à l'année, ~9 € en mensuel.
 
-#### Les questions ouvertes — à trancher AVANT de coder
+#### Décidé par Brice (17/07/2026)
 
-1. **Que vend-on exactement à 5-9 € ?** À ce prix ça ne peut PAS inclure du temps humain
-   de Brice (l'ETM est à 4000 €/trimestre). Donc : le plan assisté par l'IA + le fait
-   qu'il soit cadré par notre méthode + une supervision légère à l'échelle ? C'est LA
-   question produit. Y répondre avant tout le reste.
-2. **Le rail de paiement.** Le Chrome Web Store ne gère plus les paiements (supprimés en
-   2020) → rail externe, donc **Stripe** (déjà branché côté AOK) + contrôle d'accès par
-   notre backend. L'extension ne doit jamais décider seule qu'un élève a payé.
-3. **La surveillance = données personnelles.** « Surveiller ce qui se fait » veut dire lire
-   le travail d'un élève. C'est légitime dans un mentorat payé (c'est même le produit),
-   mais ça doit être **explicite et consenti**, pas implicite. À cadrer avant, pas après.
-4. **Où vit le plan ?** Le journal semble le bon endroit : il a déjà la base, les notes,
-   les annotations, et c'est là que vit la relecture.
-5. **La frontière gratuit / payant.** Les trois prompts restent gratuits ? Le plan est le
-   seul élément payant ? Un carnet amputé ferait fuir ; un carnet complet + le mentorat en
-   surcouche est plus tenable.
+- **Prix** : 5,99 €/mois ou 8,99 €/mois. Juste l'accès au bouton mode mentorat. Prix
+  d'idée de produit, peut monter. **Petit prix volontaire** : ne pas donner l'impression
+  d'un truc « ultra quali ».
+- **Ça ne donne AUCUN accès au temps personnel de Brice.** L'ETM reste à 4000 €/trimestre,
+  et c'est ça qui est « avec lui ». Ne jamais brouiller les deux.
+- **Stripe** + une page dédiée sur le site.
+- **Contrôle d'accès par le backend** : on appelle la base pour savoir s'il a l'option.
+  L'extension ne décide jamais.
+- **Pas de surveillance active.** Le besoin réel est du SUPPORT : pouvoir jeter un oeil
+  quand un élève ne comprend pas. → **Le partage d'écran suffit** et évite tout le
+  problème de consentement. Ne PAS construire un système de surveillance.
+- **Le carnet n'est pas amputé** : tout l'existant reste gratuit et continue d'évoluer.
+  Le mode mentorat est une surcouche (suivi de progression + plan d'action).
+- **Contenu** : une doctrine d'enseignement « Elite Trader Mentorship », à créer pour
+  l'occasion (distincte de la doctrine générale déjà livrée).
+
+#### ⚠️ Le problème dur : la résiliation
+
+**On ne peut pas dé-injecter ce qui a été injecté.** Une fois le document dans la
+conversation de l'élève, il est à lui : copiable, conservable à vie. Aucune mesure
+technique ne le récupère.
+
+Conséquence directe sur l'architecture : **aujourd'hui tout est côté client** (l'extension
+pousse un prompt + un fichier dans l'IA de l'élève). Si le mode mentorat n'est QUE ça, il
+est **incontrôlable** : on s'abonne un mois, on copie, on résilie, on continue à vie.
+
+**On ne monétise pas un prompt, on monétise un service.** Ce qui reste contrôlable est ce
+qui passe par le backend :
+- la GÉNÉRATION du plan (vérification d'accès en direct à chaque fois),
+- le SUIVI de la progression dans le temps, stocké chez nous,
+- la FRAÎCHEUR de la doctrine (le résilié garde une photo qui vieillit).
+
+Un résilié garde donc une vieille copie figée, et perd les nouveaux plans, le suivi et la
+doctrine à jour. Ce modèle-là tient — **à condition que la valeur soit dans le plan
+récurrent, pas dans le document**.
+
+**Risque stratégique à trancher** : plus la doctrine ETM sera bonne, plus le problème
+mord. Distiller ce qui se vend 4000 €/trimestre dans un fichier copiable à 5,99 €/mois est
+une décision de business, pas de technique. Piste : que la doctrine mentorat reste le
+CADRE, et que la valeur soit le PLAN généré pour cet élève à partir de SON historique —
+ça, ça ne se copie pas, ça n'existe pas sans lui.
+
+#### Forme : un panel, pas un 4e prompt
+
+Instinct de Brice, et il est juste. Un 4e prompt dans une liste **a l'air gratuit**, se
+copie en trois secondes, et rien ne le distingue des autres. Un mode qui ouvre son propre
+espace (options de pilotage, prompts préparés) a une identité et justifie qu'on paye.
+C'est aussi plus juste fonctionnellement : un plan n'est pas un one-shot — c'est le créer,
+le mettre à jour, constater un palier.
+
+#### Les questions encore ouvertes
+
+1. **Le rail technique du plan** : généré côté backend (contrôlable, mais coûte des tokens
+   à AOK) ou côté client (gratuit, mais incontrôlable) ? C'est la question qui décide de
+   tout le reste.
+2. **Où vit le plan et le suivi ?** Le journal semble l'endroit naturel : il a déjà la
+   base, les notes, les annotations, et c'est là que vit la relecture.
+3. **Que contient exactement la doctrine ETM** livrée à 5,99 € — cf. le risque stratégique.
 
 ### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
 
