@@ -70,6 +70,48 @@ la conversation, comme elle joint déjà le PDF de la note → marche sur n'impo
 quelle IA, reste relisible, toujours à jour, et contenu contrôlé de bout en bout.
 Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note.
 
+### 8. 💰 Mode mentorat — la première monétisation de l'extension (idée Brice, 17/07/2026)
+
+> À mettre en place **prochainement**, pas dans deux ans. C'est toute une conversation à
+> avoir : ce qui suit est la capture de l'intention, pas une spec validée.
+
+**L'intention.** C'est la pièce qui manquait pour monétiser l'extension. On a déjà les
+comptes (Supabase auth). Si l'élève a souscrit dans notre base, se connecter à son compte
+débloque le **mode mentorat**.
+
+**Ce que ça débloque : le plan d'évolution** (le prompt 4, discuté le 17/07). L'IA propose
+une grille — où en est l'élève sur les cinq axes d'évaluation ETM, ce qui indiquerait le
+passage au palier suivant — à partir de tout l'historique de la conversation.
+
+**Pourquoi ça referme un vrai problème.** On avait identifié le danger d'une IA qui
+décrète « tu as atteint le niveau 3 » : elle fabriquerait une autorité qu'elle n'a pas,
+alors que chez nous le plan est posé par un mentor humain. Le mode mentorat **est** la
+réponse : l'IA propose, **Brice valide**. C'est exactement ce qu'on vend.
+
+**Le deuxième volet, indissociable :** développer un moyen pour que Brice **surveille ce
+qui se fait en mode mentorat**. Sans ça il n'y a pas de mentorat, juste une IA en roue
+libre.
+
+**Hypothèse de prix (Brice) :** ~5-6 €/mois si payé à l'année, ~9 € en mensuel.
+
+#### Les questions ouvertes — à trancher AVANT de coder
+
+1. **Que vend-on exactement à 5-9 € ?** À ce prix ça ne peut PAS inclure du temps humain
+   de Brice (l'ETM est à 4000 €/trimestre). Donc : le plan assisté par l'IA + le fait
+   qu'il soit cadré par notre méthode + une supervision légère à l'échelle ? C'est LA
+   question produit. Y répondre avant tout le reste.
+2. **Le rail de paiement.** Le Chrome Web Store ne gère plus les paiements (supprimés en
+   2020) → rail externe, donc **Stripe** (déjà branché côté AOK) + contrôle d'accès par
+   notre backend. L'extension ne doit jamais décider seule qu'un élève a payé.
+3. **La surveillance = données personnelles.** « Surveiller ce qui se fait » veut dire lire
+   le travail d'un élève. C'est légitime dans un mentorat payé (c'est même le produit),
+   mais ça doit être **explicite et consenti**, pas implicite. À cadrer avant, pas après.
+4. **Où vit le plan ?** Le journal semble le bon endroit : il a déjà la base, les notes,
+   les annotations, et c'est là que vit la relecture.
+5. **La frontière gratuit / payant.** Les trois prompts restent gratuits ? Le plan est le
+   seul élément payant ? Un carnet amputé ferait fuir ; un carnet complet + le mentorat en
+   surcouche est plus tenable.
+
 ### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
 
 Même racine que le bug des `confirm()` : `alert()` est aussi supprimable par
