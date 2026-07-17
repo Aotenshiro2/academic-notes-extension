@@ -64,6 +64,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.5',
+    title: 'Les prompts IA deviennent une vraie méthode',
+    items: [
+      'Nouveau : les prompts d\'analyse s\'enchaînent au lieu de se ressembler. « 1. Lancer la conversation » cadre ton IA et fait un premier état des lieux ; « 2. Débriefer une séance » sert au quotidien (évolutions, angles morts, une priorité) ; « 3. L\'avis Ao Knowledge » te donne ce que l\'académie en penserait — pas l\'avis générique de l\'IA.',
+      'Le prompt « avis Ao Knowledge » joint automatiquement notre doctrine à ta conversation : ton IA répond avec notre méthode et notre vocabulaire, quelle que soit l\'IA que tu utilises.',
+      'Amélioration : dans l\'historique, la liste des dossiers se replie (l\'état est mémorisé) et les tags n\'affichent que les plus utilisés, avec une pastille pour déplier les autres. De quoi tenir dans le temps sans que ça déborde.',
+    ],
+  },
+  {
     version: '1.6.4',
     title: 'Correctifs remontés par les élèves',
     items: [

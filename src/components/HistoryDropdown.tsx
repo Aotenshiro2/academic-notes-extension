@@ -54,6 +54,21 @@ function HistoryDropdown({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [untriagedOnly, setUntriagedOnly] = useState(false)
+  // Les tags s'accumulent avec le temps : on n'en montre que quelques-uns (les plus
+  // utilisés), le reste se déplie à la demande. Sinon la barre bouffe l'écran.
+  const [showAllTags, setShowAllTags] = useState(false)
+  // Idem pour les dossiers : repliables, l'état survit à la fermeture du panneau.
+  const [foldersCollapsed, setFoldersCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('aok-folders-collapsed') === '1' } catch { return false }
+  })
+
+  const toggleFoldersCollapsed = () => {
+    setFoldersCollapsed(v => {
+      const next = !v
+      try { localStorage.setItem('aok-folders-collapsed', next ? '1' : '0') } catch { /* pas bloquant */ }
+      return next
+    })
+  }
 
   // Drag-and-drop
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null)
@@ -221,7 +236,12 @@ function HistoryDropdown({
     const noteTags = new Set<string>([...n.tags, ...(n.messages ?? []).flatMap(m => m.tags ?? [])])
     for (const t of noteTags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)
   }
-  const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
+  // Tous les tags, du plus utilisé au moins utilisé. On n'en affiche que TAG_LIMIT
+  // par défaut ; les rares restent atteignables en dépliant (ou par la recherche).
+  const TAG_LIMIT = 6
+  const allTagsByUse = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
+  const topTags = showAllTags ? allTagsByUse : allTagsByUse.slice(0, TAG_LIMIT)
+  const hiddenTagCount = allTagsByUse.length - TAG_LIMIT
 
   // ---- Computed groups ----
   const notesByFolder = (folderId: string) => filteredNotes.filter(n => n.folderId === folderId)
@@ -357,6 +377,15 @@ function HistoryDropdown({
                 #{tag}
               </button>
             ))}
+            {hiddenTagCount > 0 && (
+              <button
+                onClick={() => setShowAllTags(v => !v)}
+                className="px-2 py-0.5 text-[11px] rounded-full border border-dashed border-border text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
+                title={showAllTags ? 'Ne garder que les tags les plus utilisés' : 'Afficher tous les tags'}
+              >
+                {showAllTags ? 'moins' : `+${hiddenTagCount}`}
+              </button>
+            )}
           </div>
         )}
 
@@ -397,9 +426,22 @@ function HistoryDropdown({
               {(folders.length > 0 || creatingFolder) && (
                 <div className="mb-1">
                   <div className="flex items-center justify-between px-2 py-1.5">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Dossiers</span>
                     <button
-                      onClick={() => { setCreatingFolder(true); setNewFolderName('') }}
+                      onClick={toggleFoldersCollapsed}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                      title={foldersCollapsed ? 'Afficher les dossiers' : 'Replier les dossiers'}
+                      aria-expanded={!foldersCollapsed}
+                    >
+                      {foldersCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                      Dossiers
+                      {folders.length > 0 && (
+                        <span className="font-normal normal-case tracking-normal text-muted-foreground/60">
+                          · {folders.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => { setCreatingFolder(true); setNewFolderName(''); setFoldersCollapsed(false) }}
                       className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                       title="Nouveau dossier"
                       aria-label="Nouveau dossier"
@@ -408,7 +450,7 @@ function HistoryDropdown({
                     </button>
                   </div>
 
-                  {folders.map(folder => {
+                  {!foldersCollapsed && folders.map(folder => {
                     const folderNotes = notesByFolder(folder.id)
                     const isExpanded = expandedFolders.has(folder.id)
                     const isDragOver = dragOverFolderId === folder.id
