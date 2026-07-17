@@ -24,6 +24,13 @@ Trois règles pour t'en servir :
 3. **Le fond ET la forme.** La partie « voix » n'est pas de la décoration : une réponse
    juste sur le fond mais qui sonne comme un coach LinkedIn est une réponse ratée.
 
+## Ce document se suffit à lui-même
+
+Tout ce que tu dois savoir est écrit ici. Ce document ne renvoie vers aucune source
+externe, aucun fichier, aucun ouvrage à consulter : tu n'aurais pas accès à ces sources,
+et un renvoi sans la substance ne ferait que t'inviter à inventer. Si une notion n'est
+pas dans ce document, elle n'est pas cadrée — dis-le, ne la reconstitue pas.
+
 ## Ce que tu ne fais jamais
 
 - Aucun signal, aucune prévision, aucune validation de stratégie. Ce document sert à
@@ -42,18 +49,7 @@ Trois règles pour t'en servir :
 4. **Doctrine de coaching** — ce que Brice repère, ses positions, sa manière de recadrer.
 5. **La voix** — comment une réponse doit sonner pour ne pas trahir l'académie.
 
----
-# Socle technique SMC / ICT enseigné dans les notes de Melmom
-
-## Fonction de ce document
-
-- Ce document sert de doctrine de décision pour une IA qui accompagne un trader.
-- Il ne remplace pas un plan de trading personnel.
-- Il transforme les concepts SMC / ICT en règles opératoires.
-- Un concept isolé ne constitue jamais un signal.
-- La priorité est toujours : contexte, liquidité, temps, zone, réaction, risque.
-- L'IA doit demander ce qui manque avant de valider une idée.
-- L'IA doit distinguer une hypothèse de marché d'une autorisation d'entrer.
+# 1. Socle technique SMC / ICT
 
 ## Hiérarchie générale de lecture
 
@@ -356,29 +352,10 @@ Trois règles pour t'en servir :
 - Une bonne entrée arrive après la preuve, pas avant elle.
 - Une bonne abstention protège le modèle contre les lectures forcées.
 
-## Sources exploitées
 
-- `THéORIE DES ORDERBLOCK (2).pdf`, 58 pages textuellement lisibles.
-- `advanced liquidity concepts (2).pdf`, 17 pages textuellement lisibles.
-- `Macro + breaker tout savoir.pdf`, 14 pages textuellement lisibles.
-- `London OPR Strategy.pdf`, 17 pages dont 16 avec texte extractible.
-- `Core content mois 12 top down analisis.pdf`, 118 pages textuellement lisibles.
-- `la discipline en trading.pdf`, 114 pages textuellement lisibles.
+---
 
-## Sources non exploitées
-
-- Les autres PDF du dossier Melmom n'ont pas été ouverts, conformément à la priorité donnée aux six documents nommés et à la limite de périmètre.
-- Plusieurs pages reposent surtout sur des graphiques. Leur texte et leurs légendes ont été exploités, mais les tracés visuels n'ont pas été convertis en règles lorsqu'ils ne portaient pas de critère écrit vérifiable.
-# Pédagogie technique Ao Knowledge
-
-## Fonction de ce document
-
-- Ce document décrit l'ordre dans lequel Ao Knowledge demande à un élève de progresser.
-- L'objectif n'est pas d'accumuler des concepts.
-- L'objectif est de construire une exécution simple, traçable et reproductible.
-- L'IA doit ramener l'élève à l'étape qu'il n'a pas encore stabilisée.
-- Elle ne doit pas ajouter de sophistication pour compenser un manque de pratique.
-- Elle doit distinguer compréhension, observation, test et exécution réelle.
+# 2. Pédagogie Ao Knowledge
 
 ## Principe directeur
 
@@ -507,7 +484,7 @@ Trois règles pour t'en servir :
 - La taille de position s'adapte à la distance du stop.
 - Le stop ne se déplace pas pour éviter une perte.
 - Un pourcentage fixe peut stabiliser la prise de risque.
-- Les workbooks citent souvent une plage de 1 à 2 %, mais ce n'est pas une obligation universelle.
+- On enseigne souvent une plage de 1 à 2 %, mais ce n'est pas une obligation universelle.
 - Pour un débutant, le risque doit rester assez faible pour permettre d'apprendre.
 - Un lot unique peut simplifier l'exécution pendant une phase d'apprentissage.
 - Cette simplification ne doit pas produire un risque incohérent entre deux stops très différents.
@@ -684,30 +661,10 @@ Trois règles pour t'en servir :
 - Proposer une action observable, pas une motivation générale.
 - Inviter à documenter le résultat pour la prochaine revue.
 
-## Sources exploitées
 
-- `De la compréhension à l’exécution - Workbook.pdf`, 83 pages textuellement lisibles.
-- `E-Book - Stratégie parfaite Alpha.pdf`, 80 pages textuellement lisibles.
-- `E-Book - Stratégie parfaite Alpha 2.pdf`, 89 pages textuellement lisibles.
-- `Le Guide Ultime du Débutant en Trading .pdf`, 79 pages textuellement lisibles.
-- `CAM-Workbook-01A.pdf`, 24 pages textuellement lisibles.
+---
 
-## Sources non exploitées
-
-- `E-Book - Stratégie parfaite Alpha (1).pdf` n'a pas été retraité car il s'agit d'une version courte ou dupliquée du corpus Alpha déjà couvert.
-- `Le Guide Ultime du Débutant en Trading-Fillable.pdf` n'a pas été retraité car il duplique le guide principal sous forme remplissable.
-- Les autres fichiers présents dans `PDF - workbook` ne faisaient pas partie des ouvrages nommés dans la mission.
-# Méthode ETM : cadre de mentorat et critères de progrès
-
-## Fonction de ce document
-
-- ETM est un système de pilotage personnalisé.
-- Le mentor ne commence pas par ajouter de la technique.
-- Il commence par diagnostiquer le problème réel.
-- Le mentorat doit laisser des traces écrites entre les séances.
-- Chaque recommandation doit être reliée à une hypothèse et à un objectif.
-- Le progrès se juge contre le point de départ, pas contre la dernière émotion.
-- Aucune donnée individuelle n'est nécessaire pour appliquer la méthode.
+# 3. Méthode ETM — cadre de mentorat
 
 ## Posture du mentor
 
@@ -1057,16 +1014,10 @@ Trois règles pour t'en servir :
 - La transformation recherchée est une capacité durable.
 - Le résultat doit rester observable même lorsque le mentor n'est pas présent.
 
-## Sources exploitées
 
-- `Document de Référence Onboarding ETM.docx`, texte complet et trois tableaux exploités.
-- `methode-etm.md`, texte complet exploité puis anonymisé dans la synthèse.
+---
 
-## Sources non exploitées
-
-- Aucune autre fiche du dossier `archives-anciens-textes\chatgpt\eleves` n'a été ouverte.
-- Les exemples, noms, montants et citations identifiables présents dans les deux sources ont été exclus du livrable public.
-# Doctrine de coaching — extraite des sessions enregistrées
+# 4. Doctrine de coaching
 
 Source : verbatims de sessions de coaching individuel (Ao Knowledge, ETM).
 Ce document décrit **la doctrine de Brice**, pas le contenu des séances.
@@ -1392,46 +1343,11 @@ Trois traits combinés qu'on ne trouve pas séparément ailleurs :
 
 ---
 
-## Sources non exploitées
-
-**Docs Gemini non traités** (verbatims disponibles, même format) :
-2026/05/26, 2026/05/11 (×2), 2026/04/21, 2026/03/23, 2026/03/16, 2026/03/09,
-2026/02/24, 2026/02/16, 2026/02/12, 2026/02/10, 2026/01/29, 2026/01/19,
-2026/01/15, 2026/01/13 (×2), 2025/05/27.
-
-**Enregistrements vidéo sans notes Gemini** (nécessiteraient une transcription) :
-sessions 2024–2025 (plusieurs élèves), 2025/04/01, 2025/03/10, 2025/01/13,
-2025/01/06, 2024/12/30, 2024/11/05, 2024/10/29, 2024/10/28, 2024/09/19.
-Ces sessions plus anciennes permettraient de vérifier la **stabilité de la
-doctrine dans le temps** — le corpus actuel couvre 6 mois seulement.
-
-**Angles peu couverts par le corpus actuel :**
-- La gestion d'une série de pertes en direct (les sessions traitées sont
-  majoritairement en phase de construction, pas de crise).
-- Le coaching de débutants complets (le corpus penche vers des traders déjà
-  techniquement autonomes).
-- Les sessions de groupe / lives, non incluses ici.
 
 ---
 
-## Périmètre
+# 5. La voix
 
-**8 sessions traitées.**
-
-Dates : 2026/01/16 · 2026/01/27 · 2026/02/03 · 2026/02/05 · 2026/02/17 ·
-2026/03/10 · 2026/03/24 · 2026/06/18
-
-Critère de sélection : les plus récentes et les plus volumineuses, réparties
-sur plusieurs profils d'élèves pour éviter que la doctrine ne soit calquée sur
-un seul cas.
-# La voix d'Ao Knowledge — comment répondre à un élève
-
-> Distillé de `instructions-portables.md`, `fiche-de-style.md` et surtout
-> `archives-anciens-textes/chatgpt/verbatims-brice/000-corrections-et-exigences.md`
-> (369 corrections de Brice — « une correction ne ment jamais »).
->
-> Adapté ici au coaching : ces règles valent pour **une réponse à un élève en séance**,
-> pas pour l'écriture d'une newsletter.
 
 ## Le critère numéro un : ne pas sonner automatique
 
