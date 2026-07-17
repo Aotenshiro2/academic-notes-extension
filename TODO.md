@@ -12,6 +12,12 @@
 5. *(côté journal : compteur de journalisation des concepts)* — la même donnée sert aussi
    à l'agrégation du mode mentorat (section 8) : moins cosmétique qu'il n'y paraît.
 
+> 📌 Règle de versionnage actée le 17/07 (Brice) : **une version = une livraison
+> chargée par Brice**, pas une itération interne. Les correctifs d'une même
+> session de travail restent dans la même version tant que le zip n'a pas été
+> installé/publié. (Les bumps 1.6.8/1.6.9 de cette session ont été reconsolidés
+> en 1.6.7 — entrée unique dans le changelog du guide.)
+
 ### ✅ v1.6.7 — contrat de données 0.1.2 + fix popup (17/07/2026, zip généré)
 
 - Nouveau type de bloc **`meta`** (date • titre • URL de capture) : jamais du
@@ -26,20 +32,18 @@
 - Sync : les blocs texte vides ne partent plus (l'API journal les refuse
   aussi) ; nettoyage one-shot fait en base (59 supprimés).
 
-### ✅ v1.6.8–1.6.9 — œil métadonnées + sync réparée (17/07/2026)
-
-- v1.6.8 : bouton « Métadonnées » (œil) dans la vue note — visible par défaut
-  dans l'extension, masqué par défaut dans le journal. Côté journal : 185
-  blocs meta legacy migrés en base + normalisation à la sync.
-- v1.6.9 : **rattrapage auto des notes en attente** — l'auto-sync à la
-  sauvegarde échouait en silence (session absente/expirée) et rien ne
-  réessayait → les notes restaient « à synchroniser » jusqu'au clic manuel.
-  Désormais : à l'ouverture du panel connecté, les notes en attente partent
-  toutes seules.
-- v1.6.9 : **cache local des uploads d'images** (hash → URL,
-  chrome.storage.local) — avant, CHAQUE sync recompressait et re-téléversait
-  toutes les images même déjà en ligne, d'où « Envoyer les nouvelles » aussi
-  lent que « Tout renvoyer ». Une image déjà envoyée ne repart plus jamais.
+Inclus aussi dans la v1.6.7 (même livraison) :
+- Bouton « Métadonnées » (œil) dans la vue note — visible par défaut dans
+  l'extension, masqué par défaut dans le journal. Côté journal : 185 blocs
+  meta legacy migrés en base + normalisation à la sync.
+- **Rattrapage auto des notes en attente** — l'auto-sync à la sauvegarde
+  échouait en silence (session absente/expirée) et rien ne réessayait → les
+  notes restaient « à synchroniser » jusqu'au clic manuel. Désormais : à
+  l'ouverture du panel connecté, elles partent toutes seules.
+- **Cache local des uploads d'images** (hash → URL, chrome.storage.local) —
+  avant, CHAQUE sync recompressait et re-téléversait toutes les images même
+  déjà en ligne, d'où « Envoyer les nouvelles » aussi lent que « Tout
+  renvoyer ». Une image déjà envoyée ne repart plus jamais.
 
 ### 📋 Backlog — capture intelligente à retravailler (noté le 17/07/2026)
 

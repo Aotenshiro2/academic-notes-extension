@@ -64,6 +64,25 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.7',
+    title: 'Le bruit disparaît, la sync devient fiable',
+    items: [
+      'Nouveau : les métadonnées de capture (date, page, URL) ne sont plus des blocs de texte au milieu de tes notes — elles deviennent une ligne discrète, masquable d\'un clic (bouton « Métadonnées » au-dessus de la note ; le même œil existe dans le Journal d\'Études, où elles sont masquées par défaut).',
+      'Amélioration : un screenshot pris avec une note ouverte part directement dans la note — la zone de saisie reste propre au lieu de se remplir d\'image et de métadonnées.',
+      'Correction : supprimer une image (ou un long texte replié) affiche à nouveau la confirmation — le clic sur la poubelle ne restait plus sans effet.',
+      'Synchronisation : les notes en attente partent automatiquement à l\'ouverture du panneau — plus besoin de cliquer « Envoyer les nouvelles » à la main.',
+      'Synchronisation : une image déjà envoyée n\'est plus jamais re-téléversée — « Tout renvoyer » et les re-syncs deviennent beaucoup plus rapides.',
+      'Nettoyage : les blocs de texte vides ne partent plus vers le journal (et ceux qui s\'y étaient accumulés ont été purgés).',
+    ],
+  },
+  {
+    version: '1.6.6',
+    title: 'L\'avis Ao Knowledge affiné',
+    items: [
+      'Amélioration : le prompt « L\'avis Ao Knowledge » distingue clairement ta note de la doctrine, parle avec notre voix sans jamais citer le document, et annonce la suite dès le lancement de la conversation.',
+    ],
+  },
+  {
     version: '1.6.5',
     title: 'Les prompts IA deviennent une vraie méthode',
     items: [
