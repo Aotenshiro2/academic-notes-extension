@@ -8,6 +8,7 @@ import type { ProviderConfig } from '@/lib/analysis-providers'
 async function injectIntoProvider(
   pdfBase64: string | null,
   fileName: string,
+  mimeType: string,
   promptText: string,
   fileInputSelectors: string[],
   textareaSelectors: string[],
@@ -105,7 +106,7 @@ async function injectIntoProvider(
 
     if (fileInput) {
       try {
-        const file = b64ToFile(pdfBase64, fileName, 'application/pdf')
+        const file = b64ToFile(pdfBase64, fileName, mimeType)
         const dt = new DataTransfer()
         dt.items.add(file)
         fileInput.files = dt.files
@@ -158,6 +159,7 @@ async function openAndInject(
   provider: ProviderConfig,
   pdfBase64: string | null,
   fileName: string,
+  mimeType: string,
   promptText: string,
   url: string,
   onProgress?: (phase: ProgressPhase) => void
@@ -187,6 +189,7 @@ async function openAndInject(
     args: [
       pdfBase64,
       fileName,
+      mimeType,
       promptText,
       provider.fileInputSelectors,
       provider.textareaSelectors,
@@ -214,16 +217,18 @@ export async function openProviderWithContent(options: {
   provider: ProviderConfig
   pdfBase64: string | null
   fileName: string
+  /** Type MIME du fichier joint. Defaut: application/pdf (la note). La doctrine est du markdown. */
+  mimeType?: string
   promptText: string
   threadUrl?: string
   onProgress?: (phase: ProgressPhase) => void
 }): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
-  const { provider, pdfBase64, fileName, promptText, threadUrl, onProgress } = options
+  const { provider, pdfBase64, fileName, mimeType = 'application/pdf', promptText, threadUrl, onProgress } = options
 
   // Mode thread cible — toujours injection DOM (pas de prefill ?q= sur un thread existant)
   if (threadUrl) {
     try {
-      return await openAndInject(provider, pdfBase64, fileName, promptText, threadUrl, onProgress)
+      return await openAndInject(provider, pdfBase64, fileName, mimeType, promptText, threadUrl, onProgress)
     } catch {
       throw new Error('THREAD_INJECTION_FAILED')
     }
@@ -244,5 +249,5 @@ export async function openProviderWithContent(options: {
   }
 
   // Chemin injection DOM (PDF ou texte long ou provider sans prefill)
-  return await openAndInject(provider, pdfBase64, fileName, promptText, provider.url, onProgress)
+  return await openAndInject(provider, pdfBase64, fileName, mimeType, promptText, provider.url, onProgress)
 }

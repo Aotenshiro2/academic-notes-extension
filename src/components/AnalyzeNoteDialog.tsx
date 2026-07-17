@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { X, Sparkles, Copy, ExternalLink, MessageSquare, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
+import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
 import type { AcademicNote, AnalysisProvider, NoteFolder } from '@/types/academic'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib/pdf-export'
@@ -16,13 +16,12 @@ interface AnalyzeNoteDialogProps {
   folders?: NoteFolder[]
 }
 
-// Les prompts forment une CHAÎNE, pas trois variantes parallèles :
-//   1. `init`   — ouvre la conversation et pose le rôle de l'IA (une fois)
+// Les prompts forment une CHAÎNE, pas des variantes parallèles :
+//   1. `init`   — ouvre la conversation, pose le rôle de l'IA + premier état des lieux
 //   2. `update` — envoie une note dans cette conversation déjà cadrée (usage courant)
-//   3. (à venir) `aok` — « ce que Brice en penserait », adossé à la doctrine AOKnowledge.
-//      Volontairement absent tant que le document de doctrine n'existe pas : mieux vaut
-//      pas de prompt du tout qu'un faux Brice.
-type PromptType = 'init' | 'update' | 'custom'
+//   3. `aok`    — « ce que Brice en penserait », l'avis maison PAR OPPOSITION à l'avis
+//                 générique de l'IA. Adossé à la doctrine (doctrine-aok/00-DOCTRINE.md).
+type PromptType = 'init' | 'update' | 'aok' | 'custom'
 type SendStatus = 'idle' | 'loading' | 'success' | 'fallback' | 'thread-fallback'
 type LoadingPhase = 'preparing' | 'opening' | 'loading' | 'injecting'
 
@@ -68,7 +67,27 @@ Contraintes :
 - Si tu vois un écart entre mes jugements A/B/C et mes résultats, signale-le.
 - Termine par UNE seule chose à travailler en priorité à la prochaine séance.
 
-[CONTENU_DE_LA_NOTE]`
+[CONTENU_DE_LA_NOTE]`,
+
+  // 3. L'avis maison. Le point n'est PAS d'avoir un deuxième avis de l'IA : c'est de
+  //    confronter son avis générique à la doctrine Ao Knowledge, qui est jointe au
+  //    message. D'où la consigne explicite de signaler les divergences.
+  aok: `Tu viens de me donner ton analyse. Maintenant, je veux autre chose : ce qu'Ao Knowledge — mon académie — en penserait.
+
+Le document « Doctrine Ao Knowledge » est joint à ce message. Il contient le socle technique SMC/ICT tel qu'on l'enseigne, notre pédagogie, la méthode de mentorat, la doctrine de coaching de Brice et sa manière de parler.
+
+CE QUE JE TE DEMANDE
+- Reprends ma note à la lumière de cette doctrine, pas de ta culture générale du trading.
+- Là où la doctrine dit quelque chose de précis (définition d'un concept, critère d'invalidation, ordre de lecture du marché), applique-la, même si ton avis diffère.
+- Là où ton analyse précédente s'écarte de la doctrine, DIS-LE explicitement : « mon analyse disait X, la doctrine dit Y ». C'est cet écart qui m'intéresse le plus.
+- Là où la doctrine ne dit rien sur mon cas, dis-le franchement plutôt que d'inventer une position maison. Un « ce n'est pas cadré chez nous » est utile ; une réponse fabriquée ne l'est pas.
+
+LA FORME COMPTE AUTANT QUE LE FOND
+Réponds en respectant la section « voix » de la doctrine. Pas de ton coach ni LinkedIn, pas de promesse de résultat, pas de motivation artificielle, pas de formules creuses. Tutoiement. Nuance avant le tranchant. Une opinion argumentée, pas de complaisance : 1 à 3 axes maximum.
+
+Et le rappel qui prime sur tout : on ne juge jamais une décision à son résultat.
+
+Reprends la note et l'analyse déjà présentes dans cette conversation — inutile de me les redemander.`
 }
 
 function noteToPlainText(note: AcademicNote): string {
@@ -212,8 +231,14 @@ function AnalyzeNoteDialog({
   // ET sert de premier état des lieux. Il se comporte donc comme les autres.
   const isOpener = selectedPrompt === 'init'
 
+  // L'avis Ao Knowledge s'emploie dans une conversation où la note est DÉJÀ présente.
+  // Il ne rejoue donc pas la note : il joint la doctrine à la place.
+  const isDoctrine = selectedPrompt === 'aok'
+
   const buildFullPrompt = (): string => {
     const promptText = getPromptText()
+
+    if (isDoctrine) return promptText
 
     if (isMultiNote) {
       const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
@@ -264,10 +289,20 @@ function AnalyzeNoteDialog({
       // Always copy full prompt to clipboard as backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // Generate PDF: combined multi-note PDF or single-note PDF (when images present)
+      // L'avis Ao Knowledge joint la DOCTRINE (livrée dans le bundle) au lieu de la note :
+      // la note est déjà dans la conversation, et c'est la doctrine qui manque à l'IA.
       let cachedBase64: string | null = null
       let cachedFileName = ''
-      if (hasImages) {
+      if (isDoctrine) {
+        const res = await fetch(chrome.runtime.getURL('doctrine-ao-knowledge.md'))
+        const text = await res.text()
+        // Encodage octet par octet : un spread sur ~78 Ko ferait sauter la pile d'appels
+        const docBytes = new TextEncoder().encode(text)
+        let docBinary = ''
+        for (let i = 0; i < docBytes.length; i++) docBinary += String.fromCharCode(docBytes[i])
+        cachedBase64 = btoa(docBinary)
+        cachedFileName = 'doctrine-ao-knowledge.md'
+      } else if (hasImages) {
         let blob: Blob
         if (isMultiNote) {
           const selectedNotes = availableNotes
@@ -293,13 +328,15 @@ function AnalyzeNoteDialog({
 
       const onProgress = (phase: 'opening' | 'loading' | 'injecting') => setLoadingPhase(phase)
 
-      // Feature C: when PDF present, inject shorter prompt (instructions only)
-      const injectionText = cachedBase64 ? buildInjectionPrompt() : fullPrompt
+      // Feature C: when PDF present, inject shorter prompt (instructions only).
+      // Pour la doctrine, le prompt annonce déjà le document joint : on l'envoie tel quel.
+      const injectionText = cachedBase64 && !isDoctrine ? buildInjectionPrompt() : fullPrompt
 
       const send = (tUrl?: string) => openProviderWithContent({
         provider: providerConfig,
         pdfBase64: cachedBase64,
         fileName: cachedFileName,
+        mimeType: isDoctrine ? 'text/markdown' : 'application/pdf',
         promptText: injectionText,
         threadUrl: tUrl,
         onProgress,
@@ -367,6 +404,7 @@ function AnalyzeNoteDialog({
     { type: 'custom', label: 'Prompt libre', subtitle: 'Écris ta propre consigne', icon: PenLine },
     { type: 'init', label: '1. Lancer la conversation', subtitle: 'Pose le rôle de l\'IA + premier état des lieux', icon: MessageSquare },
     { type: 'update', label: '2. Débriefer une séance', subtitle: 'Dans une conversation déjà lancée : évolutions et angles morts', icon: Target },
+    { type: 'aok', label: '3. L\'avis Ao Knowledge', subtitle: 'Ce qu\'on en penserait, nous — pas l\'avis générique de l\'IA', icon: GraduationCap },
   ]
 
   const pickerNotes = availableNotes.filter(n =>
