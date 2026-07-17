@@ -43,6 +43,11 @@ COMMENT LIRE MES NOTES
 - Un « cooldown » est mon débrief juste après un trade (émotion, erreur, leçon).
 - Un « DOL » (Draw on Liquidity) est le niveau de liquidité vers lequel j'attends que le prix soit attiré.
 
+COMMENT ON VA TRAVAILLER
+Cette conversation va durer. Voici ce qui va arriver, pour que tu saches où tu vas :
+- Je vais revenir régulièrement avec une nouvelle note de séance. À chaque fois, je te demanderai une mise à jour : ce qui ressort, ce qui a évolué depuis les précédentes, mes angles morts. Garde donc en mémoire ce que tu apprends de moi au fil des séances, c'est cette continuité qui a de la valeur.
+- Parfois je te demanderai l'avis de mon académie. Là, je joindrai leur document de référence et tu changeras de grille de lecture.
+
 CE QUE J'ATTENDS
 - Ne me reformule pas ma note : je l'ai écrite, je la connais.
 - Ne conclus pas à ma place.
@@ -74,7 +79,11 @@ Contraintes :
   //    message. D'où la consigne explicite de signaler les divergences.
   aok: `Je veux l'avis d'Ao Knowledge — mon académie — sur ma note.
 
-Deux documents sont joints à ce message : ma note, et « Doctrine Ao Knowledge ». La doctrine contient le socle technique SMC/ICT tel qu'on l'enseigne, notre pédagogie, la méthode de mentorat, la doctrine de coaching de Brice et sa manière de parler.
+DEUX DOCUMENTS SONT JOINTS, NE LES CONFONDS PAS :
+- **Ma note de séance** : c'est MON travail, c'est ça que tu analyses.
+- **doctrine-ao-knowledge.md** : c'est la référence de mon académie, écrite par eux. Ce n'est PAS ma note, ce n'est pas mon analyse, et il n'y a rien de moi dedans. Tu ne la commentes pas : tu t'en sers comme grille de lecture.
+
+La doctrine contient le socle technique SMC/ICT tel qu'on l'enseigne, notre pédagogie, la méthode de mentorat, la doctrine de coaching de Brice et sa manière de parler.
 
 CE QUE JE TE DEMANDE
 - Reprends ma note à la lumière de cette doctrine, pas de ta culture générale du trading.

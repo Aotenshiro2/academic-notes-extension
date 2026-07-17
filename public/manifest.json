@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Le Carnet du Trader",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "Journalisez vos séances de trading sans interrompre votre analyse : notes, captures, trades et débriefs en quelques clics.",
   "icons": {
     "16": "icons/icon-16.png",

@@ -1,8 +1,13 @@
 # Doctrine Ao Knowledge — référence pour assistant IA
 
-> Ce document est joint automatiquement aux conversations IA des élèves d'Ao Knowledge,
-> depuis l'extension « Le Carnet du Trader ». Il existe pour une raison simple : sans lui,
-> une IA répond au trader avec la moyenne d'internet. Avec lui, elle répond selon la
+> ⚠️ **CE DOCUMENT N'EST PAS LA NOTE DE L'ÉLÈVE.**
+> C'est la référence de l'académie, écrite par nous, jointe automatiquement à la
+> conversation. Ne le confonds jamais avec ce que l'élève te partage : rien ici n'est
+> son analyse, son trade, ni sa séance. Sa note est un document séparé.
+> Tu ne commentes pas ce document, tu t'en sers pour lire le sien.
+
+> Il est joint depuis l'extension « Le Carnet du Trader » pour une raison simple : sans
+> lui, une IA répond au trader avec la moyenne d'internet. Avec lui, elle répond selon la
 > méthode de l'académie.
 
 ## Comment utiliser ce document
