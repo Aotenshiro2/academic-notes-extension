@@ -72,14 +72,14 @@ Contraintes :
   // 3. L'avis maison. Le point n'est PAS d'avoir un deuxième avis de l'IA : c'est de
   //    confronter son avis générique à la doctrine Ao Knowledge, qui est jointe au
   //    message. D'où la consigne explicite de signaler les divergences.
-  aok: `Tu viens de me donner ton analyse. Maintenant, je veux autre chose : ce qu'Ao Knowledge — mon académie — en penserait.
+  aok: `Je veux l'avis d'Ao Knowledge — mon académie — sur ma note.
 
-Le document « Doctrine Ao Knowledge » est joint à ce message. Il contient le socle technique SMC/ICT tel qu'on l'enseigne, notre pédagogie, la méthode de mentorat, la doctrine de coaching de Brice et sa manière de parler.
+Deux documents sont joints à ce message : ma note, et « Doctrine Ao Knowledge ». La doctrine contient le socle technique SMC/ICT tel qu'on l'enseigne, notre pédagogie, la méthode de mentorat, la doctrine de coaching de Brice et sa manière de parler.
 
 CE QUE JE TE DEMANDE
 - Reprends ma note à la lumière de cette doctrine, pas de ta culture générale du trading.
 - Là où la doctrine dit quelque chose de précis (définition d'un concept, critère d'invalidation, ordre de lecture du marché), applique-la, même si ton avis diffère.
-- Là où ton analyse précédente s'écarte de la doctrine, DIS-LE explicitement : « mon analyse disait X, la doctrine dit Y ». C'est cet écart qui m'intéresse le plus.
+- Là où ton avis d'IA s'écarterait de la doctrine, DIS-LE explicitement : « spontanément j'aurais dit X, la doctrine dit Y ». C'est cet écart qui m'intéresse le plus.
 - Là où la doctrine ne dit rien sur mon cas, dis-le franchement plutôt que d'inventer une position maison. Un « ce n'est pas cadré chez nous » est utile ; une réponse fabriquée ne l'est pas.
 
 LA FORME COMPTE AUTANT QUE LE FOND
@@ -87,7 +87,7 @@ Réponds en respectant la section « voix » de la doctrine. Pas de ton coach ni
 
 Et le rappel qui prime sur tout : on ne juge jamais une décision à son résultat.
 
-Reprends la note et l'analyse déjà présentes dans cette conversation — inutile de me les redemander.`
+[CONTENU_DE_LA_NOTE]`
 }
 
 function noteToPlainText(note: AcademicNote): string {
@@ -231,14 +231,13 @@ function AnalyzeNoteDialog({
   // ET sert de premier état des lieux. Il se comporte donc comme les autres.
   const isOpener = selectedPrompt === 'init'
 
-  // L'avis Ao Knowledge s'emploie dans une conversation où la note est DÉJÀ présente.
-  // Il ne rejoue donc pas la note : il joint la doctrine à la place.
+  // L'avis Ao Knowledge joint la doctrine EN PLUS de la note : les deux partent ensemble.
+  // (Première version : la doctrine remplaçait la note, en supposant qu'elle était déjà
+  // dans la conversation. Mauvaise idée — l'élève perdait sa note sans le voir.)
   const isDoctrine = selectedPrompt === 'aok'
 
   const buildFullPrompt = (): string => {
     const promptText = getPromptText()
-
-    if (isDoctrine) return promptText
 
     if (isMultiNote) {
       const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
@@ -289,20 +288,14 @@ function AnalyzeNoteDialog({
       // Always copy full prompt to clipboard as backup
       await navigator.clipboard.writeText(fullPrompt)
 
-      // L'avis Ao Knowledge joint la DOCTRINE (livrée dans le bundle) au lieu de la note :
-      // la note est déjà dans la conversation, et c'est la doctrine qui manque à l'IA.
+      // Les fichiers joints, dans l'ordre : la note d'abord (c'est le sujet), la
+      // doctrine ensuite (c'est la référence). Les deux partent ensemble.
+      const files: { base64: string; name: string; mime: string }[] = []
+
+      // 1) La note en PDF — comme pour tous les prompts, seulement si elle a des images
       let cachedBase64: string | null = null
       let cachedFileName = ''
-      if (isDoctrine) {
-        const res = await fetch(chrome.runtime.getURL('doctrine-ao-knowledge.md'))
-        const text = await res.text()
-        // Encodage octet par octet : un spread sur ~78 Ko ferait sauter la pile d'appels
-        const docBytes = new TextEncoder().encode(text)
-        let docBinary = ''
-        for (let i = 0; i < docBytes.length; i++) docBinary += String.fromCharCode(docBytes[i])
-        cachedBase64 = btoa(docBinary)
-        cachedFileName = 'doctrine-ao-knowledge.md'
-      } else if (hasImages) {
+      if (hasImages) {
         let blob: Blob
         if (isMultiNote) {
           const selectedNotes = availableNotes
@@ -324,19 +317,28 @@ function AnalyzeNoteDialog({
         let binary = ''
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
         cachedBase64 = btoa(binary)
+        files.push({ base64: cachedBase64, name: cachedFileName, mime: 'application/pdf' })
+      }
+
+      // 2) La doctrine (livrée dans le bundle), uniquement pour l'avis Ao Knowledge
+      if (isDoctrine) {
+        const res = await fetch(chrome.runtime.getURL('doctrine-ao-knowledge.md'))
+        const text = await res.text()
+        // Encodage octet par octet : un spread sur ~78 Ko ferait sauter la pile d'appels
+        const docBytes = new TextEncoder().encode(text)
+        let docBinary = ''
+        for (let i = 0; i < docBytes.length; i++) docBinary += String.fromCharCode(docBytes[i])
+        files.push({ base64: btoa(docBinary), name: 'doctrine-ao-knowledge.md', mime: 'text/markdown' })
       }
 
       const onProgress = (phase: 'opening' | 'loading' | 'injecting') => setLoadingPhase(phase)
 
-      // Feature C: when PDF present, inject shorter prompt (instructions only).
-      // Pour la doctrine, le prompt annonce déjà le document joint : on l'envoie tel quel.
-      const injectionText = cachedBase64 && !isDoctrine ? buildInjectionPrompt() : fullPrompt
+      // Feature C: quand la note part en PDF, le prompt ne répète pas son contenu
+      const injectionText = cachedBase64 ? buildInjectionPrompt() : fullPrompt
 
       const send = (tUrl?: string) => openProviderWithContent({
         provider: providerConfig,
-        pdfBase64: cachedBase64,
-        fileName: cachedFileName,
-        mimeType: isDoctrine ? 'text/markdown' : 'application/pdf',
+        files,
         promptText: injectionText,
         threadUrl: tUrl,
         onProgress,

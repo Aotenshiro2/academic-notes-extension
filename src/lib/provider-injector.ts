@@ -1,14 +1,22 @@
 import type { ProviderConfig } from '@/lib/analysis-providers'
 
+/** Un fichier à joindre à la conversation (note en PDF, doctrine en markdown…). */
+export interface InjectedFile {
+  base64: string
+  name: string
+  mime: string
+}
+
 /**
  * Fonction autonome injectée dans la page du provider.
  * Reçoit les sélecteurs en paramètres → provider-agnostique.
  * DOIT être 100% autonome — pas d'imports, pas de closures externes.
+ *
+ * Plusieurs fichiers peuvent partir ensemble (ex. la note ET la doctrine) : ils sont
+ * déposés dans un seul DataTransfer, comme le ferait un glisser-déposer multiple.
  */
 async function injectIntoProvider(
-  pdfBase64: string | null,
-  fileName: string,
-  mimeType: string,
+  files: { base64: string; name: string; mime: string }[],
   promptText: string,
   fileInputSelectors: string[],
   textareaSelectors: string[],
@@ -92,10 +100,10 @@ async function injectIntoProvider(
     return true
   }
 
-  // --- Upload PDF ---
+  // --- Upload des fichiers joints ---
 
   let pdfUploaded = false
-  if (pdfBase64) {
+  if (files.length > 0) {
     // Cliquer les triggers pour révéler le file input (Gemini, Claude, Grok…)
     if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findFileInput(fileInputSelectors)) {
       await clickTriggerSteps(uploadTriggerSteps)
@@ -106,9 +114,8 @@ async function injectIntoProvider(
 
     if (fileInput) {
       try {
-        const file = b64ToFile(pdfBase64, fileName, mimeType)
         const dt = new DataTransfer()
-        dt.items.add(file)
+        for (const f of files) dt.items.add(b64ToFile(f.base64, f.name, f.mime))
         fileInput.files = dt.files
         fileInput.dispatchEvent(new Event('change', { bubbles: true }))
         fileInput.dispatchEvent(new Event('input', { bubbles: true }))
@@ -157,9 +164,7 @@ type ProgressPhase = 'opening' | 'loading' | 'injecting'
  */
 async function openAndInject(
   provider: ProviderConfig,
-  pdfBase64: string | null,
-  fileName: string,
-  mimeType: string,
+  files: InjectedFile[],
   promptText: string,
   url: string,
   onProgress?: (phase: ProgressPhase) => void
@@ -187,9 +192,7 @@ async function openAndInject(
     target: { tabId },
     func: injectIntoProvider,
     args: [
-      pdfBase64,
-      fileName,
-      mimeType,
+      files,
       promptText,
       provider.fileInputSelectors,
       provider.textareaSelectors,
@@ -215,27 +218,25 @@ async function openAndInject(
  */
 export async function openProviderWithContent(options: {
   provider: ProviderConfig
-  pdfBase64: string | null
-  fileName: string
-  /** Type MIME du fichier joint. Defaut: application/pdf (la note). La doctrine est du markdown. */
-  mimeType?: string
+  /** Fichiers à joindre, dans l'ordre. Peut contenir la note ET la doctrine. */
+  files?: InjectedFile[]
   promptText: string
   threadUrl?: string
   onProgress?: (phase: ProgressPhase) => void
 }): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
-  const { provider, pdfBase64, fileName, mimeType = 'application/pdf', promptText, threadUrl, onProgress } = options
+  const { provider, files = [], promptText, threadUrl, onProgress } = options
 
   // Mode thread cible — toujours injection DOM (pas de prefill ?q= sur un thread existant)
   if (threadUrl) {
     try {
-      return await openAndInject(provider, pdfBase64, fileName, mimeType, promptText, threadUrl, onProgress)
+      return await openAndInject(provider, files, promptText, threadUrl, onProgress)
     } catch {
       throw new Error('THREAD_INJECTION_FAILED')
     }
   }
 
   // Chemin prefill URL (texte seul + provider supporte ?q=)
-  if (!pdfBase64 && provider.prefillParam && promptText) {
+  if (files.length === 0 && provider.prefillParam && promptText) {
     const encoded = encodeURIComponent(promptText)
     if (provider.prefillMaxLength && encoded.length < provider.prefillMaxLength) {
       const url = `${provider.url}?${provider.prefillParam}=${encoded}`
@@ -248,6 +249,6 @@ export async function openProviderWithContent(options: {
     }
   }
 
-  // Chemin injection DOM (PDF ou texte long ou provider sans prefill)
-  return await openAndInject(provider, pdfBase64, fileName, mimeType, promptText, provider.url, onProgress)
+  // Chemin injection DOM (fichiers joints ou texte long ou provider sans prefill)
+  return await openAndInject(provider, files, promptText, provider.url, onProgress)
 }
