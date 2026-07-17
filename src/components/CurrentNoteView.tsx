@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Eye, EyeOff } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -11,6 +11,7 @@ import CooldownPopover from './CooldownPopover'
 import WarmupCard from './WarmupCard'
 import DolBar from './DolBar'
 import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
+import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -64,16 +65,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   // Dernier warmup lancé dans cette session d'affichage → sa carte s'ouvre dépliée
   const [freshWarmupId, setFreshWarmupId] = useState<string | null>(null)
-  // Blocs 'meta' (date/titre/URL de capture) : visibles par défaut dans
-  // l'extension (on vient de capturer, on veut vérifier), masquables d'un œil.
-  // Le journal fait l'inverse (masqué par défaut) — même info, contextes différents.
-  const [showMeta, setShowMeta] = useState(() => localStorage.getItem('carnet-show-meta') !== '0')
-  const toggleShowMeta = useCallback(() => {
-    setShowMeta(v => {
-      localStorage.setItem('carnet-show-meta', v ? '0' : '1')
-      return !v
-    })
-  }, [])
+  // Blocs 'meta' (date/titre/URL de capture) : masqués par défaut, le réglage
+  // vit dans les PARAMÈTRES GLOBAUX de l'extension (décision Brice 17/07)
+  const [showMeta, setShowMetaState] = useState(getShowMeta)
+  useEffect(() => subscribeShowMeta(setShowMetaState), [])
   const isFirstLoad = useRef(true)
 
   // Recharger la note quand noteId change
@@ -438,8 +433,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         )}
       </div>
 
-      {/* Tags de note — même taxonomie que les tags de messages (picker journal) */}
-      <div className="flex flex-wrap items-center gap-1.5 pb-1">
+      {/* Tags de note — même taxonomie que les tags de messages (picker journal).
+          Le « + tag » n'apparaît qu'au survol de la ligne (pollution visuelle, Brice 17/07) */}
+      <div className="group/notetags flex flex-wrap items-center gap-1.5 pb-1">
         {note.tags.map((tag) => (
           <span
             key={tag}
@@ -462,7 +458,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
             setTagPickerOpen(true)
           }}
-          className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors"
+          className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
           title="Ajouter un tag"
         >
           <Plus size={10} />
@@ -524,22 +520,6 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Toggle métadonnées de capture — n'apparaît que si la note en a */}
-      {note.messages?.some(m => m.type === 'meta') && (
-        <div className="flex justify-end -mb-1">
-          <button
-            onClick={toggleShowMeta}
-            className={`flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-md transition-colors ${
-              showMeta ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10' : 'text-muted-foreground/60 hover:text-muted-foreground'
-            }`}
-            title={showMeta ? 'Masquer les métadonnées de capture (date, page, URL)' : 'Afficher les métadonnées de capture'}
-          >
-            {showMeta ? <Eye size={12} /> : <EyeOff size={12} />}
-            Métadonnées
-          </button>
         </div>
       )}
 

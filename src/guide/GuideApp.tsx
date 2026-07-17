@@ -64,6 +64,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.8',
+    title: 'Une lecture plus calme',
+    items: [
+      'Amélioration : les pastilles « + tag » n\'encombrent plus la lecture — elles n\'apparaissent qu\'au survol du bloc (ou de la ligne de titre pour les tags de note). Les tags déjà posés restent visibles.',
+      'Changement : l\'affichage des métadonnées de capture se règle désormais dans les Paramètres (section Capture automatique), désactivé par défaut.',
+      'Journal d\'Études : une note fraîchement synchronisée apparaît sans recharger la page, et le glisser-déposer d\'une note de l\'extension vers le canvas fonctionne même juste après la sync.',
+    ],
+  },
+  {
     version: '1.6.7',
     title: 'Le bruit disparaît, la sync devient fiable',
     items: [

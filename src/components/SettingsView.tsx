@@ -10,6 +10,7 @@ import {
   Link2
 } from 'lucide-react'
 import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
+import { getShowMeta, setShowMeta } from '@/lib/show-meta'
 import { PROVIDER_LIST } from '@/lib/analysis-providers'
 
 interface SettingsViewProps {
@@ -28,6 +29,8 @@ function SettingsView({
   onSyncToJournal 
 }: SettingsViewProps) {
   const [importFileRef, setImportFileRef] = useState<HTMLInputElement | null>(null)
+  // Métadonnées de capture : réglage global (localStorage), OFF par défaut
+  const [showMeta, setShowMetaState] = useState(getShowMeta)
   const [tabUrlErrors, setTabUrlErrors] = useState<Partial<Record<AnalysisProvider, boolean>>>({})
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
@@ -116,6 +119,22 @@ function SettingsView({
                 type="checkbox"
                 checked={settings.captureScreenshots}
                 onChange={(e) => handleToggle('captureScreenshots', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <div>
+              <p className="font-medium text-foreground">Afficher les métadonnées de capture</p>
+              <p className="text-sm text-muted-foreground">Montrer la ligne date • page • URL dans les notes (masquée par défaut)</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMeta}
+                onChange={(e) => { setShowMeta(e.target.checked); setShowMetaState(e.target.checked) }}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>

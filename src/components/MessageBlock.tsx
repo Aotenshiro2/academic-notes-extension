@@ -533,9 +533,12 @@ function MessageTagBadges({ tags, isReadOnly, onRemove, onOpenPicker }: MessageT
         </span>
       ))}
       {!isReadOnly && (
+        // « + tag » seulement au survol du bloc : une pastille sur chaque bloc
+        // cassait la lecture (retour Brice 17/07). L'espace reste réservé pour
+        // éviter que la note « saute » au survol.
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
-          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-colors"
+          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           aria-label="Ajouter un tag"
         >
           + tag
