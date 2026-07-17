@@ -9,7 +9,8 @@
 2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026**
 3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)* ← prochaine tâche
 4. ~~Fonctionnalité DOL — Draw on Liquidity~~ ✅ **fait le 10/07/2026** (v1.6.2, voir plus bas)
-5. *(côté journal : compteur de journalisation des concepts)*
+5. *(côté journal : compteur de journalisation des concepts)* — ⚠️ pas cosmétique :
+   c'est une **source de données du mode mentorat** (section 8).
 
 > ⚠️ AVANT de générer le zip v1.6.2 et AVANT tout push : voir
 > `docs/v1.6.2-drive-oauth.md` (Codex). Il reste 3 actions à faire avec Brice :
@@ -150,6 +151,41 @@ espace (options de pilotage, prompts préparés) a une identité et justifie qu'
 C'est aussi plus juste fonctionnellement : un plan n'est pas un one-shot — c'est le créer,
 le mettre à jour, constater un palier.
 
+#### Ce qui rend l'extension nécessaire (le vrai « moat »)
+
+Conclusion de la discussion Brice/Claude du 17/07. **Ne PAS brider le prompt** : un prompt
+bridé fait un moins bon produit, se contourne en deux minutes, et l'élève sent la laisse.
+
+**Le prompt est la recette, l'extension a les ingrédients.** La recette peut être publique.
+Elle ne vaut rien sans les données, et les données sont chez nous :
+- les jugements A/B/C **avec leur cause** (technique / connaissance / émotionnel),
+- le champ « erreur » des cooldowns → *combien de fois il répète la même erreur*,
+- les jauges d'émotion des warmups, les DOL, les résultats de trades,
+- **le nombre de fois qu'un concept a été journalé** → c'est la priorité 5 du backlog
+  (compteur de concepts, côté journal). **Ce n'est donc pas un gadget : c'est une source
+  de données du mentorat.** La matière est déjà en base, l'agrégation est constructible
+  sans toucher au modèle.
+
+Exemple de ce qu'un prompt copié ne produira jamais : « sur tes 40 derniers trades : 12
+notés C, dont 9 de cause émotionnelle, et 8 de ces 9 après une séance où ta jauge de
+warmup dépassait 60. »
+
+**Deux arguments, pas un seul :**
+
+1. **La friction (Brice).** L'humain va au moindre effort. Même avec les documents sous la
+   main, s'il peut cliquer un bouton, il cliquera. Personne n'exporte religieusement 40
+   sessions pour économiser 5,99 €. Corollaire : ce moat se **maintient**, il ne se
+   construit pas une fois. Les prompts doivent rester excellents, sinon l'argument tombe.
+2. **Le plafond dur (Claude).** Même en voulant tricher, on ne colle pas 40 séances dans
+   une conversation : le contexte explose. La seule façon de raisonner sur six mois, c'est
+   un brief **compressé** de quinze lignes. Ce n'est pas du confort, c'est la seule chose
+   qui marche à l'horizon d'un mentorat. **Le produit se renforce avec l'ancienneté de
+   l'élève** au lieu de se dévaluer.
+
+**La règle qui en découle :** le résilié garde la méthode, une photo figée et son
+historique passé. Il perd le brief chiffré à jour, le plan qui évolue, la validation des
+paliers et la continuité entre conversations. **On ne lui retire rien, on arrête d'ajouter.**
+
 #### Les questions encore ouvertes
 
 1. **Le rail technique du plan** : généré côté backend (contrôlable, mais coûte des tokens
@@ -158,6 +194,12 @@ le mettre à jour, constater un palier.
 2. **Où vit le plan et le suivi ?** Le journal semble l'endroit naturel : il a déjà la
    base, les notes, les annotations, et c'est là que vit la relecture.
 3. **Que contient exactement la doctrine ETM** livrée à 5,99 € — cf. le risque stratégique.
+4. **⚠️ Le journal sera un SaaS payant** (info Brice, 17/07). Or le mentorat s'appuie sur
+   les données du journal → **il faut donc le journal pour l'avoir**, et le prix réel
+   devient *journal + 5,99 €*, pas 5,99 €. Donc : le mentorat est-il un add-on du journal,
+   une option de l'extension, ou un **palier supérieur du journal** ? Deux lignes de
+   facturation à 5,99 € coûtent plus de friction qu'elles ne rapportent. Instinct Claude :
+   un palier du journal. À trancher par Brice, qui seul a le modèle du journal en tête.
 
 ### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
 
