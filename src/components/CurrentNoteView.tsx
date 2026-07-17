@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Eye, EyeOff } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -64,6 +64,16 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
   // Dernier warmup lancé dans cette session d'affichage → sa carte s'ouvre dépliée
   const [freshWarmupId, setFreshWarmupId] = useState<string | null>(null)
+  // Blocs 'meta' (date/titre/URL de capture) : visibles par défaut dans
+  // l'extension (on vient de capturer, on veut vérifier), masquables d'un œil.
+  // Le journal fait l'inverse (masqué par défaut) — même info, contextes différents.
+  const [showMeta, setShowMeta] = useState(() => localStorage.getItem('carnet-show-meta') !== '0')
+  const toggleShowMeta = useCallback(() => {
+    setShowMeta(v => {
+      localStorage.setItem('carnet-show-meta', v ? '0' : '1')
+      return !v
+    })
+  }, [])
   const isFirstLoad = useRef(true)
 
   // Recharger la note quand noteId change
@@ -517,6 +527,22 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </div>
       )}
 
+      {/* Toggle métadonnées de capture — n'apparaît que si la note en a */}
+      {note.messages?.some(m => m.type === 'meta') && (
+        <div className="flex justify-end -mb-1">
+          <button
+            onClick={toggleShowMeta}
+            className={`flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-md transition-colors ${
+              showMeta ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10' : 'text-muted-foreground/60 hover:text-muted-foreground'
+            }`}
+            title={showMeta ? 'Masquer les métadonnées de capture (date, page, URL)' : 'Afficher les métadonnées de capture'}
+          >
+            {showMeta ? <Eye size={12} /> : <EyeOff size={12} />}
+            Métadonnées
+          </button>
+        </div>
+      )}
+
       {/* Contenu de la note — blocs messages, segmentés par trade, warmups ancrés dans le fil */}
       {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) || (note.warmups && note.warmups.length > 0) ? (
         <div className="space-y-3">
@@ -634,6 +660,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             }
 
             for (const message of note.messages ?? []) {
+              if (message.type === 'meta' && !showMeta) continue
               flushWarmupsBefore(message.timestamp)
               const tRef = message.tradeRef
               if (tRef && !seen.has(tRef) && tradesById.has(tRef)) {
