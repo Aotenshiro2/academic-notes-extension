@@ -30,9 +30,13 @@ trois variantes parallèles faites par défaut. Remplacés par une **chaîne**.
 - ✅ **2. Débriefer une séance** (`update`) — l'usage courant dans une conversation
       déjà cadrée : points saillants, **évolutions** depuis les notes précédentes,
       **angles morts**, écarts A/B/C vs résultats, UNE priorité. Sélectionné par défaut.
-- [ ] **3. « Ce que Brice en penserait »** (`aq`/`aok`) — VOLONTAIREMENT PAS
-      IMPLÉMENTÉ tant que la doctrine n'existe pas : mieux vaut pas de prompt qu'un
-      faux Brice.
+- ✅ **3. L'avis Ao Knowledge** (`aok`) — LIVRÉ le 17/07 (v1.6.5 / 1.6.6). Joint la
+      note ET la doctrine (`public/doctrine-ao-knowledge.md`, embarquée dans le bundle).
+      Signale les écarts avec son avis spontané, ne comble pas les trous, et NE CITE
+      JAMAIS le document (immersion de l'élève). Testé en réel : la doctrine est bien
+      lue par ChatGPT.
+- [ ] **4. Plan d'évolution** — ce n'est PAS un 4e prompt : c'est le **mode mentorat**
+      payant, voir section 8. L'IA propose, Brice valide.
 
 #### Prérequis du prompt 3 : le document de doctrine
 
