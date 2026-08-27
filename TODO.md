@@ -12,6 +12,28 @@
 5. *(côté journal : compteur de journalisation des concepts)* — la même donnée sert aussi
    à l'agrégation du mode mentorat (section 8) : moins cosmétique qu'il n'y paraît.
 
+## Reprises de l'ancienne ROADMAP (audit du 27/08/2026)
+
+La `ROADMAP.md` racine (avril 2026) a été archivée ; voici ce qui y restait
+d'ouvert côté extension. Aucune de ces tâches n'a été re-priorisée : **à
+trancher par Brice** (garder / abandonner / dater).
+
+- [ ] **Tests Vitest** : setup + couverture sur `storage.ts` et `sync.ts` (les
+      deux fichiers où une régression fait le plus mal). Prérequis du CI/CD.
+      Vérifié le 27/08 : toujours aucun test dans le repo.
+- [ ] **CI/CD GitHub Actions** : lint, build, zip de release automatique.
+      Dépend des tests, et du nettoyage d'historique git (secret Drive dans
+      les commits v1.6.1) avant tout push GitHub.
+- [ ] **Assets marketing Chrome Web Store** : screenshots 1280×800, bannière
+      440×280, description. ❓ À confirmer par Brice : le listing est en ligne
+      depuis des mois, c'est peut-être déjà couvert.
+- [ ] **Différées d'époque, à re-trancher** : dictée vocale Whisper (100 %
+      local), transcription vidéo auto (en dépend), éditeur enrichi (toolbar
+      visible, H1-H3, listes, blocs de code).
+- ~~Bugs prod « ❓ Smart Capture » (FullscreenApp, filtres Skool)~~ →
+  obsolètes : la capture intelligente sera remplacée par la capture IA
+  (cf. backlog ci-dessous), on ne débogue plus l'ancienne.
+
 > 📌 Règle de versionnage actée le 17/07 (Brice) : **une version = une livraison
 > chargée par Brice**, pas une itération interne. Les correctifs d'une même
 > session de travail restent dans la même version tant que le zip n'a pas été
