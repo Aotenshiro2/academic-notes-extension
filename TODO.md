@@ -14,22 +14,18 @@
 
 ## Reprises de l'ancienne ROADMAP (audit du 27/08/2026)
 
-La `ROADMAP.md` racine (avril 2026) a été archivée ; voici ce qui y restait
-d'ouvert côté extension. Aucune de ces tâches n'a été re-priorisée : **à
-trancher par Brice** (garder / abandonner / dater).
+La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
+27/08/2026** sur ce qui y restait d'ouvert côté extension :
 
-- [ ] **Tests Vitest** : setup + couverture sur `storage.ts` et `sync.ts` (les
-      deux fichiers où une régression fait le plus mal). Prérequis du CI/CD.
-      Vérifié le 27/08 : toujours aucun test dans le repo.
-- [ ] **CI/CD GitHub Actions** : lint, build, zip de release automatique.
-      Dépend des tests, et du nettoyage d'historique git (secret Drive dans
-      les commits v1.6.1) avant tout push GitHub.
-- [ ] **Assets marketing Chrome Web Store** : screenshots 1280×800, bannière
-      440×280, description. ❓ À confirmer par Brice : le listing est en ligne
-      depuis des mois, c'est peut-être déjà couvert.
-- [ ] **Différées d'époque, à re-trancher** : dictée vocale Whisper (100 %
-      local), transcription vidéo auto (en dépend), éditeur enrichi (toolbar
-      visible, H1-H3, listes, blocs de code).
+- [ ] **GARDÉ — Dictée vocale Whisper** (100 % local, @xenova/transformers).
+- [ ] **GARDÉ — Transcription vidéo auto** (dépend de la dictée vocale).
+- [ ] **GARDÉ (redimensionné) — Éditeur** : pas le gros chantier « éditeur
+      enrichi » d'époque, mais quelques **correctifs et ajustements
+      esthétiques** sur une partie de l'éditeur (liste précise à collecter
+      auprès de Brice).
+- ~~Tests Vitest, CI/CD, assets marketing CWS~~ → **classés par Brice le
+  27/08** (« tout le reste est déjà fini et classé »). Ne pas les re-proposer ;
+  ne rouvrir que sur demande explicite.
 - ~~Bugs prod « ❓ Smart Capture » (FullscreenApp, filtres Skool)~~ →
   obsolètes : la capture intelligente sera remplacée par la capture IA
   (cf. backlog ci-dessous), on ne débogue plus l'ancienne.
