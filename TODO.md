@@ -30,17 +30,24 @@ La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
   obsolètes : la capture intelligente sera remplacée par la capture IA
   (cf. backlog ci-dessous), on ne débogue plus l'ancienne.
 
-### 📥 Demande élève (28/08/2026) — sous-dossiers, 1 niveau
+### ✅ Demande élève — sous-dossiers, 1 niveau — FAIT le 28/08/2026 (v1.6.12)
 
-Pouvoir créer des dossiers DANS un dossier, un seul niveau de profondeur.
-Analyse d'impact faite le 28/08 : le couplage extension↔journal est lâche
-(la note ne porte qu'un `folderId`, le payload de sync ne change pas).
-Côté journal : 1 colonne additive `Folder.parentId` (DDL via
-migrations-manual), le champ dans `/api/folders`, et l'affichage des
-groupements en « Parent / Sous-dossier ». Le gros du travail est côté
-EXTENSION (settings.folders plat → parentId, UI du picker/historique en
-arbre, garde-fou « le parent doit être racine »). Statut : à prioriser
-par Brice, pas commencé.
+Créer des dossiers DANS un dossier, un seul niveau de profondeur.
+- **Extension** (commit `b36a09a`) : `NoteFolder.parentId`, borne de
+  profondeur appliquée à l'ÉCRITURE dans `saveFolder` (parent inexistant,
+  non-racine ou cycle → le dossier retombe racine), suppression d'un
+  parent = sous-dossiers promus racine (jamais de cascade). Historique :
+  bouton sous-dossier au survol d'une racine, rendu imbriqué, drag&drop
+  de notes sur les sous-dossiers.
+- **Sync** : le payload note porte `folderParentId`/`folderParentName`
+  (toujours présents, null = racine — permet aussi de dé-nester) ; le
+  pull restaure racines d'abord puis met à jour le parentId des dossiers
+  déjà connus (multi-appareils).
+- **Journal** (commit `fb2bc52`, déployé ; colonne `Folder.parentId`
+  appliquée en base le 28/08) : parent upserté avant l'enfant, profondeur
+  bornée côté API aussi (jamais d'enfant sous un dossier qui a un
+  parent), parentId intouché si le champ est absent (extensions ≤1.6.11).
+  Affichage « Parent / Sous-dossier » dans /notes et /review.
 
 > 📌 Règle de versionnage actée le 17/07 (Brice) : **une version = une livraison
 > chargée par Brice**, pas une itération interne. Les correctifs d'une même
