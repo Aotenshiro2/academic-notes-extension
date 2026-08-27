@@ -411,7 +411,8 @@
     outline: none;
   }
 
-  .capture-input [contenteditable="true"]:empty:before {
+  .capture-input [contenteditable="true"]:empty:before,
+  .insert-point [contenteditable="true"]:empty:before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;

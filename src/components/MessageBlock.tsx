@@ -513,11 +513,46 @@ interface MessageFooterProps {
  * image (les deux rangées se télescopaient quand les deux blocs se suivaient),
  * et la rangée de tags était rendue même vide pour réserver sa place — ce qui
  * empilait rangée de tags + ligne d'heure + marges et cassait la lecture
- * suivie du texte (retour Brice 04/08). Une seule ligne, hauteur fixe : le
- * blanc disparaît sans que la note « saute » au survol.
+ * suivie du texte (retour Brice 04/08). Deuxième passe (28/08) : même la
+ * ligne unique de 16 px doublait la hauteur des messages courts — sans tags,
+ * le pied sort du flux et devient une pastille en surimpression au survol ;
+ * la rangée en flux ne subsiste que quand des tags existent.
  */
 function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker, onDelete }: MessageFooterProps) {
   if (isReadOnly && (!tags || tags.length === 0)) return null
+
+  // Sans tags, le pied ne prend AUCUNE place dans le flux : chaque bloc
+  // réservait 16 px + l'espacement pour une ligne vide la plupart du temps,
+  // ce qui doublait la hauteur des messages d'une ligne et donnait un rendu
+  // « chat aéré » au lieu d'un document (retour Brice 28/08). Les commandes
+  // (date, + tag, poubelle) deviennent une pastille en surimpression au
+  // survol — zéro décalage de mise en page (même leçon que le bouton d'envoi
+  // de la capture bar).
+  if (!tags || tags.length === 0) {
+    return (
+      <div className="absolute -top-2.5 right-0 z-20 hidden group-hover:flex focus-within:flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground">
+        <span>{formatSmartDate(timestamp)}</span>
+        <button
+          onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
+          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/60 hover:border-primary/40 hover:text-primary transition-colors"
+          aria-label="Ajouter un tag"
+        >
+          + tag
+        </button>
+        {onDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="p-0.5 text-muted-foreground/50 hover:text-red-500 rounded transition-colors"
+            title="Supprimer ce bloc"
+            aria-label="Supprimer ce bloc"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
       <span className="opacity-0 group-hover:opacity-100 transition-opacity">

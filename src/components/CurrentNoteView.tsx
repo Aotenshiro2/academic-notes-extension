@@ -141,6 +141,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
+  // Insertion d'un bloc texte APRÈS un bloc existant (annotation a posteriori,
+  // ex. du texte sous une image pendant la relecture)
+  const handleInsertAfter = useCallback(async (afterMessageId: string, html: string) => {
+    await storage.addMessageToNote(noteId, { type: 'text', content: html }, { afterMessageId })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
   // L'input valide à la fois sur blur ET sur clic du bouton : le clic déclenche
   // les deux, d'où le verrou (sinon deux écritures concurrentes de la note)
   const savingTitle = useRef(false)
@@ -653,6 +662,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               )
             }
 
+            // Dernier bloc visible : pas de point d'insertion après lui, la
+            // capture bar ajoute déjà en fin de fil
+            const visibleMessages = (note.messages ?? []).filter(m => !(m.type === 'meta' && !showMeta))
+            const lastVisibleId = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1].id : null
+
             for (const message of note.messages ?? []) {
               if (message.type === 'meta' && !showMeta) continue
               flushWarmupsBefore(message.timestamp)
@@ -674,6 +688,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   />
                 </div>
               )
+              if (message.id !== lastVisibleId) {
+                items.push(
+                  <InsertPoint key={`ins-${message.id}`} onInsert={html => handleInsertAfter(message.id, html)} />
+                )
+              }
             }
 
             // Trades sans messages (fraîchement démarrés ou vides) — marqueur en fin de fil
@@ -862,6 +881,93 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Point d'insertion entre deux blocs (façon Notion) : une fine zone qui révèle
+ * un ＋ au survol ; le clic ouvre un mini-éditeur en place. Le bloc n'est créé
+ * en base qu'à la validation — annuler ne laisse aucun bloc vide orphelin.
+ * Raison d'être : ajouter du texte APRÈS coup (une annotation sous une image
+ * pendant la relecture) n'avait aucun geste — la capture bar n'ajoute qu'en
+ * fin de fil (retour Brice 28/08).
+ */
+function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (editing) setTimeout(() => editorRef.current?.focus(), 0)
+  }, [editing])
+
+  const submit = useCallback(async () => {
+    if (!editorRef.current?.textContent?.trim()) {
+      setEditing(false)
+      return
+    }
+    try {
+      setSaving(true)
+      await onInsert(sanitizeHtml(editorRef.current.innerHTML))
+      setEditing(false)
+    } catch (error) {
+      console.error('[InsertPoint] Insertion impossible:', error)
+      toast.error('Impossible d\'insérer le texte')
+    } finally {
+      setSaving(false)
+    }
+  }, [onInsert])
+
+  if (!editing) {
+    return (
+      <div
+        className="group/ins relative -my-1 h-2.5 flex items-center cursor-pointer"
+        onClick={() => setEditing(true)}
+        title="Insérer du texte ici"
+      >
+        <div className="w-full items-center gap-1 hidden group-hover/ins:flex">
+          <span className="flex-1 border-t border-primary/30" />
+          <Plus size={12} className="text-primary/60 flex-shrink-0" />
+          <span className="flex-1 border-t border-primary/30" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="insert-point my-1.5 rounded-lg border-2 border-primary/40 bg-background p-2">
+      <div
+        ref={editorRef}
+        contentEditable={!saving}
+        suppressContentEditableWarning
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            void submit()
+          }
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        className="min-h-[24px] text-sm text-foreground/90 leading-relaxed focus:outline-none"
+        data-placeholder="Écris ton annotation…"
+      />
+      <div className="flex items-center gap-2 mt-1.5">
+        <button
+          onClick={() => void submit()}
+          disabled={saving}
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+        >
+          <Check size={12} /> Insérer
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          disabled={saving}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50"
+        >
+          <X size={12} /> Annuler
+        </button>
+        <span className="text-[10px] text-muted-foreground/50 ml-auto">⏎ insérer · ⇧⏎ nouvelle ligne</span>
+      </div>
     </div>
   )
 }

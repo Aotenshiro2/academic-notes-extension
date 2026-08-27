@@ -873,11 +873,18 @@ export const storage = {
 
   // ---- MESSAGE HELPERS ----
   /**
-   * Add a new message to an existing note
+   * Add a new message to an existing note.
+   *
+   * options.afterMessageId : insère le bloc juste APRÈS ce message au lieu de
+   * l'ajouter en fin de fil (annotation a posteriori, ex. du texte sous une
+   * image en relecture). Le bloc inséré prend le timestamp du voisin + 1 ms :
+   * tout ce qui ordonne par date (exports, sync journal, ancrage des warmups)
+   * le garde à sa position dans le fil au lieu de le renvoyer en fin.
    */
   async addMessageToNote(
     noteId: string,
-    message: Omit<NoteMessage, 'id' | 'timestamp'>
+    message: Omit<NoteMessage, 'id' | 'timestamp'>,
+    options?: { afterMessageId?: string }
   ): Promise<string | null> {
     const note = await this.getNote(noteId)
     if (!note) return null
@@ -892,17 +899,32 @@ export const storage = {
       ? await prepareImageForStorage(message.content)
       : message.content
 
+    // Point d'ancrage d'une insertion (options.afterMessageId)
+    const anchorIdx = options?.afterMessageId
+      ? (note.messages ?? []).findIndex(m => m.id === options.afterMessageId)
+      : -1
+    const anchor = anchorIdx >= 0 ? note.messages![anchorIdx] : undefined
+
     const newMessage: NoteMessage = {
       ...message,
       content,
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      timestamp: Date.now(),
-      ...(activeTrade && !message.tradeRef ? { tradeRef: activeTrade.id } : {})
+      timestamp: anchor ? anchor.timestamp + 1 : Date.now(),
+      // Bloc inséré : hérite du trade de son voisin (jamais du trade en cours —
+      // une annotation de relecture n'appartient pas au trade actif). Bloc
+      // ajouté en fin de fil : rattaché au trade actif, comme avant.
+      ...(anchor
+        ? (anchor.tradeRef && !message.tradeRef ? { tradeRef: anchor.tradeRef } : {})
+        : (activeTrade && !message.tradeRef ? { tradeRef: activeTrade.id } : {}))
     }
 
     // Initialize messages array if not present
     const messages = note.messages || []
-    messages.push(newMessage)
+    if (anchor) {
+      messages.splice(anchorIdx + 1, 0, newMessage)
+    } else {
+      messages.push(newMessage)
+    }
 
     // Also update legacy content for backward compatibility.
     // Type 'meta' : JAMAIS dans content — une métadonnée n'est pas du contenu

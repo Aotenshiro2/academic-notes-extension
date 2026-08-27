@@ -69,6 +69,8 @@ const CHANGELOG = [
     items: [
       'Correction : le bouton d\'envoi de la barre de capture pouvait se décaler au moment exact du clic (la ligne d\'aide clavier disparaissait sous la barre) — le clic tombait à côté. Il ne bouge plus.',
       'Amélioration : les messages d\'erreur et de confirmation (exports, imports, connexion au journal…) s\'affichent désormais dans l\'application au lieu des boîtes de dialogue du navigateur, que Chrome pouvait rendre définitivement silencieuses via « ne plus afficher ».',
+      'Lecture plus dense : les blocs sans tag ne réservent plus une ligne vide sous chaque message — la date, « + tag » et la corbeille apparaissent en surimpression au survol. Le texte se lit comme un document, plus comme un chat.',
+      'Nouveau : insérer du texte entre deux blocs — survole l\'espace entre deux blocs, un ＋ apparaît, clique et écris. Idéal pour annoter un screenshot après coup pendant la relecture.',
     ],
   },
   {
