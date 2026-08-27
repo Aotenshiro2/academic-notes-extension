@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair } from 'lucide-react'
-import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize } from '@/lib/image-utils'
+import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
 
 export interface CaptureInputHandle {
   focus: () => void
@@ -115,10 +115,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   const insertImageAtCursor = useCallback(async (dataUrl: string) => {
     try {
       const originalSize = estimateImageSize(dataUrl)
-      let processedDataUrl = dataUrl
-
-      if (originalSize > 1500000) {
-        processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.full)
+      const processedDataUrl = await prepareImageForStorage(dataUrl)
+      if (processedDataUrl !== dataUrl) {
         console.log(`Image compressée: ${formatFileSize(originalSize)} → ${formatFileSize(estimateImageSize(processedDataUrl))}`)
       }
 
@@ -182,11 +180,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       const dataUrl = await onInsertExternalScreenshot()
       if (dataUrl) {
         try {
-          const originalSize = estimateImageSize(dataUrl)
-          let processedDataUrl = dataUrl
-          if (originalSize > 1500000) {
-            processedDataUrl = await compressImage(dataUrl, COMPRESSION_PRESETS.screenshot)
-          }
+          const processedDataUrl = await prepareImageForStorage(dataUrl)
           const currentDate = new Date().toLocaleString('fr-FR')
           // Note ouverte → blocs image+meta directement dans la note, éditeur intact
           if (onScreenshotToNote && await onScreenshotToNote(processedDataUrl, `📅 ${currentDate} • 🖥️ Capture externe`)) {
@@ -237,12 +231,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       const screenshotDataUrl = await onInsertScreenshot()
       if (screenshotDataUrl) {
         try {
-          const originalSize = estimateImageSize(screenshotDataUrl)
-          let processedDataUrl = screenshotDataUrl
-
-          if (originalSize > 1500000) {
-            processedDataUrl = await compressImage(screenshotDataUrl, COMPRESSION_PRESETS.screenshot)
-          }
+          const processedDataUrl = await prepareImageForStorage(screenshotDataUrl)
 
           const currentDate = new Date().toLocaleString('fr-FR')
           const pageUrl = currentPageInfo?.url || 'Page inconnue'
@@ -408,8 +397,14 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           />
         </div>
 
-        {/* Right buttons: trade, + and send */}
-        <div className="flex-shrink-0 flex items-center gap-1 self-end pb-2.5 pr-2.5">
+        {/* Right buttons: trade, + and send.
+            onMouseDown preventDefault : sans ça, presser un bouton blur l'éditeur,
+            la ligne d'aide clavier disparaît et la barre descend SOUS le curseur
+            avant le mouseup — le clic se perd (bug vu chez un élève sur Chrome). */}
+        <div
+          className="flex-shrink-0 flex items-center gap-1 self-end pb-2.5 pr-2.5"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {/* Trade button — démarre un segment (clôt l'actif s'il y en a un) */}
           {onStartTrade && (
             <button

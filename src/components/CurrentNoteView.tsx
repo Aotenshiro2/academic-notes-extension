@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise } from 'lucide-react'
 import storage from '@/lib/storage'
@@ -12,6 +13,7 @@ import WarmupCard from './WarmupCard'
 import DolBar from './DolBar'
 import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
+import { collectNoteImages } from '@/lib/note-images'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -99,8 +101,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       isFirstLoad.current = false
     } catch (error) {
       console.error('Error loading note:', error)
-      const notes = await storage.getNotes(1000)
-      const foundNote = notes.find(n => n.id === noteId)
+      // Relire uniquement CETTE note : le repli chargeait 1000 notes complètes
+      const foundNote = await storage.getNote(noteId)
       setNote(foundNote || null)
       isFirstLoad.current = false
     } finally {
@@ -108,41 +110,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     }
   }
 
-  // Collect all image sources from the note for lightbox navigation
-  const noteImages = useMemo(() => {
-    if (!note) return []
-    const imgs: string[] = []
-
-    // Images from messages
-    note.messages?.forEach(msg => {
-      if (msg.type === 'image' || msg.type === 'screenshot' || msg.type === 'capture') {
-        imgs.push(msg.content)
-      } else if (msg.type === 'text') {
-        // Extract <img src="..."> from HTML content
-        const matches = msg.content.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
-        for (const m of matches) {
-          if (m[1]) imgs.push(m[1])
-        }
-      }
-    })
-
-    // Images from legacy screenshots array
-    note.screenshots?.forEach(s => {
-      if (s.dataUrl && !imgs.includes(s.dataUrl)) {
-        imgs.push(s.dataUrl)
-      }
-    })
-
-    // If no messages, extract from legacy content
-    if ((!note.messages || note.messages.length === 0) && note.content) {
-      const matches = note.content.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
-      for (const m of matches) {
-        if (m[1] && !imgs.includes(m[1])) imgs.push(m[1])
-      }
-    }
-
-    return imgs
-  }, [note])
+  // Images de la note pour la visionneuse (helper partagé avec le plein écran)
+  const noteImages = useMemo(() => (note ? collectNoteImages(note) : []), [note])
 
   const handleImageClick = useCallback((src: string) => {
     const idx = noteImages.indexOf(src)
@@ -150,8 +119,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
 
     if (window.innerWidth < 500 && note) {
       // Contexte sidepanel — ouvrir dans un onglet plein écran
+      // On ne transmet QUE l'identifiant : recopier tous les base64 dans
+      // chrome.storage.session (plafonné à 10 Mo) saturait le stockage
       chrome.storage.session.set({
-        pendingImageView: { images: noteImages, currentIndex: index }
+        pendingImageView: { noteId, currentIndex: index }
       })
       chrome.tabs.create({
         url: chrome.runtime.getURL('src/fullscreen/index.html') + '?imageView=1'
@@ -159,7 +130,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     } else {
       setLightboxIndex(index)
     }
-  }, [noteImages, note])
+  }, [noteImages, note, noteId])
 
   // Handlers for MessageBlock
   const handleUpdateMessage = useCallback(async (messageId: string, content: string) => {
@@ -170,14 +141,33 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
+  // L'input valide à la fois sur blur ET sur clic du bouton : le clic déclenche
+  // les deux, d'où le verrou (sinon deux écritures concurrentes de la note)
+  const savingTitle = useRef(false)
+
   const saveTitle = useCallback(async () => {
     if (!note || !titleDraft.trim()) { setEditingTitle(false); return }
-    await storage.saveNote({ ...note, title: titleDraft.trim() })
-    setEditingTitle(false)
-    setRemoteUpdatePending(false)
-    await loadNote()
-    onNoteUpdate?.()
-  }, [note, titleDraft, onNoteUpdate])
+    if (savingTitle.current) return
+    savingTitle.current = true
+    try {
+      // Repartir de la note FRAÎCHE : saveNote réécrit l'enregistrement entier,
+      // un state périmé écraserait ce qui a été sauvegardé entre-temps
+      const fresh = await storage.getNote(noteId)
+      if (!fresh) return
+      await storage.saveNote({ ...fresh, title: titleDraft.trim() })
+      setRemoteUpdatePending(false)
+      await loadNote()
+      onNoteUpdate?.()
+    } catch (error) {
+      console.error('[CurrentNoteView] Renommage impossible:', error)
+      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+    } finally {
+      // Toujours sortir du mode édition, même en erreur : sinon l'input reste
+      // ouvert sans que rien n'indique l'échec
+      setEditingTitle(false)
+      savingTitle.current = false
+    }
+  }, [noteId, note, titleDraft, onNoteUpdate])
 
   const handleDeleteMessage = useCallback(async (messageId: string) => {
     if (!note) return
@@ -289,6 +279,27 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     if (!fresh) return
     const warmups = (fresh.warmups ?? []).map(w => w.id === warmupId ? { ...w, ...patch } : w)
     await storage.saveNote({ ...fresh, warmups })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
+  // Un warmup lancé par erreur restait dans la note pour toujours : aucun
+  // chemin de suppression n'existait (retour Brice 04/08)
+  const handleDeleteWarmupEntry = useCallback(async (warmupId: string) => {
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    await storage.saveNote({ ...fresh, warmups: (fresh.warmups ?? []).filter(w => w.id !== warmupId) })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
+  // Warmup de l'ancien modèle (un seul, en haut de note, sans identifiant)
+  const handleDeleteLegacyWarmup = useCallback(async () => {
+    const fresh = await storage.getNote(noteId)
+    if (!fresh) return
+    await storage.saveNote({ ...fresh, warmup: undefined })
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
@@ -497,7 +508,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
 
       {/* Warmup legacy (ancien modèle : un seul, en haut de note) — affiché seulement s'il est rempli */}
       {!!(note.warmup && (note.warmup.physical || note.warmup.emotional || note.warmup.dominantThought || note.warmup.objective || note.warmup.emotionLevel !== undefined)) && (
-        <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} />
+        <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} onDelete={handleDeleteLegacyWarmup} />
       )}
 
       {/* Résumé */}
@@ -525,7 +536,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
 
       {/* Contenu de la note — blocs messages, segmentés par trade, warmups ancrés dans le fil */}
       {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) || (note.warmups && note.warmups.length > 0) ? (
-        <div className="space-y-3">
+        // Un seul mécanisme d'espacement : le space-y du conteneur. Les blocs
+        // portaient en plus leur propre mb-3, les deux s'additionnaient.
+        <div className="space-y-1.5">
           {(() => {
             const trades = note.trades ?? []
             const tradesById = new Map(trades.map(t => [t.id, t]))
@@ -544,6 +557,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 timeLabel={w.startedAt ? formatTradeTime(w.startedAt) : undefined}
                 defaultOpen={w.id === freshWarmupId || undefined}
                 onSave={patch => handleSaveWarmupEntry(w.id!, patch)}
+                onDelete={w.id ? () => handleDeleteWarmupEntry(w.id!) : undefined}
               />
             )
             const flushWarmupsBefore = (ts: number) => {

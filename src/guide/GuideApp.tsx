@@ -64,6 +64,14 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.12',
+    title: 'Des boutons qui ne bougent plus, des messages qui restent visibles',
+    items: [
+      'Correction : le bouton d\'envoi de la barre de capture pouvait se décaler au moment exact du clic (la ligne d\'aide clavier disparaissait sous la barre) — le clic tombait à côté. Il ne bouge plus.',
+      'Amélioration : les messages d\'erreur et de confirmation (exports, imports, connexion au journal…) s\'affichent désormais dans l\'application au lieu des boîtes de dialogue du navigateur, que Chrome pouvait rendre définitivement silencieuses via « ne plus afficher ».',
+    ],
+  },
+  {
     version: '1.6.8',
     title: 'Une lecture plus calme',
     items: [

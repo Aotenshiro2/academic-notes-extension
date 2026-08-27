@@ -1,15 +1,16 @@
+import { toast } from '../lib/toast'
 import React, { useRef, useEffect, useState } from 'react'
 import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff, Search } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
 import SearchBar from './SearchBar'
 import storage from '@/lib/storage'
 import { formatCompactDate } from '@/lib/date-utils'
-import type { AcademicNote, NoteFolder } from '@/types/academic'
+import type { NoteSummary, NoteFolder } from '@/types/academic'
 
 interface HistoryDropdownProps {
   isOpen: boolean
   onClose: () => void
-  notes: AcademicNote[]
+  notes: NoteSummary[]
   folders: NoteFolder[]
   currentNoteId: string | null
   onSelectNote: (noteId: string) => void
@@ -36,6 +37,7 @@ function HistoryDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Note editing / deletion
+  const savingTitle = useRef(false)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
@@ -101,7 +103,7 @@ function HistoryDropdown({
     title.length > maxLength ? title.slice(0, maxLength) + '…' : title
 
   // ---- Note CRUD ----
-  const startEditingTitle = (note: AcademicNote, event: React.MouseEvent) => {
+  const startEditingTitle = (note: NoteSummary, event: React.MouseEvent) => {
     event.stopPropagation()
     setEditingNoteId(note.id)
     setEditTitle(note.title)
@@ -109,12 +111,23 @@ function HistoryDropdown({
 
   const saveTitle = async (noteId: string) => {
     if (!editTitle.trim()) return
-    const note = notes.find(n => n.id === noteId)
-    if (note) {
+    // Validation sur blur ET sur clic du bouton : verrou anti double-écriture
+    if (savingTitle.current) return
+    savingTitle.current = true
+    try {
+      // Note fraîche obligatoire : `notes` est un instantané passé en prop, et
+      // saveNote réécrit l'enregistrement entier
+      const note = await storage.getNote(noteId)
+      if (!note) return
       await storage.saveNote({ ...note, title: editTitle.trim() })
+      onNotesUpdate?.()
+    } catch (error) {
+      console.error('[HistoryDropdown] Renommage impossible:', error)
+      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+    } finally {
       setEditingNoteId(null)
       setEditTitle('')
-      onNotesUpdate?.()
+      savingTitle.current = false
     }
   }
 
@@ -215,17 +228,18 @@ function HistoryDropdown({
   // ---- Search + filtres ----
   const q = searchQuery.toLowerCase().trim()
   // Non triée = aucun tag ET aucun jugement posé — la matière brute à reprendre
-  const isUntriaged = (n: AcademicNote) =>
-    (n.tags?.length ?? 0) === 0 && (n.annotations?.length ?? 0) === 0
-  const matchesTag = (n: AcademicNote, tag: string) =>
-    n.tags.includes(tag) || !!n.messages?.some(m => m.tags?.includes(tag))
+  const isUntriaged = (n: NoteSummary) =>
+    (n.tags?.length ?? 0) === 0 && n.annotationCount === 0
+  const matchesTag = (n: NoteSummary, tag: string) =>
+    n.tags.includes(tag) || n.messageTags.includes(tag)
 
   const hasFilters = !!q || !!activeTag || untriagedOnly
   const filteredNotes = notes.filter(n =>
     (!q ||
       n.title.toLowerCase().includes(q) ||
       n.tags.some(t => t.toLowerCase().includes(q)) ||
-      n.messages?.some(m => m.tags?.some(t => t.toLowerCase().includes(q)))) &&
+      n.messageTags.some(t => t.toLowerCase().includes(q)) ||
+      n.searchText.toLowerCase().includes(q)) &&
     (!activeTag || matchesTag(n, activeTag)) &&
     (!untriagedOnly || isUntriaged(n))
   )
@@ -233,7 +247,7 @@ function HistoryDropdown({
   const untriagedCount = notes.filter(isUntriaged).length
   const tagCounts = new Map<string, number>()
   for (const n of notes) {
-    const noteTags = new Set<string>([...n.tags, ...(n.messages ?? []).flatMap(m => m.tags ?? [])])
+    const noteTags = new Set<string>([...n.tags, ...n.messageTags])
     for (const t of noteTags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)
   }
   // Tous les tags, du plus utilisé au moins utilisé. On n'en affiche que TAG_LIMIT
@@ -248,7 +262,7 @@ function HistoryDropdown({
   const freeNotes = filteredNotes.filter(n => !n.folderId)
 
   // ---- Note item renderer ----
-  const renderNoteItem = (note: AcademicNote) => (
+  const renderNoteItem = (note: NoteSummary) => (
     <button
       key={note.id}
       draggable

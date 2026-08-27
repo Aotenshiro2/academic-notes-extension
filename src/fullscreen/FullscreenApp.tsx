@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import {
   BookOpen,
@@ -36,18 +37,21 @@ import TabPicker from '@/components/TabPicker'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
-import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
+import storage, { restoredFromBackup } from '@/lib/storage'
 import { stateSync } from '@/lib/state-sync'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
-import type { AcademicNote, NoteFolder, Settings as SettingsType } from '@/types/academic'
+import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
+import { collectNoteImages } from '@/lib/note-images'
+import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
 function FullscreenApp() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
-  const [notes, setNotes] = useState<AcademicNote[]>([])
+  // Résumés uniquement : cf. sidepanel/App.tsx
+  const [notes, setNotes] = useState<NoteSummary[]>([])
   const [folders, setFolders] = useState<NoteFolder[]>([])
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [settings, setSettings] = useState<SettingsType | null>(null)
@@ -64,6 +68,8 @@ function FullscreenApp() {
   const [editedTitle, setEditedTitle] = useState('')
   const [deleteConfirmNoteId, setDeleteConfirmNoteId] = useState<string | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  // Validation du titre sur blur ET sur clic : verrou anti double-écriture
+  const savingTitle = useRef(false)
 
   // Smart capture
   const [isSmartCapturing, setIsSmartCapturing] = useState(false)
@@ -72,6 +78,8 @@ function FullscreenApp() {
   const [isExporting, setIsExporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
+  // Note complète chargée seulement le temps de l'analyse, puis relâchée
+  const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
 
   // Tab Picker (pour capturer depuis un autre onglet en fullscreen)
   const [tabPickerConfig, setTabPickerConfig] = useState<{
@@ -104,13 +112,14 @@ function FullscreenApp() {
 
     // Mode image viewer — ouvert depuis le sidepanel via clic image
     if (urlParams.get('imageView') === '1') {
-      chrome.storage.session.get('pendingImageView').then((result) => {
-        const data = result.pendingImageView as { images: string[]; currentIndex: number } | undefined
-        if (data) {
-          setImageViewMode(data)
-          setImageViewIndex(data.currentIndex)
-          chrome.storage.session.remove('pendingImageView')
-        }
+      chrome.storage.session.get('pendingImageView').then(async (result) => {
+        const data = result.pendingImageView as { noteId: string; currentIndex: number } | undefined
+        if (!data) return
+        chrome.storage.session.remove('pendingImageView')
+        const note = await storage.getNote(data.noteId)
+        if (!note) return
+        setImageViewMode({ images: collectNoteImages(note), currentIndex: data.currentIndex })
+        setImageViewIndex(data.currentIndex)
       })
       return
     }
@@ -161,16 +170,20 @@ function FullscreenApp() {
     try {
       setIsLoading(true)
       const [loadedNotes, loadedSettings] = await Promise.all([
-        storage.getNotes(1000),
+        storage.getNoteSummaries(1000),
         storage.getSettings()
       ])
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
 
-      // Backup notes to chrome.storage.local (protection against IndexedDB loss)
-      if (loadedNotes.length > 0) {
-        backupNow()
+      // Diagnostic mémoire : c'est ce chiffre qui dit si la correction tient
+      const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+      if (mem) {
+        console.log(
+          `[AOK Mémoire] ${loadedNotes.length} notes · tas ${Math.round(mem.usedJSHeapSize / 1048576)} Mo ` +
+          `/ ${Math.round(mem.jsHeapSizeLimit / 1048576)} Mo`
+        )
       }
 
       if (restoredFromBackup) {
@@ -186,6 +199,11 @@ function FullscreenApp() {
   // Fonction pour ajouter du contenu — même logique que sidepanel
   const handleAddContent = async (content: string, noteId: string | null) => {
     try {
+      // Cf. sidepanel : chaque image de la barre de capture devient son propre
+      // bloc, sinon elle n'est pas supprimable individuellement
+      const blocks = splitHtmlIntoMessages(content)
+      if (blocks.length === 0) return
+
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const currentTab = tabs[0]
 
@@ -198,21 +216,15 @@ function FullscreenApp() {
         console.warn('Invalid URL:', currentTab?.url)
       }
 
-      if (noteId) {
-        // Ajouter à une note existante via addMessageToNote (met à jour BOTH messages[] ET content)
-        await storage.addMessageToNote(noteId, {
-          type: 'text',
-          content: content
-        })
-        await loadData()
-        setNoteRefreshTrigger(Date.now())
-      } else {
-        // Créer une nouvelle note
+      let targetNoteId = noteId
+      if (!targetNoteId) {
+        // Créer une nouvelle note (vide : les blocs sont posés juste après)
         const newNoteId = Date.now().toString()
+        const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
         const newNote: AcademicNote = {
           id: newNoteId,
-          title: content.slice(0, 50) + (content.length > 50 ? '...' : ''),
-          content,
+          title: titleFromMessages(blocks, `Note du ${today}`),
+          content: '',
           url: currentTab?.url || '',
           favicon: currentTab?.favIconUrl || '',
           timestamp: Date.now(),
@@ -228,10 +240,16 @@ function FullscreenApp() {
         }
 
         await storage.saveNote(newNote)
+        targetNoteId = newNoteId
         setCurrentNoteId(newNoteId)
-        await loadData()
-        setNoteRefreshTrigger(Date.now())
       }
+
+      for (const block of blocks) {
+        await storage.addMessageToNote(targetNoteId, block)
+      }
+
+      await loadData()
+      setNoteRefreshTrigger(Date.now())
 
       setEditorContent('')
       setTimeout(() => {
@@ -242,7 +260,7 @@ function FullscreenApp() {
       }, 100)
     } catch (error) {
       console.error('Error adding content:', error)
-      alert('Erreur lors de l\'ajout du contenu')
+      toast.error('Erreur lors de l\'ajout du contenu')
     }
   }
 
@@ -506,24 +524,44 @@ function FullscreenApp() {
       setIsEditingTitle(false)
       return
     }
+    if (savingTitle.current) return
+    savingTitle.current = true
     try {
-      const updatedNote = { ...currentNote, title: newTitle }
-      await storage.saveNote(updatedNote)
-      setIsEditingTitle(false)
+      // Note fraîche : saveNote réécrit tout l'enregistrement, un state périmé
+      // écraserait ce qui a été sauvegardé entre-temps
+      const fresh = await storage.getNote(currentNoteId)
+      if (!fresh) return
+      await storage.saveNote({ ...fresh, title: newTitle })
       await loadData()
     } catch (error) {
-      console.error('Error saving title:', error)
+      console.error('[FullscreenApp] Renommage impossible:', error)
+      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+    } finally {
+      setIsEditingTitle(false)
+      savingTitle.current = false
     }
   }
 
   // Calculer currentNote
   const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
+  // La note complète est relue à l'export : le state ne porte que des résumés
+  const freshCurrentNote = async () =>
+    currentNoteId ? (await storage.getNote(currentNoteId)) ?? null : null
+
+  const handleOpenAnalyze = async () => {
+    const full = await freshCurrentNote()
+    if (!full) return
+    setAnalyzeNote(full)
+    setShowAnalyzeDialog(true)
+  }
+
   const handleExportPDF = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToPDF(currentNote)
+      await exportNoteToPDF(fresh)
     } catch (error) {
       console.error('Error exporting PDF:', error)
     } finally {
@@ -532,10 +570,11 @@ function FullscreenApp() {
   }
 
   const handleExportDocx = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToDocx(currentNote)
+      await exportNoteToDocx(fresh)
     } catch (error) {
       console.error('Error exporting DOCX:', error)
     } finally {
@@ -544,13 +583,14 @@ function FullscreenApp() {
   }
 
   const handleExportDrive = async () => {
-    if (!currentNote) return
+    const fresh = await freshCurrentNote()
+    if (!fresh) return
     setIsExporting(true)
     try {
-      await exportNoteToDrive(currentNote)
+      await exportNoteToDrive(fresh)
     } catch (error) {
       console.error('Error exporting to Drive:', error)
-      alert('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
+      toast.error('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
     } finally {
       setIsExporting(false)
     }
@@ -576,7 +616,7 @@ function FullscreenApp() {
     .filter(note =>
       !searchQuery ||
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.searchText.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
@@ -693,7 +733,7 @@ function FullscreenApp() {
                       {note.title}
                     </div>
                     <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                      {note.content.replace(/<[^>]*>/g, '').slice(0, 100)}...
+                      {note.preview.slice(0, 100)}...
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {formatCompactDate(note.timestamp)}
@@ -961,11 +1001,11 @@ function FullscreenApp() {
       )}
 
       {/* Dialog d'analyse AI */}
-      {currentNote && (
+      {analyzeNote && (
         <AnalyzeNoteDialog
           isOpen={showAnalyzeDialog}
-          onClose={() => setShowAnalyzeDialog(false)}
-          note={currentNote}
+          onClose={() => { setShowAnalyzeDialog(false); setAnalyzeNote(null) }}
+          note={analyzeNote}
           defaultProvider={settings?.analysisProvider}
           availableNotes={notes}
           folders={folders}

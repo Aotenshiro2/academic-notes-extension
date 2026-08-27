@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState } from 'react'
 import {
   Settings,
@@ -12,6 +13,7 @@ import {
 import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
 import { PROVIDER_LIST } from '@/lib/analysis-providers'
+import StorageHealth from './StorageHealth'
 
 interface SettingsViewProps {
   settings: SettingsType
@@ -54,12 +56,12 @@ function SettingsView({
     try {
       const response = await fetch(settings.journalSync.journalAppUrl + '/api/health')
       if (response.ok) {
-        alert('Connexion réussie avec Journal d\'Études')
+        toast.success('Connexion réussie avec Journal d\'Études')
       } else {
-        alert('Impossible de se connecter à Journal d\'Études')
+        toast.error('Impossible de se connecter à Journal d\'Études')
       }
     } catch (error) {
-      alert('Erreur de connexion : ' + error)
+      toast.error('Erreur de connexion : ' + error)
     }
   }
 
@@ -214,6 +216,8 @@ function SettingsView({
           ))}
         </div>
       </div>
+
+      <StorageHealth />
 
       {/* Import/Export */}
       <div className="mb-6">

@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState, useEffect } from 'react'
 import { X, Save, Edit3, ExternalLink, Calendar, Tag, Hash, Globe, Trash2 } from 'lucide-react'
 import type { AcademicNote, ContentType } from '@/types/academic'
@@ -83,7 +84,7 @@ function NoteDetailModal({
       setIsEditing(false)
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error)
-      alert('Erreur lors de la sauvegarde de la note')
+      toast.error('Erreur lors de la sauvegarde de la note')
     } finally {
       setIsSaving(false)
     }

@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState } from 'react'
 import { Download, Upload, RefreshCw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import storage, { db } from '@/lib/storage'
@@ -216,7 +217,7 @@ function DataMigration() {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Export failed:', error)
-      alert('Erreur lors de l\'export')
+      toast.error('Erreur lors de l\'export')
     } finally {
       setIsExporting(false)
     }

@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { Save, X, Trash2, GripVertical, ChevronUp, FileText, Tag } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
@@ -100,7 +101,7 @@ function MessageBlock({
       setIsCollapsed(true)
     } catch (error) {
       console.error('Error saving message:', error)
-      alert('Erreur lors de la sauvegarde')
+      toast.error('Erreur lors de la sauvegarde')
     } finally {
       setIsSaving(false)
     }
@@ -214,7 +215,7 @@ function MessageBlock({
   // discrète, pas de tags, pas d'édition ; suppression possible
   if (message.type === 'meta') {
     return (
-      <div className="group relative mb-2 flex items-start gap-1.5">
+      <div className="group relative flex items-start gap-1.5">
         <p className="flex-1 text-[11px] italic text-muted-foreground/60 leading-relaxed break-all">
           {message.content}
         </p>
@@ -242,10 +243,12 @@ function MessageBlock({
   // Render image message
   if (message.type !== 'text') {
     return (
-      <div className="group relative mb-3">
+      <div className="group relative">
         <img
           src={message.content}
           alt={message.metadata?.alt || 'Image'}
+          loading="lazy"
+          decoding="async"
           className="max-w-full rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
           onClick={handleClick}
         />
@@ -262,21 +265,17 @@ function MessageBlock({
           </button>
         )}
 
-        {/* Tag badges */}
-        <MessageTagBadges
+        {/* Pied de bloc : heure + tags sur une seule ligne */}
+        <MessageFooter
+          timestamp={message.timestamp}
           tags={message.tags}
           isReadOnly={isReadOnly}
-          onRemove={handleRemoveTag}
+          onRemoveTag={handleRemoveTag}
           onOpenPicker={(rect) => {
             setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
             setPickerOpen(true)
           }}
         />
-
-        {/* Timestamp */}
-        <div className="text-xs text-muted-foreground mt-1">
-          {formatSmartDate(message.timestamp)}
-        </div>
 
         {pickerOpen && (
           <TagPickerPopup
@@ -304,7 +303,7 @@ function MessageBlock({
   // Render collapsed long text — compact pill style
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative mb-3 block w-full max-w-[240px]">
+      <div className="group relative block w-full max-w-[240px]">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
           className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden"
@@ -362,7 +361,7 @@ function MessageBlock({
 
   // Render text message (normal or expanded long text)
   return (
-    <div className="group relative mb-3">
+    <div className="group relative">
       {/* Edit controls */}
       {!isReadOnly && (
         <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
@@ -375,17 +374,6 @@ function MessageBlock({
           </button>
         </div>
       )}
-
-      {/* Tag badges */}
-      <MessageTagBadges
-        tags={message.tags}
-        isReadOnly={isReadOnly}
-        onRemove={handleRemoveTag}
-        onOpenPicker={(rect) => {
-          setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
-          setPickerOpen(true)
-        }}
-      />
 
       {/* Collapse header for expanded long text — sticky so it stays visible while scrolling */}
       {isLongText && !isEditing && (
@@ -489,27 +477,52 @@ function MessageBlock({
         </div>
       )}
 
-      {/* Timestamp (shown on hover when not editing) */}
+      {/* Pied de bloc : heure + tags + suppression, sur une seule ligne */}
       {!isEditing && (
-        <div className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {formatSmartDate(message.timestamp)}
-        </div>
+        <MessageFooter
+          timestamp={message.timestamp}
+          tags={message.tags}
+          isReadOnly={isReadOnly}
+          onRemoveTag={handleRemoveTag}
+          onOpenPicker={(rect) => {
+            setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+            setPickerOpen(true)
+          }}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   )
 }
 
-interface MessageTagBadgesProps {
+interface MessageFooterProps {
+  timestamp: number
   tags?: string[]
   isReadOnly: boolean
-  onRemove: (tag: string) => void
+  onRemoveTag: (tag: string) => void
   onOpenPicker: (rect: DOMRect) => void
+  /** Absent = pas de suppression depuis le pied (l'image a sa poubelle en surimpression) */
+  onDelete?: () => void
 }
 
-function MessageTagBadges({ tags, isReadOnly, onRemove, onOpenPicker }: MessageTagBadgesProps) {
+/**
+ * Pied de bloc unique : heure + tags + « + tag » + suppression sur UNE ligne,
+ * toujours SOUS le bloc, quel que soit son type.
+ *
+ * Avant : les tags étaient au-dessus d'un bloc texte mais en dessous d'un bloc
+ * image (les deux rangées se télescopaient quand les deux blocs se suivaient),
+ * et la rangée de tags était rendue même vide pour réserver sa place — ce qui
+ * empilait rangée de tags + ligne d'heure + marges et cassait la lecture
+ * suivie du texte (retour Brice 04/08). Une seule ligne, hauteur fixe : le
+ * blanc disparaît sans que la note « saute » au survol.
+ */
+function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker, onDelete }: MessageFooterProps) {
   if (isReadOnly && (!tags || tags.length === 0)) return null
   return (
-    <div className="flex flex-wrap items-center gap-1 mb-1">
+    <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
+      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {formatSmartDate(timestamp)}
+      </span>
       {(tags ?? []).map(tag => (
         <span
           key={tag}
@@ -523,7 +536,7 @@ function MessageTagBadges({ tags, isReadOnly, onRemove, onOpenPicker }: MessageT
           {tag}
           {!isReadOnly && (
             <button
-              onClick={e => { e.stopPropagation(); onRemove(tag) }}
+              onClick={e => { e.stopPropagation(); onRemoveTag(tag) }}
               className="hover:text-red-400 transition-colors leading-none"
               aria-label={`Retirer le tag ${tag}`}
             >
@@ -534,14 +547,26 @@ function MessageTagBadges({ tags, isReadOnly, onRemove, onOpenPicker }: MessageT
       ))}
       {!isReadOnly && (
         // « + tag » seulement au survol du bloc : une pastille sur chaque bloc
-        // cassait la lecture (retour Brice 17/07). L'espace reste réservé pour
-        // éviter que la note « saute » au survol.
+        // cassait la lecture (retour Brice 17/07)
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
           className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           aria-label="Ajouter un tag"
         >
           + tag
+        </button>
+      )}
+      {!isReadOnly && onDelete && (
+        // Filet de sécurité : sans cette poubelle, un bloc texte ne contenant
+        // qu'une image était indéboulonnable (le clic ouvre la lightbox, jamais
+        // l'édition — et « Supprimer » n'existe qu'en mode édition)
+        <button
+          onClick={e => { e.stopPropagation(); onDelete() }}
+          className="ml-auto p-0.5 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Supprimer ce bloc"
+          aria-label="Supprimer ce bloc"
+        >
+          <Trash2 size={11} />
         </button>
       )}
     </div>

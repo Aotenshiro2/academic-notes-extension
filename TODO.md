@@ -2,9 +2,9 @@
 
 ## Priorités (ordre validé par Brice le 10 juillet 2026)
 
-0. **Pont Edgyx** — dossier d'analyse envoyé à Geoffrey (voir
-   `docs/edgyx-bridge/`), en attente de son retour de besoins. L'implémentation
-   suivra les allers-retours.
+0. ~~**Pont Edgyx**~~ ❌ **ANNULÉ le 27/08/2026** (décision Brice) : Geoffrey n'a
+   jamais vraiment répondu au dossier d'analyse (`docs/edgyx-bridge/`). On ne le
+   mentionne plus ; ne rouvrir que s'il revient de lui-même vers Brice.
 1. ~~🐛 Bug content-script~~ ✅ **corrigé le 10/07/2026**
 2. ~~Warmup à la demande, multi-séances~~ ✅ **fait le 10/07/2026**
 3. *(côté journal : homogénéisation du shell UI — voir TODO du journal)* ← prochaine tâche
@@ -46,6 +46,13 @@ Inclus aussi dans la v1.6.7 (même livraison) :
   renvoyer ». Une image déjà envoyée ne repart plus jamais.
 
 ### 📋 Backlog — capture intelligente à retravailler (noté le 17/07/2026)
+
+> 🔄 **Orientation Brice (27/08/2026)** : ne pas rafistoler l'existant — remplacer la
+> capture intelligente par de la **vraie IA** (jetons Anthropic, appel via le backend).
+> Modèle à deux niveaux : **abonné** (mode mentorat) = bouton capture intelligente
+> propulsé par IA ; **non abonné** = le fetch basique actuel, qu'on peut quand même
+> améliorer. Cohérent avec l'architecture mentorat (contrôle d'accès par le backend,
+> l'extension ne décide jamais). **À faire APRÈS la mise en place du mode mentorat.**
 
 - [ ] La smart capture injecte encore un tas de métadonnées dans le CONTENU
       (préfixe `<strong>pageTitle</strong>`, blocs « Prix : », « RPNL : »,
@@ -260,13 +267,20 @@ paliers et la continuité entre conversations. **On ne lui retire rien, on arrê
 4. ~~Le mentorat est-il un palier du journal ?~~ **TRANCHÉ par Brice le 17/07 : NON.**
    Voir « L'architecture commerciale » ci-dessous.
 
-### 7. (à planifier) Remplacer les `alert()` restants par des notifications in-app
+### ✅ 7. Remplacer les `alert()` restants par des notifications in-app — fait le 27/08/2026 (v1.6.12)
 
 Même racine que le bug des `confirm()` : `alert()` est aussi supprimable par
-« ne plus afficher ce type de boîte ». Les `alert()` restants (`src/sidepanel/App.tsx`,
-erreurs d'export/capture/import) deviendraient alors **silencieux** pour l'élève
-concerné. Moins grave (message perdu, pas d'action bloquée) mais à traiter :
-demande un petit système de toasts.
+« ne plus afficher ce type de boîte », rendant les messages **silencieux** pour
+l'élève concerné. Fait : module `src/lib/toast.ts` (impératif, sans provider —
+utilisable du sidepanel ET du fullscreen), les 22 `alert()` de 9 fichiers
+remplacés par `toast.error/success/info` (erreurs affichées 7 s, cliquables
+pour fermer).
+
+Dans la même v1.6.12 : fix du bouton d'envoi de la capture bar qui se dérobait
+au clic (retour élève Franky, Chrome) — le mousedown sur les boutons de la
+barre blurait l'éditeur, la ligne d'aide clavier disparaissait et la barre
+descendait sous le curseur avant le mouseup. `onMouseDown preventDefault` sur
+la rangée de boutons de `CaptureInput.tsx`.
 
 ### ✅ 4. DOL — Draw on Liquidity — fait le 10/07/2026 (v1.6.2)
 
@@ -346,4 +360,4 @@ directionnel à ne pas perdre.
 - [ ] (à discuter) Sync vers le journal, comme les tags et concepts.
 
 ---
-**Dernière mise à jour :** 10 juillet 2026
+**Dernière mise à jour :** 27 août 2026

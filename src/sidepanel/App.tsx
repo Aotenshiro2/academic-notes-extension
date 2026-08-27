@@ -1,3 +1,4 @@
+import { toast } from '../lib/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Settings,
@@ -19,7 +20,7 @@ import SettingsView from '@/components/SettingsView'
 import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
-import storage, { backupNow, restoredFromBackup } from '@/lib/storage'
+import storage, { restoredFromBackup } from '@/lib/storage'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
@@ -27,7 +28,9 @@ import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
 import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
-import type { AcademicNote, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
+import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
+import { prepareImageForStorage } from '@/lib/image-utils'
+import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
   // Suppression du système de vue par tabs
@@ -35,7 +38,9 @@ function App() {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
-  const [notes, setNotes] = useState<AcademicNote[]>([])
+  // Résumés, pas les notes complètes : charger 1000 notes entières (donc toutes
+  // les images en base64) à chaque rafraîchissement saturait la mémoire
+  const [notes, setNotes] = useState<NoteSummary[]>([])
   const [folders, setFolders] = useState<NoteFolder[]>([])
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -49,6 +54,8 @@ function App() {
   const [isExporting, setIsExporting] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
+  // Note complète chargée UNIQUEMENT le temps de l'analyse, puis relâchée
+  const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
 
   // Notes qui ne sont pas encore dans le journal (hors exclues volontaires)
@@ -161,20 +168,24 @@ function App() {
   async function loadData() {
     try {
       const [loadedNotes, loadedSettings] = await Promise.all([
-        storage.getNotes(1000),
+        storage.getNoteSummaries(1000),
         storage.getSettings()
       ])
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
 
+      // Diagnostic mémoire : c'est ce chiffre qui dit si la correction tient
+      const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+      if (mem) {
+        console.log(
+          `[AOK Mémoire] ${loadedNotes.length} notes · tas ${Math.round(mem.usedJSHeapSize / 1048576)} Mo ` +
+          `/ ${Math.round(mem.jsHeapSizeLimit / 1048576)} Mo`
+        )
+      }
+
       // État d'auth pour l'indicateur de sync (non bloquant)
       getSession().then(s => setIsAuthed(!!s)).catch(() => setIsAuthed(false))
-
-      // Backup notes to chrome.storage.local (protection against IndexedDB loss)
-      if (loadedNotes.length > 0) {
-        backupNow()
-      }
 
       // Warn user if data was restored from backup
       if (restoredFromBackup) {
@@ -206,9 +217,15 @@ function App() {
 
   const handleAddContent = async (content: string, noteId: string | null) => {
     try {
+      // Une image collée/glissée dans la barre doit devenir son PROPRE bloc :
+      // noyée dans un bloc texte, elle n'avait pas de poubelle au survol et le
+      // bloc devenait impossible à supprimer (retour utilisateur 04/08).
+      const blocks = splitHtmlIntoMessages(content)
+      if (blocks.length === 0) return
+
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const currentTab = tabs[0]
-      
+
       let domain = ''
       try {
         if (currentTab?.url) {
@@ -218,21 +235,16 @@ function App() {
         console.warn('Invalid URL:', currentTab?.url)
       }
 
-      if (noteId) {
-        // Ajouter à une note existante via addMessageToNote (met à jour BOTH messages[] ET content)
-        await storage.addMessageToNote(noteId, {
-          type: 'text',
-          content: content
-        })
-        await loadData()
-        setNoteRefreshTrigger(Date.now()) // Force CurrentNoteView à recharger
-      } else {
-        // Créer une nouvelle note
+      let targetNoteId = noteId
+      if (!targetNoteId) {
+        // Créer une nouvelle note (vide : les blocs sont posés juste après,
+        // addMessageToNote entretient messages[] ET content)
         const newNoteId = Date.now().toString()
+        const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
         const newNote: AcademicNote = {
           id: newNoteId,
-          title: content.slice(0, 50) + (content.length > 50 ? '...' : ''), // Titre basé sur le contenu
-          content,
+          title: titleFromMessages(blocks, `Note du ${today}`),
+          content: '',
           url: currentTab?.url || '',
           favicon: currentTab?.favIconUrl || '',
           timestamp: Date.now(),
@@ -248,11 +260,17 @@ function App() {
         }
 
         await storage.saveNote(newNote)
+        targetNoteId = newNoteId
         setCurrentNoteId(newNoteId)
-        await loadData()
-        setNoteRefreshTrigger(Date.now()) // Force CurrentNoteView à recharger
       }
-      
+
+      for (const block of blocks) {
+        await storage.addMessageToNote(targetNoteId, block)
+      }
+
+      await loadData()
+      setNoteRefreshTrigger(Date.now()) // Force CurrentNoteView à recharger
+
       setEditorContent('')
       // Focus l'editeur et scroll la zone d'affichage vers le bas pour voir les messages récents
       setTimeout(() => {
@@ -264,7 +282,7 @@ function App() {
       }, 100) // Délai légèrement plus long pour laisser le temps au contenu de se mettre à jour
     } catch (error) {
       console.error('Error adding content:', error)
-      alert('Erreur lors de l\'ajout du contenu')
+      toast.error('Erreur lors de l\'ajout du contenu')
     }
   }
 
@@ -385,7 +403,7 @@ function App() {
       const currentTab = tabs[0]
 
       if (!currentTab) {
-        alert('Impossible de récupérer les informations de la page')
+        toast.error('Impossible de récupérer les informations de la page')
         return
       }
 
@@ -401,7 +419,7 @@ function App() {
       // Capturer le screenshot de la page
       let screenshotDataUrl = ''
       try {
-        screenshotDataUrl = await chrome.tabs.captureVisibleTab()
+        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
       } catch (screenshotError) {
         console.warn('Screenshot capture failed:', screenshotError)
         // Continue sans screenshot si la capture échoue
@@ -414,7 +432,8 @@ function App() {
       // Contenu enrichi avec screenshot
       let content = `<p><strong>${pageTitle}</strong></p><p><a href="${currentTab.url}" target="_blank">${currentTab.url}</a></p>`
       if (screenshotDataUrl) {
-        content += `<p><img src="${screenshotDataUrl}" alt="Capture de ${domain}" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
+        const optimized = await prepareImageForStorage(screenshotDataUrl)
+        content += `<p><img src="${optimized}" alt="Capture de ${domain}" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
       }
       content += '<p></p>'
 
@@ -441,7 +460,7 @@ function App() {
       await loadData()
     } catch (error) {
       console.error('Error capturing page:', error)
-      alert('Erreur lors de la capture de la page')
+      toast.error('Erreur lors de la capture de la page')
     } finally {
       setIsCapturing(false)
     }
@@ -489,7 +508,7 @@ function App() {
       // Capturer le screenshot de la page
       let screenshotDataUrl = ''
       try {
-        screenshotDataUrl = await chrome.tabs.captureVisibleTab()
+        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
       } catch (screenshotError) {
         console.warn('Screenshot capture failed:', screenshotError)
       }
@@ -618,7 +637,7 @@ function App() {
 
       // Capturer et ajouter le screenshot comme message image séparé
       try {
-        const screenshotDataUrl = await chrome.tabs.captureVisibleTab()
+        const screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
         if (screenshotDataUrl) {
           await storage.addMessageToNote(currentNoteId, {
             type: 'image',
@@ -649,7 +668,7 @@ function App() {
   // Exports : toujours relire la note depuis le storage — le state `notes` de
   // l'App peut être en retard sur les dernières éditions (warmup, cooldown…)
   const freshCurrentNote = async () =>
-    currentNote ? (await storage.getNote(currentNote.id)) ?? currentNote : null
+    currentNote ? (await storage.getNote(currentNote.id)) ?? null : null
 
   // Fonction pour exporter la note courante en PDF
   const handleExportPDF = async () => {
@@ -660,7 +679,7 @@ function App() {
       await exportNoteToPDF(fresh)
     } catch (error) {
       console.error('Error exporting PDF:', error)
-      alert('Erreur lors de l\'export PDF')
+      toast.error('Erreur lors de l\'export PDF')
     } finally {
       setIsExporting(false)
     }
@@ -674,7 +693,7 @@ function App() {
       await exportNoteToDocx(fresh)
     } catch (error) {
       console.error('Error exporting DOCX:', error)
-      alert('Erreur lors de l\'export Google Docs')
+      toast.error('Erreur lors de l\'export Google Docs')
     } finally {
       setIsExporting(false)
     }
@@ -688,7 +707,7 @@ function App() {
       await exportNoteToDrive(fresh)
     } catch (error) {
       console.error('Error exporting to Drive:', error)
-      alert('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
+      toast.error('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
     } finally {
       setIsExporting(false)
     }
@@ -713,7 +732,7 @@ function App() {
       window.close()
     } catch (error) {
       console.error('Error opening fullscreen view:', error)
-      alert('Erreur lors de l\'ouverture de la vue étendue')
+      toast.error('Erreur lors de l\'ouverture de la vue étendue')
     }
   }
 
@@ -733,6 +752,14 @@ function App() {
   // Obtenir le titre de la note courante
   const currentNote = currentNoteId ? notes.find(n => n.id === currentNoteId) : null
 
+  const handleOpenAnalyze = async () => {
+    if (!currentNoteId) return
+    const full = await storage.getNote(currentNoteId)
+    if (!full) return
+    setAnalyzeNote(full)
+    setShowAnalyzeDialog(true)
+  }
+
   return (
     <div className="sidebar-container">
       <Header
@@ -743,7 +770,7 @@ function App() {
         onExportPDF={currentNote ? handleExportPDF : undefined}
         onExportDocx={currentNote ? handleExportDocx : undefined}
         onExportDrive={currentNote ? handleExportDrive : undefined}
-        onAnalyze={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
+        onAnalyze={currentNote ? handleOpenAnalyze : undefined}
         isExporting={isExporting}
       />
 
@@ -860,15 +887,15 @@ function App() {
                     const text = await file.text()
                     const result = await storage.importData(text)
                     if (result.success) {
-                      alert('Import réussi !')
+                      toast.success('Import réussi !')
                       await loadData()
                     } else {
-                      alert('Erreur import : ' + result.error)
+                      toast.error('Erreur import : ' + result.error)
                     }
                   }
                 }}
                 onSyncToJournal={() => {
-                  alert('Sync Journal non implémenté')
+                  toast.info('Sync Journal non implémenté')
                 }}
               />
             </div>
@@ -923,7 +950,7 @@ function App() {
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}
             onStartTrade={handleStartTrade}
-            hasActiveTrade={!!currentNote?.trades?.some(t => !t.closedAt)}
+            hasActiveTrade={!!currentNote?.hasOpenTrade}
             currentPageInfo={currentPageInfo || undefined}
             className="w-full"
           />
@@ -1033,11 +1060,11 @@ function App() {
       />
 
       {/* Dialog d'analyse AI */}
-      {currentNote && (
+      {analyzeNote && (
         <AnalyzeNoteDialog
           isOpen={showAnalyzeDialog}
-          onClose={() => setShowAnalyzeDialog(false)}
-          note={currentNote}
+          onClose={() => { setShowAnalyzeDialog(false); setAnalyzeNote(null) }}
+          note={analyzeNote}
           defaultProvider={settings?.analysisProvider}
           availableNotes={notes}
           folders={folders}
