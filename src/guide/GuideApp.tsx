@@ -64,6 +64,14 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.6.13',
+    title: 'Dicte tes notes',
+    items: [
+      'Nouveau : la dictée vocale — un bouton micro dans la barre de capture. Clique, parle, re-clique : ta dictée devient du texte. Propulsé par Whisper, 100 % local : ta voix ne quitte jamais ta machine.',
+      'Au premier usage, le modèle de reconnaissance (~170 Mo) se télécharge une fois puis reste en cache — les dictées suivantes fonctionnent même hors ligne.',
+    ],
+  },
+  {
     version: '1.6.12',
     title: 'Des boutons qui ne bougent plus, des messages qui restent visibles',
     items: [

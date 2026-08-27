@@ -15,6 +15,11 @@ export default defineConfig({
       },
     }),
   ],
+  // Worker de dictée (Whisper) : transformers.js utilise des import()
+  // dynamiques → le worker doit sortir en module ES, pas en iife
+  worker: {
+    format: 'es',
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {

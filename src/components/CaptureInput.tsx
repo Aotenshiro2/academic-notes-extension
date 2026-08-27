@@ -1,6 +1,8 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair } from 'lucide-react'
+import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair, Mic, Square } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
+import { startRecording, transcribe, type Recorder, type DictationProgress } from '@/lib/dictation'
+import { toast } from '@/lib/toast'
 
 export interface CaptureInputHandle {
   focus: () => void
@@ -51,6 +53,10 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
   const [isCapturingExternal, setIsCapturingExternal] = useState(false)
+  // Dictée vocale (Whisper local)
+  const [dictationState, setDictationState] = useState<'idle' | 'recording' | 'processing'>('idle')
+  const [downloadPct, setDownloadPct] = useState<number | null>(null)
+  const recorderRef = useRef<Recorder | null>(null)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -104,6 +110,50 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       }
     }
   }, [value, onChange])
+
+  // Dictée vocale : clic = enregistrer, re-clic = transcrire (Whisper local).
+  // Premier usage : le modèle (~170 Mo) se télécharge une fois, % sur le bouton.
+  const toggleDictation = useCallback(async () => {
+    if (dictationState === 'processing') return
+
+    if (dictationState === 'idle') {
+      try {
+        recorderRef.current = await startRecording()
+        setDictationState('recording')
+      } catch (error) {
+        console.error('[CaptureInput] Micro inaccessible:', error)
+        toast.error('Micro inaccessible : autorise le microphone pour l\'extension.')
+      }
+      return
+    }
+
+    const recorder = recorderRef.current
+    recorderRef.current = null
+    if (!recorder) { setDictationState('idle'); return }
+    setDictationState('processing')
+    try {
+      const blob = await recorder.stop()
+      const text = await transcribe(blob, (p: DictationProgress) => {
+        setDownloadPct(p.phase === 'downloading' ? p.progress : null)
+      })
+      if (text) {
+        const el = editorRef.current
+        if (el) {
+          const needsSpace = !!el.textContent && !/\s$/.test(el.textContent)
+          el.appendChild(document.createTextNode((needsSpace ? ' ' : '') + text))
+          handleInput()
+        }
+      } else {
+        toast.info('Rien à transcrire : enregistrement trop court ou silencieux.')
+      }
+    } catch (error) {
+      console.error('[CaptureInput] Dictée impossible:', error)
+      toast.error('Dictée impossible : ' + (error instanceof Error ? error.message : 'erreur inconnue'))
+    } finally {
+      setDownloadPct(null)
+      setDictationState('idle')
+    }
+  }, [dictationState, handleInput])
 
   const hasContent = useMemo(() => {
     const stripped = value.replace(/<[^>]*>/g, '').trim()
@@ -405,6 +455,42 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           className="flex-shrink-0 flex items-center gap-1 self-end pb-2.5 pr-2.5"
           onMouseDown={(e) => e.preventDefault()}
         >
+          {/* Dictée vocale — Whisper 100 % local */}
+          <button
+            type="button"
+            onClick={toggleDictation}
+            disabled={dictationState === 'processing'}
+            className={`
+              relative w-8 h-8 rounded-full flex items-center justify-center
+              transition-all duration-200
+              ${dictationState === 'recording'
+                ? 'bg-red-500/15 text-red-500 animate-pulse'
+                : dictationState === 'processing'
+                  ? 'text-muted-foreground'
+                  : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/10'
+              }
+            `}
+            title={
+              dictationState === 'recording'
+                ? 'Arrêter et transcrire'
+                : dictationState === 'processing'
+                  ? (downloadPct !== null ? `Téléchargement du modèle… ${downloadPct} %` : 'Transcription…')
+                  : 'Dicter (Whisper, 100 % local)'
+            }
+            aria-label={dictationState === 'recording' ? 'Arrêter la dictée' : 'Dicter'}
+          >
+            {dictationState === 'recording'
+              ? <Square size={13} fill="currentColor" />
+              : dictationState === 'processing'
+                ? <Loader2 size={16} className="animate-spin" />
+                : <Mic size={16} />
+            }
+            {downloadPct !== null && (
+              <span className="absolute -top-1.5 -right-1.5 text-[8px] font-semibold text-primary bg-background border border-border px-0.5 rounded">
+                {downloadPct}%
+              </span>
+            )}
+          </button>
           {/* Trade button — démarre un segment (clôt l'actif s'il y en a un) */}
           {onStartTrade && (
             <button
