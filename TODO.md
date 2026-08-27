@@ -30,6 +30,18 @@ La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
   obsolètes : la capture intelligente sera remplacée par la capture IA
   (cf. backlog ci-dessous), on ne débogue plus l'ancienne.
 
+### 📥 Demande élève (28/08/2026) — sous-dossiers, 1 niveau
+
+Pouvoir créer des dossiers DANS un dossier, un seul niveau de profondeur.
+Analyse d'impact faite le 28/08 : le couplage extension↔journal est lâche
+(la note ne porte qu'un `folderId`, le payload de sync ne change pas).
+Côté journal : 1 colonne additive `Folder.parentId` (DDL via
+migrations-manual), le champ dans `/api/folders`, et l'affichage des
+groupements en « Parent / Sous-dossier ». Le gros du travail est côté
+EXTENSION (settings.folders plat → parentId, UI du picker/historique en
+arbre, garde-fou « le parent doit être racine »). Statut : à prioriser
+par Brice, pas commencé.
+
 > 📌 Règle de versionnage actée le 17/07 (Brice) : **une version = une livraison
 > chargée par Brice**, pas une itération interne. Les correctifs d'une même
 > session de travail restent dans la même version tant que le zip n'a pas été
