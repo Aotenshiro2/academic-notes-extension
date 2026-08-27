@@ -18,6 +18,48 @@ export interface NoteMessage {
   }
 }
 
+/**
+ * Vue allégée d'une note, pour les listes et la recherche.
+ *
+ * Une liste de notes n'a besoin que d'un titre et d'un aperçu, mais charger un
+ * AcademicNote complet ramène aussi `content` et `messages[]` — donc TOUTES les
+ * images en base64. Sur un corpus fourni, les 1000 notes complètes chargées à
+ * chaque rafraîchissement saturaient la mémoire et Chrome tuait le processus
+ * (« Out of Memory », 05/08). Le résumé porte le texte, jamais les images.
+ */
+export interface NoteSummary {
+  id: string
+  title: string
+  timestamp: number
+  url: string
+  favicon?: string
+  type: ContentType
+  tags: string[]
+  concepts: string[]
+  folderId?: string
+  lastSyncAt?: number
+  syncExcluded?: boolean
+  metadata: ContentMetadata
+  summary?: string
+  /** Nombre de jugements A/B/C posés — sert au filtre « non triées » */
+  annotationCount: number
+  /** Texte brut du début de la note (jamais de HTML ni de base64) */
+  preview: string
+  /**
+   * Texte de la note pour la recherche : plus large que l'aperçu affiché, mais
+   * plafonné. Sans ce champ, chercher dans le corps d'une note aurait cessé de
+   * fonctionner quand la liste est passée aux résumés.
+   */
+  searchText: string
+  /** Tags portés par les blocs, agrégés — le filtre par tag en a besoin */
+  messageTags: string[]
+  imageCount: number
+  /** Un segment de trade est ouvert dans cette note */
+  hasOpenTrade: boolean
+  /** Poids approximatif de l'enregistrement, pour le diagnostic mémoire */
+  sizeBytes: number
+}
+
 export interface NoteFolder {
   id: string
   name: string

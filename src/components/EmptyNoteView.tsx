@@ -1,13 +1,13 @@
 import React from 'react'
 import { BookOpen, Camera, History, Sparkles, Loader2 } from 'lucide-react'
 import { formatSmartDate } from '@/lib/date-utils'
-import type { AcademicNote } from '@/types/academic'
+import type { NoteSummary } from '@/types/academic'
 
 interface EmptyNoteViewProps {
   onCapturePage?: () => void
   onSmartCapture?: () => void
   isCapturing?: boolean
-  lastNote?: AcademicNote
+  lastNote?: NoteSummary
   onSelectNote?: (id: string) => void
 }
 

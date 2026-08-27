@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Sunrise, ChevronDown, ChevronRight } from 'lucide-react'
+import { Sunrise, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
+import ConfirmDialog from './ConfirmDialog'
 import type { NoteWarmup } from '@/types/academic'
 
 // Warmup de séance, lancé DANS la note quand on est prêt à trader (le pendant du
@@ -17,6 +18,16 @@ function hasContent(w?: NoteWarmup): boolean {
   return !!(w && (w.physical || w.emotional || w.dominantThought || w.objective || w.doneAt))
 }
 
+/**
+ * Warmup lancé mais jamais renseigné. À distinguer de `hasContent`, qui compte
+ * `doneAt` — or `doneAt` est estampillé DÈS le clic sur « Lancer un warmup » :
+ * un warmup déclenché par erreur est donc « fait » sans contenir une ligne.
+ * Celui-là se supprime sans confirmation.
+ */
+function isBlank(w?: NoteWarmup): boolean {
+  return !(w && (w.physical || w.emotional || w.dominantThought || w.objective || w.emotionLevel !== undefined))
+}
+
 function gaugeStyle(v: number) {
   const color = v < 34 ? '#22c55e' : v < 67 ? '#f59e0b' : '#ef4444'
   const label = v < 34 ? 'Calme' : v < 67 ? 'Modéré' : 'Chargé'
@@ -30,12 +41,23 @@ interface WarmupCardProps {
   timeLabel?: string
   /** Ouvre la carte dès le rendu (warmup fraîchement lancé) */
   defaultOpen?: boolean
+  /** Absent = warmup non supprimable (ancien modèle, sans identifiant) */
+  onDelete?: () => void
 }
 
-export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen }: WarmupCardProps) {
+export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onDelete }: WarmupCardProps) {
   const filled = hasContent(warmup)
   const [open, setOpen] = useState(defaultOpen ?? filled)
   const [gauge, setGauge] = useState(warmup?.emotionLevel ?? 0)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Warmup vide (clic malencontreux) → on retire sans rien demander ;
+  // warmup renseigné → confirmation, c'est du journal personnel
+  const requestDelete = () => {
+    if (!onDelete) return
+    if (isBlank(warmup)) onDelete()
+    else setConfirmDelete(true)
+  }
 
   // Rien de rempli et replié → simple lanceur discret (le warmup n'est pas obligatoire)
   if (!open && !filled) {
@@ -54,16 +76,28 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen }: W
   const g = gaugeStyle(gauge)
 
   return (
-    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-1.5 px-3 py-2">
-        <Sunrise size={14} className="text-blue-500 flex-shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Warmup</span>
-        {timeLabel && <span className="text-[10px] text-muted-foreground">· {timeLabel}</span>}
-        {filled && <span className="text-[10px] font-medium ml-auto" style={{ color: g.color }}>{gauge} · {g.label}</span>}
-        {open
-          ? <ChevronDown size={13} className={`text-muted-foreground ${filled ? 'ml-1.5' : 'ml-auto'}`} />
-          : <ChevronRight size={13} className={`text-muted-foreground ${filled ? 'ml-1.5' : 'ml-auto'}`} />}
-      </button>
+    <div className="group rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+      <div className="flex items-center px-3 py-2">
+        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 flex items-center gap-1.5">
+          <Sunrise size={14} className="text-blue-500 flex-shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Warmup</span>
+          {timeLabel && <span className="text-[10px] text-muted-foreground">· {timeLabel}</span>}
+          {filled && <span className="text-[10px] font-medium ml-auto" style={{ color: g.color }}>{gauge} · {g.label}</span>}
+          {open
+            ? <ChevronDown size={13} className={`text-muted-foreground ${filled ? 'ml-1.5' : 'ml-auto'}`} />
+            : <ChevronRight size={13} className={`text-muted-foreground ${filled ? 'ml-1.5' : 'ml-auto'}`} />}
+        </button>
+        {onDelete && (
+          <button
+            onClick={requestDelete}
+            className="ml-1.5 p-1 flex-shrink-0 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Supprimer ce warmup"
+            aria-label="Supprimer ce warmup"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
 
       {open && (
         <div className="px-3 pb-3 space-y-2.5">
@@ -96,6 +130,14 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen }: W
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title="Supprimer ce warmup ?"
+        message="Ce que tu as noté sur ton état au démarrage sera perdu. Action définitive."
+        onConfirm={() => { setConfirmDelete(false); onDelete?.() }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

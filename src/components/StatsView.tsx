@@ -9,14 +9,14 @@ import {
   BarChart3,
   Globe
 } from 'lucide-react'
-import type { AcademicNote } from '@/types/academic'
+import type { NoteSummary } from '@/types/academic'
 
 interface StatsViewProps {
   stats: {
     total: { notes: number; screenshots: number; extracts: number }
     recent: { notes: number }
   }
-  notes: AcademicNote[]
+  notes: NoteSummary[]
 }
 
 function StatsView({ stats, notes }: StatsViewProps) {

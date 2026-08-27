@@ -81,7 +81,7 @@ async function handleMessage(message: any, sender: any, sendResponse: any) {
   try {
     switch (message.type) {
       case 'CAPTURE_SCREENSHOT':
-        const dataUrl = await chrome.tabs.captureVisibleTab()
+        const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
         sendResponse({ success: true, dataUrl })
         break
       default:

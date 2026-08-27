@@ -1,6 +1,6 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
-import { storage } from '@/lib/storage'
+import { storage, runFullBackup } from '@/lib/storage'
 
 // Fallback pour les navigateurs Chromium sans sidePanel (Opera, etc.)
 async function openSidePanel(tabId: number): Promise<void> {
@@ -33,10 +33,23 @@ function keepAlive() {
   })
 }
 
+// Rattrapage de sauvegarde : ici et NULLE PART AILLEURS.
+// Ce balayage lit toute la base (note par note) ; le faire depuis le panneau
+// latéral, comme avant la 1.6.10, chargeait le corpus entier dans le processus
+// d'interface et faisait planter Chrome. Dans le service worker, si ça meurt,
+// l'utilisateur ne voit rien et ne perd rien.
+const BACKUP_ALARM = 'fullBackup'
+chrome.alarms.create(BACKUP_ALARM, { periodInMinutes: 30, delayInMinutes: 2 })
+
 // Réveil forcé par l'alarme
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepAlive') {
     chrome.runtime.getPlatformInfo()
+  }
+  if (alarm.name === BACKUP_ALARM) {
+    runFullBackup()
+      .then(count => { if (count > 0) console.log(`[SW] Sauvegarde : ${count} note(s)`) })
+      .catch(error => console.warn('[SW] Sauvegarde échouée:', error))
   }
 })
 
@@ -183,7 +196,7 @@ async function handleMessage(
             await new Promise(resolve => setTimeout(resolve, 350))
 
             // Capturer l'onglet visible dans cette fenêtre
-            const dataUrl = await chrome.tabs.captureVisibleTab(windowId)
+            const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 85 })
 
             // Revenir à l'onglet appelant (fullscreen)
             if (senderTab?.id) {
@@ -207,7 +220,7 @@ async function handleMessage(
           }
           if (screenshotTabId) {
             try {
-              const dataUrl = await chrome.tabs.captureVisibleTab()
+              const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
               sendResponse({ success: true, dataUrl })
             } catch (error) {
               sendResponse({ success: false, error: 'Erreur capture d\'écran' })
@@ -353,7 +366,7 @@ async function captureSelection(tabId: number, selectedText: string): Promise<Ca
 
 async function takeScreenshot(tabId: number): Promise<CaptureResult> {
   try {
-    const dataUrl = await chrome.tabs.captureVisibleTab()
+    const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
     const tab = await chrome.tabs.get(tabId)
 
     // Créer une note avec la capture d'écran
@@ -385,7 +398,7 @@ async function takeScreenshot(tabId: number): Promise<CaptureResult> {
 
 async function captureScreenshotForNote(tabId: number, options: any) {
   try {
-    const dataUrl = await chrome.tabs.captureVisibleTab()
+    const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
     
     return { 
       success: true, 

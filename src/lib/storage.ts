@@ -2,6 +2,7 @@ import Dexie from 'dexie'
 import { stateSync } from './state-sync'
 import { getSession } from './auth'
 import { syncNoteToJournal } from './sync'
+import { compressImage, estimateImageSize, prepareImageForStorage, COMPRESSION_PRESETS } from './image-utils'
 import type {
   AcademicNote,
   NoteFolder,
@@ -11,7 +12,8 @@ import type {
   ExtractedText,
   Settings,
   SyncStatus,
-  AIConfig
+  AIConfig,
+  NoteSummary
 } from '@/types/academic'
 
 /**
@@ -134,66 +136,129 @@ db.on('versionchange', () => {
   db.close()
 })
 
-// ---- BACKUP SYSTEM (2-slot rotation, full data with unlimitedStorage) ----
-// Protects against IndexedDB data loss (Chrome updates, corruption, storage pressure)
+// ---- BACKUP SYSTEM (incrémental : une clé par note) ----
+// Protège d'une perte IndexedDB (mise à jour Chrome, corruption, pression disque).
+//
+// AVANT (<= 1.6.9) : chaque saveNote reprogrammait une sauvegarde TOTALE —
+// db.notes.toArray() sur toute la base, puis sérialisation complète vers
+// chrome.storage.local. Renommer une note recopiait donc l'intégralité du corpus
+// en mémoire, ce qui faisait tuer le processus de rendu par Chrome
+// (« Out of Memory », remonté le 05/08 — y compris sur une note vide, puisque le
+// coût ne dépendait pas de la note ouverte mais du poids total accumulé).
+//
+// MAINTENANT : on n'écrit que la note modifiée. Le balayage complet ne sert plus
+// qu'à la reprise et au rattrapage périodique, et il passe par les clés primaires
+// puis note par note — jamais plus d'un enregistrement en mémoire.
+
+const NOTE_BACKUP_PREFIX = 'nb_'
+const NOTE_BACKUP_INDEX = 'nb_index'
+
+// Anciens créneaux (format <= 1.6.9), gardés en LECTURE pour la reprise ;
+// supprimés dès qu'une sauvegarde incrémentale complète les remplace
 const BACKUP_SLOT_KEYS = ['notes_backup_0', 'notes_backup_1'] as const
 const BACKUP_TS_KEYS = ['notes_backup_ts_0', 'notes_backup_ts_1'] as const
 const BACKUP_ACTIVE_KEY = 'notes_backup_active' // 0 or 1
-const BACKUP_DEBOUNCE_MS = 3000
-const BACKUP_MIN_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
-let backupTimer: ReturnType<typeof setTimeout> | null = null
-let lastBackupTime = 0
 let restoredFromBackup = false
+let backupIndexCache: string[] | null = null
+
+// Les sauvegardes s'exécutent à la queue leu leu. Deux écritures concurrentes
+// lisaient l'index en même temps et se réécrivaient l'une l'autre : la note de
+// la plus lente disparaissait de l'index, donc de la reprise — sa donnée restait
+// en place mais plus personne n'allait la chercher.
+let backupQueue: Promise<unknown> = Promise.resolve()
+
+function queueBackup<T>(task: () => Promise<T>): Promise<T> {
+  const next = backupQueue.then(task, task)
+  backupQueue = next.catch(() => undefined)
+  return next
+}
+
+async function getBackupIndex(): Promise<string[]> {
+  if (backupIndexCache) return backupIndexCache
+  const result = await chrome.storage.local.get(NOTE_BACKUP_INDEX)
+  backupIndexCache = (result[NOTE_BACKUP_INDEX] as string[] | undefined) ?? []
+  return backupIndexCache
+}
+
+async function setBackupIndex(ids: string[]): Promise<void> {
+  backupIndexCache = ids
+  await chrome.storage.local.set({ [NOTE_BACKUP_INDEX]: ids })
+}
 
 /**
- * Write notes to the INACTIVE slot, then flip the active pointer.
- * This ensures the previous good backup is never overwritten in-place.
+ * Sauvegarde d'UNE note. Jamais bloquant : un échec de sauvegarde ne doit pas
+ * faire échouer l'écriture principale, qui est déjà passée en base.
  */
-async function writeBackup(notes: AcademicNote[]): Promise<void> {
-  const result = await chrome.storage.local.get(BACKUP_ACTIVE_KEY)
-  const activeSlot: number = result[BACKUP_ACTIVE_KEY] ?? 0
-  const targetSlot = activeSlot === 0 ? 1 : 0 // write to inactive slot
+async function backupNote(note: AcademicNote): Promise<boolean> {
+  return queueBackup(async () => {
+    try {
+      await chrome.storage.local.set({ [NOTE_BACKUP_PREFIX + note.id]: note })
+      const index = await getBackupIndex()
+      if (!index.includes(note.id)) await setBackupIndex([...index, note.id])
+      return true
+    } catch (error) {
+      console.warn('[Storage] Sauvegarde de la note impossible:', error)
+      return false
+    }
+  })
+}
 
-  await chrome.storage.local.set({
-    [BACKUP_SLOT_KEYS[targetSlot]]: notes,
-    [BACKUP_TS_KEYS[targetSlot]]: Date.now(),
-    [BACKUP_ACTIVE_KEY]: targetSlot // flip active pointer
+async function removeNoteBackup(id: string): Promise<void> {
+  return queueBackup(async () => {
+    try {
+      await chrome.storage.local.remove(NOTE_BACKUP_PREFIX + id)
+      const index = await getBackupIndex()
+      if (index.includes(id)) await setBackupIndex(index.filter(x => x !== id))
+    } catch (error) {
+      console.warn('[Storage] Retrait de la sauvegarde impossible:', error)
+    }
   })
 }
 
 /**
- * Backup all notes to chrome.storage.local (debounced)
+ * Rattrapage complet, une note à la fois. Réservé au service worker : s'il meurt,
+ * le panneau de l'utilisateur survit. Ne supprime les anciens créneaux qu'APRÈS un
+ * passage réellement complet — on ne détruit jamais la seule sauvegarde en place.
  */
-function scheduleBackup() {
-  if (backupTimer) clearTimeout(backupTimer)
-  backupTimer = setTimeout(async () => {
-    try {
-      const notes = await db.notes.toArray()
-      if (notes.length === 0) return // Never overwrite with empty data
-      await writeBackup(notes)
-      lastBackupTime = Date.now()
-      console.log(`[Storage] Backup saved: ${notes.length} notes`)
-    } catch (error) {
-      console.error('[Storage] Backup failed:', error)
+async function runFullBackup(): Promise<number> {
+  let saved = 0
+  try {
+    const ids = (await db.notes.toCollection().primaryKeys()) as string[]
+    if (ids.length === 0) return 0
+    for (const id of ids) {
+      const note = await db.notes.get(id)
+      if (note && await backupNote(note)) saved++
     }
-  }, BACKUP_DEBOUNCE_MS)
+    // On ne supprime l'ancienne sauvegarde QUE si chaque note a réellement été
+    // réécrite. `backupNote` avale ses erreurs : compter les tours de boucle
+    // aurait déclaré « complet » un passage où toutes les écritures ont échoué,
+    // et détruit la seule sauvegarde encore valide.
+    if (saved > 0 && saved === ids.length) {
+      await chrome.storage.local.remove([...BACKUP_SLOT_KEYS, ...BACKUP_TS_KEYS, BACKUP_ACTIVE_KEY])
+    }
+  } catch (error) {
+    console.error('[Storage] Rattrapage de sauvegarde échoué:', error)
+  }
+  return saved
 }
 
-/**
- * Force an immediate backup (called from UI on startup)
- */
-async function backupNow(): Promise<void> {
-  if (Date.now() - lastBackupTime < BACKUP_MIN_INTERVAL_MS) return
-  try {
-    const notes = await db.notes.toArray()
-    if (notes.length === 0) return
-    await writeBackup(notes)
-    lastBackupTime = Date.now()
-    console.log(`[Storage] Startup backup: ${notes.length} notes`)
-  } catch (error) {
-    console.error('[Storage] Startup backup failed:', error)
+/** Reprise depuis les sauvegardes par note, par lots pour borner la mémoire. */
+async function restoreFromNoteBackups(): Promise<number> {
+  const index = await getBackupIndex()
+  if (index.length === 0) return 0
+  let restored = 0
+  const BATCH = 10
+  for (let i = 0; i < index.length; i += BATCH) {
+    const keys = index.slice(i, i + BATCH).map(id => NOTE_BACKUP_PREFIX + id)
+    const chunk = await chrome.storage.local.get(keys)
+    const notes = Object.values(chunk).filter(Boolean) as AcademicNote[]
+    if (notes.length > 0) {
+      await db.notes.bulkPut(notes)
+      restored += notes.length
+    }
   }
+  return restored
 }
 
 /**
@@ -217,11 +282,18 @@ async function checkAndRestore(): Promise<boolean> {
     const count = await db.notes.count()
     if (count > 0) return false // DB has data, nothing to restore
 
+    // Format courant : une clé par note (lu par lots, mémoire bornée)
+    const restoredCount = await restoreFromNoteBackups()
+    if (restoredCount > 0) {
+      restoredFromBackup = true
+      console.log(`[Storage] ${restoredCount} note(s) restaurée(s) depuis la sauvegarde`)
+      return true
+    }
+
+    // Repli : anciens créneaux monolithiques (<= 1.6.9)
     const result = await chrome.storage.local.get(BACKUP_ACTIVE_KEY)
     const activeSlot: number = result[BACKUP_ACTIVE_KEY] ?? 0
     const fallbackSlot = activeSlot === 0 ? 1 : 0
-
-    // Try active slot first, then fallback
     const backup = await readBackupSlot(activeSlot) || await readBackupSlot(fallbackSlot)
     if (!backup) return false
 
@@ -258,6 +330,78 @@ const DEFAULT_SETTINGS: Settings = {
   language: 'fr'
 }
 
+const PREVIEW_LENGTH = 300
+const SEARCH_TEXT_LENGTH = 2000
+// Au-delà, une image stockée est considérée comme trop lourde et recompressée
+const COMPACT_IMAGE_THRESHOLD = 400_000
+
+/** Texte brut depuis du HTML, SANS DOM (storage tourne aussi dans le service worker). */
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<img[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Poids approximatif, par longueur de chaîne : ne jamais sérialiser la note pour la mesurer. */
+function approximateNoteSize(note: AcademicNote): number {
+  let size = (note.content?.length ?? 0) + (note.title?.length ?? 0)
+  for (const m of note.messages ?? []) size += m.content?.length ?? 0
+  for (const sc of note.screenshots ?? []) size += sc.dataUrl?.length ?? 0
+  return size
+}
+
+function toSummary(note: AcademicNote): NoteSummary {
+  const messages = note.messages ?? []
+  const messageTags = new Set<string>()
+  let preview = ''
+  let imageCount = 0
+
+  for (const m of messages) {
+    for (const t of m.tags ?? []) messageTags.add(t)
+    if (m.type === 'text') {
+      if (preview.length < SEARCH_TEXT_LENGTH) {
+        const chunk = stripHtmlToText(m.content.slice(0, SEARCH_TEXT_LENGTH))
+        if (chunk) preview += (preview ? ' ' : '') + chunk
+      }
+    } else if (m.type !== 'meta') {
+      imageCount++
+    }
+  }
+
+  if (!preview && note.content) preview = stripHtmlToText(note.content)
+  const searchText = preview.slice(0, SEARCH_TEXT_LENGTH)
+  imageCount += note.screenshots?.length ?? 0
+
+  return {
+    id: note.id,
+    title: note.title,
+    timestamp: note.timestamp,
+    url: note.url,
+    favicon: note.favicon,
+    type: note.type,
+    tags: note.tags ?? [],
+    concepts: note.concepts ?? [],
+    folderId: note.folderId,
+    lastSyncAt: note.lastSyncAt,
+    syncExcluded: note.syncExcluded,
+    metadata: note.metadata ?? { domain: '', title: note.title, language: 'fr' },
+    summary: note.summary,
+    annotationCount: note.annotations?.length ?? 0,
+    preview: preview.slice(0, PREVIEW_LENGTH),
+    searchText,
+    messageTags: [...messageTags],
+    imageCount,
+    hasOpenTrade: (note.trades ?? []).some(t => !t.closedAt),
+    sizeBytes: approximateNoteSize(note)
+  }
+}
+
 // API du stockage
 export const storage = {
   // ---- NOTES ----
@@ -285,7 +429,8 @@ export const storage = {
       throw error
     }
 
-    scheduleBackup()
+    // Sauvegarde de CETTE note uniquement (voir le bloc BACKUP SYSTEM ci-dessus)
+    void backupNote(fullNote)
 
     // Cloud sync vers Journal d'Études (non-bloquant)
     if (isNew && !fullNote.lastSyncAt) {
@@ -383,16 +528,175 @@ export const storage = {
     }
   },
 
-  async searchNotes(query: string): Promise<AcademicNote[]> {
+  /**
+   * Résumés des notes pour les listes : le curseur Dexie déserialise UNE note à
+   * la fois, on n'en garde que la version allégée. Le corpus complet (donc toutes
+   * les images en base64) n'est jamais matérialisé en mémoire — c'était la cause
+   * des plantages « Out of Memory ».
+   */
+  async getNoteSummaries(limit = 1000, offset = 0): Promise<NoteSummary[]> {
+    try {
+      const summaries: NoteSummary[] = []
+      await db.notes
+        .orderBy('id')
+        .reverse()
+        .offset(offset)
+        .limit(limit)
+        .each(note => { summaries.push(toSummary(note)) })
+
+      if (summaries.length === 0 && offset === 0 && !restoredFromBackup) {
+        const restored = await checkAndRestore()
+        if (restored) {
+          const retry: NoteSummary[] = []
+          await db.notes
+            .orderBy('id')
+            .reverse()
+            .offset(offset)
+            .limit(limit)
+            .each(note => { retry.push(toSummary(note)) })
+          return retry
+        }
+      }
+
+      return summaries
+    } catch (error) {
+      console.error('[Storage] getNoteSummaries failed:', error)
+      return []
+    }
+  },
+
+  /** Notes complètes pour une poignée d'identifiants (synchro, analyse, export). */
+  async getNotesByIds(ids: string[]): Promise<AcademicNote[]> {
+    const notes: AcademicNote[] = []
+    for (const id of ids) {
+      const note = await db.notes.get(id)
+      if (note) notes.push(note)
+    }
+    return notes
+  },
+
+  async searchNotes(query: string): Promise<NoteSummary[]> {
     const searchTerm = query.toLowerCase()
-    return await db.notes
-      .filter(note => 
+    const results: NoteSummary[] = []
+    await db.notes.each(note => {
+      const match =
         note.title.toLowerCase().includes(searchTerm) ||
-        note.content.toLowerCase().includes(searchTerm) ||
         note.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
         note.url.toLowerCase().includes(searchTerm)
-      )
-      .toArray()
+      if (match) { results.push(toSummary(note)); return }
+      // Repli sur le texte, sans jamais parcourir le base64 des images
+      const summary = toSummary(note)
+      if (summary.searchText.toLowerCase().includes(searchTerm)) results.push(summary)
+    })
+    return results
+  },
+
+  /**
+   * Poids du corpus, mesuré par curseur (une note à la fois). Sert à objectiver
+   * la saturation mémoire : sans chiffre, on corrige à l'aveugle.
+   */
+  async computeStorageStats(): Promise<{
+    noteCount: number
+    totalBytes: number
+    imageBytes: number
+    imageCount: number
+    heaviest: { id: string; title: string; bytes: number }[]
+  }> {
+    let noteCount = 0
+    let totalBytes = 0
+    let imageBytes = 0
+    let imageCount = 0
+    const heaviest: { id: string; title: string; bytes: number }[] = []
+
+    await db.notes.each(note => {
+      noteCount++
+      const bytes = approximateNoteSize(note)
+      totalBytes += bytes
+      for (const m of note.messages ?? []) {
+        if (m.type !== 'text' && m.type !== 'meta') {
+          imageCount++
+          imageBytes += m.content?.length ?? 0
+        }
+      }
+      for (const sc of note.screenshots ?? []) {
+        imageCount++
+        imageBytes += sc.dataUrl?.length ?? 0
+      }
+      heaviest.push({ id: note.id, title: note.title, bytes })
+      heaviest.sort((a, b) => b.bytes - a.bytes)
+      if (heaviest.length > 5) heaviest.length = 5
+    })
+
+    return { noteCount, totalBytes, imageBytes, imageCount, heaviest }
+  },
+
+  /**
+   * « Compacter mes notes » : recompresse les images trop lourdes et purge le
+   * doublon base64 du champ historique `content`.
+   *
+   * Traite note par note (jamais db.notes.toArray()) — sinon la réparation
+   * provoquerait exactement le plantage qu'elle doit corriger. Écrit en direct
+   * via db.notes.put : on ne veut ni re-synchroniser vers le journal, ni
+   * déclencher un rechargement de l'interface à chaque note.
+   */
+  async compactNotes(
+    onProgress?: (done: number, total: number) => void
+  ): Promise<{ notes: number; changed: number; before: number; after: number }> {
+    const ids = (await db.notes.toCollection().primaryKeys()) as string[]
+    let before = 0
+    let after = 0
+    let changed = 0
+
+    for (let i = 0; i < ids.length; i++) {
+      const note = await db.notes.get(ids[i])
+      if (!note) continue
+
+      const sizeBefore = approximateNoteSize(note)
+      before += sizeBefore
+      let touched = false
+
+      // Les notes d'avant les blocs gardent tout dans `content` : les convertir
+      // d'abord, sinon purger `content` perdrait leurs images
+      if (!note.messages && note.content) {
+        note.messages = convertLegacyContentToMessages(note.content, note.timestamp)
+        touched = true
+      }
+
+      for (const message of note.messages ?? []) {
+        if (message.type === 'text' || message.type === 'meta') continue
+        if (!message.content?.startsWith('data:image')) continue
+        if (estimateImageSize(message.content) <= COMPACT_IMAGE_THRESHOLD) continue
+        try {
+          const compressed = await compressImage(message.content, COMPRESSION_PRESETS.screenshot)
+          if (compressed.length < message.content.length) {
+            message.content = compressed
+            touched = true
+          }
+        } catch (error) {
+          console.warn('[Storage] Recompression impossible pour un bloc:', error)
+        }
+      }
+
+      // `content` ne doit plus porter de base64 : les blocs font foi
+      if (note.messages && note.messages.length > 0) {
+        const rebuilt = this.messagesToHtml(note.messages)
+        if (rebuilt !== note.content) {
+          note.content = rebuilt
+          touched = true
+        }
+      }
+
+      if (touched) {
+        await db.notes.put(note)
+        void backupNote(note)
+        changed++
+      }
+
+      after += approximateNoteSize(note)
+      onProgress?.(i + 1, ids.length)
+    }
+
+    return { notes: ids.length, changed, before, after }
   },
 
   async deleteNote(id: string, skipSync = false): Promise<void> {
@@ -407,7 +711,7 @@ export const storage = {
       throw error
     }
 
-    scheduleBackup()
+    void removeNoteBackup(id)
 
     // Broadcast sync event to other views
     if (!skipSync) {
@@ -581,8 +885,16 @@ export const storage = {
     // Segment de trade actif → le bloc s'y rattache automatiquement
     const activeTrade = (note.trades ?? []).find(t => !t.closedAt)
 
+    // Toute image passe par la compression AVANT d'entrer en base : c'est le
+    // seul goulot commun à la barre de capture, aux captures d'écran et à la
+    // capture intelligente (qui, elle, ne compressait rien du tout).
+    const content = message.type !== 'text' && message.type !== 'meta'
+      ? await prepareImageForStorage(message.content)
+      : message.content
+
     const newMessage: NoteMessage = {
       ...message,
+      content,
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       timestamp: Date.now(),
       ...(activeTrade && !message.tradeRef ? { tradeRef: activeTrade.id } : {})
@@ -595,11 +907,13 @@ export const storage = {
     // Also update legacy content for backward compatibility.
     // Type 'meta' : JAMAIS dans content — une métadonnée n'est pas du contenu
     // (contrat 0.1.2), elle ne vit que comme bloc masquable dans messages[].
+    // Une image n'est JAMAIS recopiée en base64 dans `content` : elle y pesait
+    // une seconde fois pour rien (le rendu et les exports lisent messages[]).
     const contentToAdd = message.type === 'meta'
       ? ''
       : message.type === 'text'
         ? message.content
-        : `<img src="${message.content}" alt="${message.metadata?.alt || 'Image'}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
+        : `<p data-block="image">[${message.metadata?.alt || 'Image'}]</p>`
 
     const updatedContent = contentToAdd
       ? (note.content ? `${note.content}<br><br>${contentToAdd}` : contentToAdd)
@@ -703,8 +1017,10 @@ export const storage = {
         if (msg.type === 'text') {
           return msg.content
         } else {
+          // Marqueur, PAS l'image : le base64 vit déjà dans messages[]. Le
+          // réinjecter ici doublait le poids de chaque note (cf. compactNotes).
           const alt = msg.metadata?.alt || 'Image'
-          return `<img src="${msg.content}" alt="${alt}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`
+          return `<p data-block="image">[${alt}]</p>`
         }
       })
       .join('<br><br>')
@@ -735,7 +1051,6 @@ export const storage = {
     await this.saveSettings({ folders })
     // Détacher toutes les notes qui appartiennent à ce dossier
     await db.notes.where('folderId').equals(id).modify({ folderId: undefined })
-    scheduleBackup()
   },
 
   async moveNoteToFolder(noteId: string, folderId: string | null): Promise<void> {
@@ -782,5 +1097,5 @@ export const storage = {
   }
 }
 
-export { db, backupNow, restoredFromBackup }
+export { db, runFullBackup, restoredFromBackup }
 export default storage

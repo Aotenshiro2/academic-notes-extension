@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
-import type { AcademicNote, AnalysisProvider, NoteFolder } from '@/types/academic'
+import type { AcademicNote, NoteSummary, AnalysisProvider, NoteFolder } from '@/types/academic'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib/pdf-export'
 import { openProviderWithContent } from '@/lib/provider-injector'
@@ -12,7 +12,7 @@ interface AnalyzeNoteDialogProps {
   onClose: () => void
   note: AcademicNote
   defaultProvider?: AnalysisProvider
-  availableNotes?: AcademicNote[]
+  availableNotes?: NoteSummary[]
   folders?: NoteFolder[]
 }
 
@@ -227,14 +227,11 @@ function AnalyzeNoteDialog({
   const providerConfig = PROVIDERS[provider]
   const hasThreadUrl = !!(providerThreadUrls[provider])
 
-  const noteHasImages = (n: AcademicNote) =>
-    n.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
-    (n.content && /<img\s/i.test(n.content)) ||
-    (n.screenshots && n.screenshots.length > 0)
-
+  // Le résumé porte déjà le compte d'images : inutile de charger les notes entières
   const hasImages = isMultiNote
-    ? availableNotes.filter(n => selectedNoteIds.includes(n.id)).some(noteHasImages)
-    : noteHasImages(note)
+    ? availableNotes.filter(n => selectedNoteIds.includes(n.id)).some(n => n.imageCount > 0)
+    : !!(note.messages?.some(m => m.type === 'image' || m.type === 'screenshot') ||
+         (note.screenshots && note.screenshots.length > 0))
 
   const getPromptText = (): string => {
     if (selectedPrompt === 'custom') return customPrompt.trim()
@@ -250,11 +247,13 @@ function AnalyzeNoteDialog({
   // dans la conversation. Mauvaise idée — l'élève perdait sa note sans le voir.)
   const isDoctrine = selectedPrompt === 'aok'
 
-  const buildFullPrompt = (): string => {
+  const buildFullPrompt = async (): Promise<string> => {
     const promptText = getPromptText()
 
     if (isMultiNote) {
-      const selectedNotes = availableNotes.filter(n => selectedNoteIds.includes(n.id))
+      // Notes complètes relues au moment de l'envoi seulement : les garder en
+      // permanence dans `availableNotes` chargeait tout le corpus en mémoire
+      const selectedNotes = await storage.getNotesByIds(selectedNoteIds)
       const notesText = buildMultiNoteText(selectedNotes)
       if (promptText.includes('[CONTENU_DE_LA_NOTE]')) {
         return promptText.replace('[CONTENU_DE_LA_NOTE]', notesText)
@@ -291,7 +290,7 @@ function AnalyzeNoteDialog({
   }
 
   const handleAnalyze = async () => {
-    const fullPrompt = buildFullPrompt()
+    const fullPrompt = await buildFullPrompt()
     if (!fullPrompt.trim()) return
 
     setStatus('loading')
@@ -312,9 +311,7 @@ function AnalyzeNoteDialog({
       if (hasImages) {
         let blob: Blob
         if (isMultiNote) {
-          const selectedNotes = availableNotes
-            .filter(n => selectedNoteIds.includes(n.id))
-            .slice()
+          const selectedNotes = (await storage.getNotesByIds(selectedNoteIds))
             .sort((a, b) => a.timestamp - b.timestamp)
           blob = await generateMultiNoteAnalysisPdfBlob(selectedNotes)
           cachedFileName = `notes-${selectedNoteIds.length}.pdf`

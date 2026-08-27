@@ -515,7 +515,7 @@ export async function generateAnalysisPdfBlob(note: AcademicNote): Promise<Blob>
   pdf.setTextColor(0, 0, 0)
   pdf.setFontSize(11)
 
-  const blocks = parseHtmlContent(note.content)
+  const blocks = parseHtmlContent(buildExportHtml(note))
 
   for (const block of blocks) {
     switch (block.type) {
@@ -657,7 +657,7 @@ export async function generateMultiNoteAnalysisPdfBlob(notes: AcademicNote[]): P
     pdf.setTextColor(0, 0, 0)
     pdf.setFontSize(11)
 
-    const blocks = parseHtmlContent(note.content)
+    const blocks = parseHtmlContent(buildExportHtml(note))
     for (const block of blocks) {
       switch (block.type) {
         case 'text': {

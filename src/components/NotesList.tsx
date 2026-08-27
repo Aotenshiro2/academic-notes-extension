@@ -14,19 +14,19 @@ import {
   Eye,
   CloudOff
 } from 'lucide-react'
-import type { AcademicNote, ContentType } from '@/types/academic'
+import type { NoteSummary, ContentType } from '@/types/academic'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ConfirmDialog from './ConfirmDialog'
 
 interface NotesListProps {
-  notes: AcademicNote[]
+  notes: NoteSummary[]
   onRefresh: () => void
-  onNoteSelect?: (note: AcademicNote) => void
+  onNoteSelect?: (note: NoteSummary) => void
   onLoadMore?: () => void
   hasMoreNotes?: boolean
   isLoadingMore?: boolean
-  onToggleSyncExcluded?: (note: AcademicNote) => void
+  onToggleSyncExcluded?: (note: NoteSummary) => void
 }
 
 function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, isLoadingMore, onToggleSyncExcluded }: NotesListProps) {
@@ -228,7 +228,7 @@ function NotesList({ notes, onRefresh, onNoteSelect, onLoadMore, hasMoreNotes, i
 
             {/* Contenu de la note */}
             <div className="mb-3">
-              {renderContent(note.content)}
+              {renderContent(note.preview)}
             </div>
 
             {/* Résumé AI (si disponible) */}

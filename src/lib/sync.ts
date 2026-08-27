@@ -281,12 +281,15 @@ async function syncAnnotations(note: AcademicNote, token: string): Promise<void>
   }
 }
 
+/** Ce qu'il faut savoir d'une note pour décider de la synchroniser (résumé suffisant). */
+export type SyncCandidate = Pick<AcademicNote, 'id' | 'title' | 'url' | 'lastSyncAt' | 'syncExcluded'>
+
 /**
  * Force-synque toutes les notes non encore synquées.
  * Exclut les notes marquées syncExcluded: true (sauf si includeExcluded=true).
  */
 export async function forceSyncAll(
-  notes: AcademicNote[],
+  notes: SyncCandidate[],
   onSynced?: (noteId: string) => Promise<void>,
   options?: { includeExcluded?: boolean }
 ): Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }> {
@@ -298,7 +301,17 @@ export async function forceSyncAll(
   let failed = 0
   const errors: Array<{ title: string; error: string }> = []
 
-  for (const note of unsynced) {
+  const { default: storage } = await import('./storage')
+
+  for (const candidate of unsynced) {
+    // La note complète est relue ICI, une à la fois : l'appelant ne manipule que
+    // des résumés, sinon tout le corpus (images comprises) tiendrait en mémoire
+    const note = await storage.getNote(candidate.id)
+    if (!note) {
+      failed++
+      errors.push({ title: candidate.title, error: 'Note introuvable en base' })
+      continue
+    }
     const result = await syncNoteToJournal(note)
     if (result.success) {
       synced++
@@ -456,7 +469,7 @@ export interface VerifySyncResult {
   locallyExcluded: number   // dans l'extension, exclue manuellement (syncExcluded, pas dans journal) ⊗
   journalExcluded: number   // dans l'extension, supprimée du journal (deletedAt) → auto-exclue −
   journalOrphans: number    // dans le journal (actif) MAIS absente de l'extension ⚠ (supprimée de l'ext.)
-  missingNotes: AcademicNote[]
+  missingNotes: SyncCandidate[]
   verifyError?: string
 }
 
@@ -466,7 +479,7 @@ export interface VerifySyncResult {
  * Met automatiquement à jour syncExcluded pour les notes supprimées côté journal.
  */
 export async function verifySyncStatus(
-  notes: AcademicNote[],
+  notes: SyncCandidate[],
   updateNote: (id: string, changes: Partial<AcademicNote>) => Promise<void>
 ): Promise<VerifySyncResult> {
   const [session, token] = await Promise.all([getSession(), getBearerToken()])
@@ -500,7 +513,7 @@ export async function verifySyncStatus(
     // Notes actives dans le journal (par URL) mais absentes de l'extension (supprimées de l'ext.)
     const journalOrphans = [...confirmedUrls].filter(url => !localUrlSet.has(url)).length
 
-    const missingNotes: AcademicNote[] = []
+    const missingNotes: SyncCandidate[] = []
     let confirmed = 0, pending = 0, locallyExcluded = 0, journalExcluded = 0
 
     for (const note of notesWithUrl) {

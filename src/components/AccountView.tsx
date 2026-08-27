@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, LogOut, Loader2, RefreshCw, ExternalLink, Eye, EyeOff, ChevronLeft, ShieldCheck, Download, Trash2 } from 'lucide-react'
-import type { Settings as SettingsType, AcademicNote } from '@/types/academic'
+import type { Settings as SettingsType, NoteSummary } from '@/types/academic'
 import type { VerifySyncResult } from '@/lib/sync'
 import { getUser, signInWithGoogle, signOut, signInWithEmail, signUpWithEmail, sendPasswordResetEmail } from '@/lib/auth'
 import ConfirmDialog from './ConfirmDialog'
@@ -16,7 +16,7 @@ interface AccountViewProps {
   onRebuildJournal: () => Promise<{ synced: number; failed: number; errors: Array<{ title: string; error: string }> }>
   onPullFromJournal: () => Promise<{ imported: number; skipped: number; error?: string }>
   onBack: () => void
-  notes: AcademicNote[]
+  notes: NoteSummary[]
 }
 
 type AuthMode = 'signin' | 'signup'

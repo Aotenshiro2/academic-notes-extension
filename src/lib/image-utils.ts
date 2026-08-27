@@ -154,3 +154,26 @@ export const COMPRESSION_PRESETS = {
     format: 'jpeg' as const
   }
 } as const
+
+/**
+ * Point de passage OBLIGATOIRE de toute image qui entre dans une note.
+ *
+ * Avant, le garde de compression ne vivait que dans la barre de capture, et il
+ * ne se déclenchait qu'au-dessus de 1,5 Mo. La capture intelligente, elle, ne
+ * passait pas par là : elle stockait le PNG brut de `captureVisibleTab` tel quel.
+ * Un seul chemin protégé sur trois, avec un seuil très haut — d'où des corpus
+ * qui gonflaient jusqu'à faire tuer le processus par Chrome (05/08).
+ */
+export const INLINE_IMAGE_MAX_BYTES = 300_000
+
+export async function prepareImageForStorage(dataUrl: string): Promise<string> {
+  try {
+    if (!dataUrl || !dataUrl.startsWith('data:image')) return dataUrl
+    if (estimateImageSize(dataUrl) <= INLINE_IMAGE_MAX_BYTES) return dataUrl
+    const compressed = await compressImage(dataUrl, COMPRESSION_PRESETS.screenshot)
+    return compressed.length < dataUrl.length ? compressed : dataUrl
+  } catch (error) {
+    console.warn('[Image] Compression impossible, image conservée telle quelle:', error)
+    return dataUrl
+  }
+}
