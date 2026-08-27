@@ -1058,18 +1058,33 @@ export const storage = {
   async saveFolder(folder: NoteFolder): Promise<void> {
     const settings = await this.getSettings()
     const folders = settings.folders ?? []
-    const idx = folders.findIndex(f => f.id === folder.id)
+    // Borne de profondeur (1 niveau max), appliquée à l'ÉCRITURE et pas
+    // seulement dans l'UI : un parentId n'est gardé que s'il pointe vers un
+    // dossier existant qui est lui-même une racine. Sinon le dossier retombe
+    // en racine — jamais de niveau 3, jamais d'orphelin, jamais de cycle.
+    const clean = { ...folder }
+    if (clean.parentId) {
+      const parent = folders.find(f => f.id === clean.parentId)
+      if (!parent || parent.parentId || clean.parentId === clean.id) {
+        delete clean.parentId
+      }
+    }
+    const idx = folders.findIndex(f => f.id === clean.id)
     if (idx >= 0) {
-      folders[idx] = folder
+      folders[idx] = clean
     } else {
-      folders.push(folder)
+      folders.push(clean)
     }
     await this.saveSettings({ folders })
   },
 
   async deleteFolder(id: string): Promise<void> {
     const settings = await this.getSettings()
-    const folders = (settings.folders ?? []).filter(f => f.id !== id)
+    // Les sous-dossiers d'un dossier supprimé remontent à la racine
+    // (on ne supprime jamais leurs notes en cascade)
+    const folders = (settings.folders ?? [])
+      .filter(f => f.id !== id)
+      .map(f => (f.parentId === id ? { ...f, parentId: undefined } : f))
     await this.saveSettings({ folders })
     // Détacher toutes les notes qui appartiennent à ce dossier
     await db.notes.where('folderId').equals(id).modify({ folderId: undefined })

@@ -64,6 +64,8 @@ export interface NoteFolder {
   id: string
   name: string
   createdAt: number
+  /** Sous-dossier, 1 niveau max : id d'un dossier RACINE. Absent = racine. */
+  parentId?: string
 }
 
 // ── Notation (masterclass edge) ───────────────────────────────────────────────

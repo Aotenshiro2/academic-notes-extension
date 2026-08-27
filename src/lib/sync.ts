@@ -132,13 +132,21 @@ function collectWarmups(note: AcademicNote) {
 async function toJournalPayload(note: AcademicNote, userId: string, accessToken: string) {
   const IMAGE_TYPES = new Set(['image', 'screenshot', 'capture'])
 
-  // Nom du dossier — import dynamique pour éviter le cycle storage → sync
+  // Nom du dossier (+ son parent éventuel, sous-dossiers 1 niveau) — import
+  // dynamique pour éviter le cycle storage → sync
   let folderName: string | null = null
+  let folderParentId: string | null = null
+  let folderParentName: string | null = null
   if (note.folderId) {
     try {
       const { default: storage } = await import('./storage')
       const settings = await storage.getSettings()
-      folderName = settings.folders?.find(f => f.id === note.folderId)?.name ?? null
+      const folder = settings.folders?.find(f => f.id === note.folderId)
+      folderName = folder?.name ?? null
+      if (folder?.parentId) {
+        folderParentId = folder.parentId
+        folderParentName = settings.folders?.find(f => f.id === folder.parentId)?.name ?? null
+      }
     } catch { /* nom indisponible — le dossier sera upserté à une prochaine sync */ }
   }
 
@@ -189,6 +197,11 @@ async function toJournalPayload(note: AcademicNote, userId: string, accessToken:
     dols: note.dols ?? [],
     folderId: note.folderId ?? null,
     folderName,
+    // Toujours présents (null = racine) : côté journal, parentId n'est mis à
+    // jour QUE quand le champ existe dans le payload — l'envoyer permet aussi
+    // de dé-nester un dossier redevenu racine.
+    folderParentId,
+    folderParentName,
     createdAt: new Date(note.timestamp).toISOString(),
     extensionVersion: chrome.runtime.getManifest().version,
     extensionNoteId: note.id,
@@ -357,7 +370,7 @@ export async function deleteJournalNotes(): Promise<{ ok: boolean; error?: strin
  */
 export async function pullFromJournal(): Promise<{
   notes: AcademicNote[]
-  folders?: { id: string; name: string; createdAt: number }[]
+  folders?: { id: string; name: string; createdAt: number; parentId?: string }[]
   error?: string
 }> {
   const [session, token] = await Promise.all([getSession(), getBearerToken()])
@@ -414,7 +427,7 @@ export async function pullFromJournal(): Promise<{
       })
 
     // Dossiers — pour restaurer l'arborescence complète côté extension
-    let folders: { id: string; name: string; createdAt: number }[] = []
+    let folders: { id: string; name: string; createdAt: number; parentId?: string }[] = []
     try {
       const foldersRes = await fetch(`${JOURNAL_API}/api/folders`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -427,6 +440,7 @@ export async function pullFromJournal(): Promise<{
             id: f.id,
             name: f.name,
             createdAt: f.createdAt ? new Date(f.createdAt).getTime() : Date.now(),
+            ...(typeof f.parentId === 'string' && f.parentId ? { parentId: f.parentId } : {}),
           }))
       }
     } catch { /* pas bloquant — les notes restent importables sans l'arborescence */ }

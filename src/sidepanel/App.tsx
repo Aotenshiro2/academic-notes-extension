@@ -374,8 +374,8 @@ function App() {
   }
 
   // ---- Folder handlers ----
-  const handleFolderCreate = async (name: string) => {
-    await storage.saveFolder({ id: crypto.randomUUID(), name, createdAt: Date.now() })
+  const handleFolderCreate = async (name: string, parentId?: string) => {
+    await storage.saveFolder({ id: crypto.randomUUID(), name, createdAt: Date.now(), ...(parentId ? { parentId } : {}) })
     await loadData()
   }
 
@@ -826,11 +826,18 @@ function App() {
               onPullFromJournal={async () => {
                 const { notes: journalNotes, folders: journalFolders, error } = await pullFromJournal()
                 if (error) return { imported: 0, skipped: 0, error }
-                // Restaurer d'abord l'arborescence des dossiers (ids stables)
-                const knownFolderIds = new Set(folders.map(f => f.id))
-                for (const folder of journalFolders ?? []) {
-                  if (!knownFolderIds.has(folder.id)) {
+                // Restaurer d'abord l'arborescence des dossiers (ids stables).
+                // Racines AVANT sous-dossiers : saveFolder refuse un parentId
+                // dont le parent n'existe pas encore localement.
+                const knownFolders = new Map(folders.map(f => [f.id, f]))
+                const sortedFolders = [...(journalFolders ?? [])].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0))
+                for (const folder of sortedFolders) {
+                  const known = knownFolders.get(folder.id)
+                  if (!known) {
                     await storage.saveFolder(folder)
+                  } else if ((known.parentId ?? null) !== (folder.parentId ?? null)) {
+                    // Hiérarchie changée côté journal (autre appareil) → répercuter
+                    await storage.saveFolder({ ...known, parentId: folder.parentId })
                   }
                 }
                 const existingIds = new Set(notes.map(n => n.id))

@@ -71,6 +71,7 @@ const CHANGELOG = [
       'Amélioration : les messages d\'erreur et de confirmation (exports, imports, connexion au journal…) s\'affichent désormais dans l\'application au lieu des boîtes de dialogue du navigateur, que Chrome pouvait rendre définitivement silencieuses via « ne plus afficher ».',
       'Lecture plus dense : les blocs sans tag ne réservent plus une ligne vide sous chaque message — la date, « + tag » et la corbeille apparaissent en surimpression au survol. Le texte se lit comme un document, plus comme un chat.',
       'Nouveau : insérer du texte entre deux blocs — survole l\'espace entre deux blocs, un ＋ apparaît, clique et écris. Idéal pour annoter un screenshot après coup pendant la relecture.',
+      'Nouveau : les sous-dossiers — survole un dossier dans l\'historique et clique l\'icône dossier+ pour créer un dossier dedans (un niveau de profondeur). Le glisser-déposer de notes fonctionne aussi sur les sous-dossiers, et l\'arborescence suit dans le Journal d\'Études.',
     ],
   },
   {

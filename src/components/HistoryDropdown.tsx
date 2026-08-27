@@ -15,7 +15,7 @@ interface HistoryDropdownProps {
   currentNoteId: string | null
   onSelectNote: (noteId: string) => void
   onNotesUpdate?: () => void
-  onFolderCreate: (name: string) => Promise<void>
+  onFolderCreate: (name: string, parentId?: string) => Promise<void>
   onFolderRename: (id: string, name: string) => Promise<void>
   onFolderDelete: (id: string) => Promise<void>
   onMoveNoteToFolder: (noteId: string, folderId: string | null) => Promise<void>
@@ -51,6 +51,9 @@ function HistoryDropdown({
   const [renameFolderName, setRenameFolderName] = useState('')
   const [deleteFolderConfirmId, setDeleteFolderConfirmId] = useState<string | null>(null)
   const [isDeletingFolder, setIsDeletingFolder] = useState(false)
+  // Sous-dossiers (1 niveau max) : création inline dans un dossier racine
+  const [creatingSubfolderIn, setCreatingSubfolderIn] = useState<string | null>(null)
+  const [newSubfolderName, setNewSubfolderName] = useState('')
 
   // Search + filtres de tri
   const [searchQuery, setSearchQuery] = useState('')
@@ -165,6 +168,14 @@ function HistoryDropdown({
     await onFolderCreate(name)
     setCreatingFolder(false)
     setNewFolderName('')
+  }
+
+  const submitNewSubfolder = async (parentId: string) => {
+    const name = newSubfolderName.trim()
+    if (!name) { setCreatingSubfolderIn(null); setNewSubfolderName(''); return }
+    await onFolderCreate(name, parentId)
+    setCreatingSubfolderIn(null)
+    setNewSubfolderName('')
   }
 
   const startRenameFolder = (folder: NoteFolder, e: React.MouseEvent) => {
@@ -464,8 +475,15 @@ function HistoryDropdown({
                     </button>
                   </div>
 
-                  {!foldersCollapsed && folders.map(folder => {
+                  {!foldersCollapsed && (() => {
+                    // Sous-dossiers, 1 niveau max : racines au premier niveau,
+                    // enfants rendus dans la section dépliée de leur parent
+                    const rootFolders = folders.filter(f => !f.parentId)
+                    const childrenOf = (id: string) => folders.filter(f => f.parentId === id)
+
+                    const renderFolder = (folder: NoteFolder, depth: number): React.ReactNode => {
                     const folderNotes = notesByFolder(folder.id)
+                    const subfolders = depth === 0 ? childrenOf(folder.id) : []
                     const isExpanded = expandedFolders.has(folder.id)
                     const isDragOver = dragOverFolderId === folder.id
 
@@ -512,6 +530,21 @@ function HistoryDropdown({
                             <>
                               <span className="flex-1 text-sm font-medium text-foreground truncate">{folder.name}</span>
                               <span className="text-xs text-muted-foreground flex-shrink-0">{folderNotes.length}</span>
+                              {depth === 0 && (
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    setCreatingSubfolderIn(folder.id)
+                                    setNewSubfolderName('')
+                                    setExpandedFolders(prev => new Set(prev).add(folder.id))
+                                  }}
+                                  className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
+                                  title="Nouveau sous-dossier"
+                                  aria-label="Nouveau sous-dossier"
+                                >
+                                  <FolderPlus size={12} />
+                                </button>
+                              )}
                               <button
                                 onClick={e => startRenameFolder(folder, e)}
                                 className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
@@ -532,10 +565,29 @@ function HistoryDropdown({
                           )}
                         </div>
 
-                        {/* Notes du dossier */}
+                        {/* Sous-dossiers + notes du dossier */}
                         {isExpanded && (
                           <div className="ml-4 space-y-0.5 mt-0.5">
-                            {folderNotes.length === 0 ? (
+                            {subfolders.map(sf => renderFolder(sf, 1))}
+                            {creatingSubfolderIn === folder.id && (
+                              <div className="flex items-center gap-2 px-2 py-1.5">
+                                <Folder size={13} className="text-yellow-500/80 flex-shrink-0" />
+                                <input
+                                  type="text"
+                                  value={newSubfolderName}
+                                  onChange={e => setNewSubfolderName(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') { e.preventDefault(); submitNewSubfolder(folder.id) }
+                                    else if (e.key === 'Escape') { setCreatingSubfolderIn(null); setNewSubfolderName('') }
+                                  }}
+                                  onBlur={() => submitNewSubfolder(folder.id)}
+                                  placeholder="Nom du sous-dossier…"
+                                  className="flex-1 text-sm bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                  autoFocus
+                                />
+                              </div>
+                            )}
+                            {folderNotes.length === 0 && subfolders.length === 0 && creatingSubfolderIn !== folder.id ? (
                               <p className="text-xs text-muted-foreground/60 px-3 py-2 italic">Dossier vide</p>
                             ) : (
                               folderNotes.map(renderNoteItem)
@@ -544,7 +596,10 @@ function HistoryDropdown({
                         )}
                       </div>
                     )
-                  })}
+                    }
+
+                    return rootFolders.map(f => renderFolder(f, 0))
+                  })()}
 
                   {/* Création inline dossier */}
                   {creatingFolder && (
@@ -633,7 +688,7 @@ function HistoryDropdown({
         onConfirm={confirmDeleteFolder}
         onCancel={() => setDeleteFolderConfirmId(null)}
         title="Supprimer le dossier"
-        message="Le dossier sera supprimé. Les notes qu'il contient deviendront libres."
+        message="Le dossier sera supprimé. Les notes qu'il contient deviendront libres, et ses sous-dossiers remonteront à la racine."
         isLoading={isDeletingFolder}
       />
     </div>
