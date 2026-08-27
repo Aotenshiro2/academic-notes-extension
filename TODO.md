@@ -274,16 +274,34 @@ warmup dépassait 60. »
 historique passé. Il perd le brief chiffré à jour, le plan qui évolue, la validation des
 paliers et la continuité entre conversations. **On ne lui retire rien, on arrête d'ajouter.**
 
-#### Les questions encore ouvertes
+#### Les questions encore ouvertes — mises à jour le 28/08/2026
 
-1. **Le rail technique du plan** : généré côté backend (contrôlable, mais coûte des tokens
-   à AOK) ou côté client (gratuit, mais incontrôlable) ? C'est la question qui décide de
-   tout le reste.
-2. **Où vit le plan et le suivi ?** Le journal semble l'endroit naturel : il a déjà la
-   base, les notes, les annotations, et c'est là que vit la relecture.
-3. **Que contient exactement la doctrine ETM** livrée à 5,99 € — cf. le risque stratégique.
+1. **Le rail technique** — REFORMULÉE par Brice le 28/08 (la version backend-vs-client
+   était trop binaire). Acquis du 17/07 qui ne bougent pas : l'élève converse avec SON
+   agent IA (pas la nôtre), le prompt copiable n'est pas un problème (la valeur est dans
+   les données), et son IA ne « pioche » jamais directement dans notre base — c'est
+   l'EXTENSION qui récupère auprès du backend et joint à la conversation (décision 16/07 :
+   ne pas compter sur une IA pour naviguer vers une URL). La question restante : le brief
+   compressé / plan d'évolution généré depuis notre base est-il fabriqué par du code, ou
+   par NOTRE IA (jetons Anthropic côté backend — même rail que la future capture IA) ?
+   Les deux moteurs coexistent alors : notre IA fabrique le plan côté backend, son IA le
+   consomme en conversation.
+2. ~~**Où vit le plan et le suivi ?**~~ **TRANCHÉ par Brice le 28/08** : le plan s'affiche
+   dans un **panel dédié de l'extension** (données stockées chez nous). Mentorat seul
+   n'ouvre PAS le journal — les deux produits restent indépendants, l'extension est le
+   pont naturel vers le journal. Affichage AUSSI dans le journal seulement si l'élève a
+   les deux (futur pack premium — cohérent avec « le bundle viendra plus tard »).
+3. **Que contient exactement la doctrine ETM** — PRÉCISÉE par Brice le 28/08 : la réponse
+   dépend de l'USAGE. Définir d'abord comment les élèves mentorat interagissent avec le
+   suivi (recevoir le plan, le questionner, débriefer contre lui, passages de palier
+   validés par Brice, questions-réponses), puis écrire la doctrine pour servir exactement
+   ces interactions. Cf. le risque stratégique (ne pas cannibaliser l'ETM à 4000 €).
 4. ~~Le mentorat est-il un palier du journal ?~~ **TRANCHÉ par Brice le 17/07 : NON.**
    Voir « L'architecture commerciale » ci-dessous.
+
+> 📎 Traçabilité : la conversation d'origine (17/07, commits `3ad4b51`/`e01cc99`/`952d505`
+> entre 12h03 et 12h28) n'existe pas dans les transcripts de la machine principale —
+> ce TODO, écrit en direct pendant cette conversation, en est le seul enregistrement.
 
 ### ✅ 7. Remplacer les `alert()` restants par des notifications in-app — fait le 27/08/2026 (v1.6.12)
 
