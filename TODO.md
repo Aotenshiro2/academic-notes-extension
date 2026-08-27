@@ -17,8 +17,15 @@
 La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
 27/08/2026** sur ce qui y restait d'ouvert côté extension :
 
-- [ ] **GARDÉ — Dictée vocale Whisper** (100 % local, @xenova/transformers).
-- [ ] **GARDÉ — Transcription vidéo auto** (dépend de la dictée vocale).
+- [x] **Dictée vocale Whisper** ✅ **FAIT le 28/08/2026 (v1.6.13, zip généré, À DOGFOODER)** :
+      bouton micro dans la capture bar, Whisper small via @huggingface/transformers
+      dans un Web Worker (WebGPU si dispo, wasm sinon), 100 % local. Modèle
+      (~170 Mo) téléchargé au 1er usage puis en cache. Runtime onnx embarqué
+      dans le zip (conformité CWS : pas de code distant → zip 0,6 → 15 Mo).
+      Reste à valider en réel : le prompt micro du sidepanel et la qualité du
+      français (si small déçoit : passer à medium, ou base si trop lent).
+- [ ] **GARDÉ — Transcription vidéo auto** (réutilise la brique dictée : même
+      worker Whisper, il ne manque que l'extraction audio de la vidéo).
 - [ ] **GARDÉ (redimensionné) — Éditeur** : pas le gros chantier « éditeur
       enrichi » d'époque, mais quelques **correctifs et ajustements
       esthétiques** sur une partie de l'éditeur (liste précise à collecter
