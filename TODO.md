@@ -276,16 +276,16 @@ paliers et la continuité entre conversations. **On ne lui retire rien, on arrê
 
 #### Les questions encore ouvertes — mises à jour le 28/08/2026
 
-1. **Le rail technique** — REFORMULÉE par Brice le 28/08 (la version backend-vs-client
-   était trop binaire). Acquis du 17/07 qui ne bougent pas : l'élève converse avec SON
-   agent IA (pas la nôtre), le prompt copiable n'est pas un problème (la valeur est dans
-   les données), et son IA ne « pioche » jamais directement dans notre base — c'est
-   l'EXTENSION qui récupère auprès du backend et joint à la conversation (décision 16/07 :
-   ne pas compter sur une IA pour naviguer vers une URL). La question restante : le brief
-   compressé / plan d'évolution généré depuis notre base est-il fabriqué par du code, ou
-   par NOTRE IA (jetons Anthropic côté backend — même rail que la future capture IA) ?
-   Les deux moteurs coexistent alors : notre IA fabrique le plan côté backend, son IA le
-   consomme en conversation.
+1. ~~**Le rail technique**~~ **TRANCHÉ par Brice le 28/08 : NOTRE IA.** Le brief
+   compressé / plan d'évolution est fabriqué par notre IA (jetons Anthropic, appels côté
+   backend — même rail que la future capture IA). Acquis du 17/07 qui ne bougent pas :
+   l'élève converse avec SON agent IA, le prompt copiable n'est pas un problème (la
+   valeur est dans les données), et son IA ne « pioche » jamais directement dans notre
+   base — c'est l'EXTENSION qui récupère auprès du backend et joint à la conversation.
+   Les deux moteurs coexistent : notre IA FABRIQUE (backend, contrôlable, validable par
+   Brice), son IA CONSOMME (conversation). À prévoir avec : écran cockpit de monitorage
+   jetons/coûts par membre + support IA transversal (voir
+   `D:\6_Societe\Pilotage\Data-Performance\COCKPIT-ROADMAP.md`, section du 28/08).
 2. ~~**Où vit le plan et le suivi ?**~~ **TRANCHÉ par Brice le 28/08** : le plan s'affiche
    dans un **panel dédié de l'extension** (données stockées chez nous). Mentorat seul
    n'ouvre PAS le journal — les deux produits restent indépendants, l'extension est le
