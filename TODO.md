@@ -193,7 +193,19 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 >   (défaut claude-opus-5 ; passer le support à claude-haiku-4-5 = ~10× moins
 >   cher, décision Brice). La doctrine ETM payante (question 3) remplacera le
 >   cadre générique du plan.
-> - ⏭️ **Étape 4 — gating Stripe + page de vente** (5,99/8,99 €).
+> - ✅ **Étape 4a — GATING PAR ABONNEMENT, FAIT le 28/08** (journal `3e9b418` +
+>   extension `5e79ba9`) : le 🎓 passe par un portail (pas connecté → se
+>   connecter ; sans droits → écran d'upgrade avec CTA Live Club + renvoi
+>   support). Droits = Live Club actif OU Skool premium/vip (lus dans les
+>   tables cockpit_*, match par TOUS les emails du membre) OU grant manuel
+>   (table `MentoratGrant` — anciens formats 3000 €, cas particuliers ; le
+>   grant de Brice est posé). Le serveur re-vérifie brief et plan en 403 :
+>   l'extension ne décide jamais. Un inscrit newsletter n'a pas accès.
+>   Pour accorder un accès à la main : INSERT dans MentoratGrant (email, note).
+> - ⏭️ **Étape 4b — le forfait mentorat dédié (5,99/8,99 €)** : PRÉREQUIS BRICE :
+>   créer le produit + Payment Link Stripe et la page de vente sur le site.
+>   Ensuite : webhook/vérification Stripe dans checkMentoratAccess + l'écran
+>   d'upgrade pointe vers la page de paiement en plus du Live Club.
 > - La question 3 (contenu doctrine ETM / interactions) reste la conversation
 >   produit à avoir — voir « Les questions encore ouvertes ».
 
