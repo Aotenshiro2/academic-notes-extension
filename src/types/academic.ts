@@ -269,6 +269,8 @@ export interface Settings {
   captureScreenshots: boolean
   extractMainContent: boolean
   language: 'fr' | 'en'
+  /** Micro choisi pour la dictée vocale (deviceId) ; absent = micro système */
+  dictationDeviceId?: string
 }
 
 // Messages pour communication entre composants

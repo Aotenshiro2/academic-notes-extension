@@ -300,29 +300,30 @@ function MessageBlock({
     )
   }
 
-  // Render collapsed long text — compact pill style
+  // Render collapsed long text — carte pleine largeur (retour Brice 28/08 :
+  // le max-w-[240px] d'origine laissait un grand vide à droite du panneau)
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative block w-full max-w-[240px]">
+      <div className="group relative block w-full">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
           className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden"
         >
           {/* Title + excerpt */}
-          <div className="px-2.5 pt-2 pb-1 min-h-[36px]">
+          <div className="px-3 pt-2 pb-1 min-h-[36px]">
             {previewTitle && (
               <p className="text-[11px] font-semibold text-foreground/80 truncate leading-snug mb-0.5">
                 {previewTitle}
               </p>
             )}
             {previewExcerpt && (
-              <p className="text-[10px] text-foreground/50 leading-relaxed line-clamp-2">
+              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-3">
                 {previewExcerpt}
               </p>
             )}
             {!previewTitle && !previewExcerpt && (
-              <p className="text-[10px] text-foreground/50 leading-relaxed line-clamp-3">
-                {plainText.slice(0, 120)}
+              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-4">
+                {plainText.slice(0, 240)}
               </p>
             )}
           </div>

@@ -29,6 +29,7 @@ export default defineConfig({
         'sidepanel/index': resolve(__dirname, 'src/sidepanel/index.html'),
         'fullscreen/index': resolve(__dirname, 'src/fullscreen/index.html'),
         'guide/index': resolve(__dirname, 'src/guide/index.html'),
+        'permission/index': resolve(__dirname, 'src/permission/index.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {

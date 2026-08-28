@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair, Mic, Square } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
-import { startRecording, transcribe, type Recorder, type DictationProgress } from '@/lib/dictation'
+import { startRecording, transcribe, micPermissionState, openMicPermissionPage, type Recorder, type DictationProgress } from '@/lib/dictation'
 import { toast } from '@/lib/toast'
 
 export interface CaptureInputHandle {
@@ -122,7 +122,15 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         setDictationState('recording')
       } catch (error) {
         console.error('[CaptureInput] Micro inaccessible:', error)
-        toast.error('Micro inaccessible : autorise le microphone pour l\'extension.')
+        // Chrome n'affiche jamais le prompt micro dans le side panel : tant
+        // que la permission n'est pas accordée, on l'obtient via un onglet
+        const state = await micPermissionState()
+        if (state !== 'granted') {
+          openMicPermissionPage()
+          toast.info('Autorise le micro dans l\'onglet qui vient de s\'ouvrir, puis relance la dictée.')
+        } else {
+          toast.error('Micro inaccessible : vérifie qu\'il est branché et libre, ou choisis-en un autre dans les Paramètres.')
+        }
       }
       return
     }

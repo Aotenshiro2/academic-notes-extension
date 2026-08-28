@@ -1,5 +1,5 @@
 import { toast } from '../lib/toast'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Settings,
   Download,
@@ -8,8 +8,10 @@ import {
   FileText,
   Globe,
   Info,
-  Link2
+  Link2,
+  Mic
 } from 'lucide-react'
+import { micPermissionState, listMicrophones, openMicPermissionPage } from '@/lib/dictation'
 import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
 import { PROVIDER_LIST } from '@/lib/analysis-providers'
@@ -33,6 +35,26 @@ function SettingsView({
   const [importFileRef, setImportFileRef] = useState<HTMLInputElement | null>(null)
   // Métadonnées de capture : réglage global (localStorage), OFF par défaut
   const [showMeta, setShowMetaState] = useState(getShowMeta)
+
+  // Dictée vocale : état de la permission micro + micros disponibles.
+  // Re-vérifié quand le panneau reprend le focus (retour de l'onglet
+  // d'autorisation) — la permission a pu changer entre-temps.
+  const [micGranted, setMicGranted] = useState(false)
+  const [microphones, setMicrophones] = useState<{ deviceId: string; label: string }[]>([])
+  useEffect(() => {
+    let alive = true
+    const refresh = async () => {
+      const state = await micPermissionState()
+      if (!alive) return
+      setMicGranted(state === 'granted')
+      if (state === 'granted') {
+        try { setMicrophones(await listMicrophones()) } catch { /* liste indisponible */ }
+      }
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => { alive = false; window.removeEventListener('focus', refresh) }
+  }, [])
   const [tabUrlErrors, setTabUrlErrors] = useState<Partial<Record<AnalysisProvider, boolean>>>({})
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
@@ -161,6 +183,47 @@ function SettingsView({
         </div>
       </div>
 
+      {/* Dictée vocale */}
+      <div className="mb-6">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
+          <Mic size={16} className="mr-2" />
+          Dictée vocale
+        </h3>
+        <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+          {micGranted ? (
+            <>
+              <p className="font-medium text-foreground">Microphone utilisé</p>
+              <select
+                value={settings.dictationDeviceId ?? ''}
+                onChange={e => onChange({ dictationDeviceId: e.target.value || undefined })}
+                className="w-full text-sm bg-background border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              >
+                <option value="">Micro par défaut du système</option>
+                {microphones.map(m => (
+                  <option key={m.deviceId} value={m.deviceId}>{m.label}</option>
+                ))}
+              </select>
+              <p className="text-sm text-muted-foreground">
+                Whisper tourne 100 % en local : ta voix ne quitte jamais ta machine.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-foreground">Micro non autorisé</p>
+              <p className="text-sm text-muted-foreground">
+                Chrome ne peut demander la permission que depuis un onglet, pas depuis ce panneau.
+              </p>
+              <button
+                onClick={() => openMicPermissionPage()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Mic size={14} />
+                Autoriser le micro
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Threads d'analyse IA */}
       <div className="mb-6">

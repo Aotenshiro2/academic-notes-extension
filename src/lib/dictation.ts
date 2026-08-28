@@ -25,14 +25,53 @@ export function preloadWhisper(): void {
   getWorker()
 }
 
+// ── Permission micro ─────────────────────────────────────────────────────────
+// Chrome n'affiche JAMAIS le prompt getUserMedia dans un side panel : tant que
+// l'origine de l'extension n'a pas la permission, l'appel échoue sans rien
+// montrer. La demande doit partir d'un vrai onglet → src/permission/.
+
+export async function micPermissionState(): Promise<PermissionState | 'unknown'> {
+  try {
+    const st = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+    return st.state
+  } catch {
+    return 'unknown'
+  }
+}
+
+/** Ouvre l'onglet d'autorisation (le seul endroit où Chrome montre le prompt) */
+export function openMicPermissionPage(): void {
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/permission/index.html') })
+}
+
+/** Micros disponibles (labels remplis seulement si la permission est accordée) */
+export async function listMicrophones(): Promise<{ deviceId: string; label: string }[]> {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  return devices
+    .filter(d => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default')
+    .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Micro ${i + 1}` }))
+}
+
 export interface Recorder {
   stop: () => Promise<Blob>
   cancel: () => void
 }
 
 export async function startRecording(): Promise<Recorder> {
+  // Micro choisi dans les Paramètres (sinon le micro système par défaut).
+  // `ideal` et pas `exact` : un micro débranché ne doit pas casser la dictée.
+  let deviceId: string | undefined
+  try {
+    const { default: storage } = await import('./storage')
+    deviceId = (await storage.getSettings()).dictationDeviceId
+  } catch { /* réglage indisponible : micro par défaut */ }
+
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+    },
   })
   const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
   const recorder = new MediaRecorder(stream, { mimeType })
