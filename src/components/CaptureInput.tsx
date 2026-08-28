@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair, Mic, Square } from 'lucide-react'
+import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair, Mic, Square, RotateCcw, X } from 'lucide-react'
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
 import { startRecording, transcribe, micPermissionState, openMicPermissionPage, type Recorder, type DictationProgress } from '@/lib/dictation'
 import { toast } from '@/lib/toast'
@@ -53,10 +53,16 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
   const [isCapturingExternal, setIsCapturingExternal] = useState(false)
-  // Dictée vocale (Whisper local)
-  const [dictationState, setDictationState] = useState<'idle' | 'recording' | 'processing'>('idle')
+  // Dictée vocale (Whisper local). Règle anti-perte (crainte Brice 28/08,
+  // vécue sur ChatGPT : 8 min de parole perdues sur un bug en fin de chaîne) :
+  // l'audio enregistré est CONSERVÉ tant que la transcription n'a pas réussi —
+  // un échec passe en état « retry », jamais à la poubelle.
+  const [dictationState, setDictationState] = useState<'idle' | 'recording' | 'processing' | 'retry'>('idle')
   const [downloadPct, setDownloadPct] = useState<number | null>(null)
+  const [recordSeconds, setRecordSeconds] = useState(0)
   const recorderRef = useRef<Recorder | null>(null)
+  const pendingAudioRef = useRef<Blob | null>(null)
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -111,14 +117,74 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
     }
   }, [value, onChange])
 
+  const stopRecordTimer = () => {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current)
+      recordTimerRef.current = null
+    }
+  }
+
+  const insertTranscription = useCallback((text: string) => {
+    const el = editorRef.current
+    if (!el) return
+    const needsSpace = !!el.textContent && !/\s$/.test(el.textContent)
+    el.appendChild(document.createTextNode((needsSpace ? ' ' : '') + text))
+    handleInput()
+  }, [handleInput])
+
+  // L'audio (pendingAudioRef) n'est vidé QUE sur transcription réussie
+  const runTranscription = useCallback(async (blob: Blob) => {
+    setDictationState('processing')
+    pendingAudioRef.current = blob
+    try {
+      const text = await transcribe(blob, (p: DictationProgress) => {
+        setDownloadPct(p.phase === 'downloading' ? p.progress : null)
+      })
+      pendingAudioRef.current = null
+      if (text) insertTranscription(text)
+      else toast.info('Rien à transcrire : enregistrement trop court ou silencieux.')
+      setDictationState('idle')
+    } catch (error) {
+      console.error('[CaptureInput] Transcription impossible:', error)
+      toast.error('Transcription échouée — ton audio est CONSERVÉ. Re-clique le micro pour réessayer.')
+      setDictationState('retry')
+    } finally {
+      setDownloadPct(null)
+    }
+  }, [insertTranscription])
+
+  const finishDictation = useCallback(async () => {
+    const recorder = recorderRef.current
+    recorderRef.current = null
+    stopRecordTimer()
+    if (!recorder) return
+    const blob = await recorder.stop()
+    await runTranscription(blob)
+  }, [runTranscription])
+
   // Dictée vocale : clic = enregistrer, re-clic = transcrire (Whisper local).
   // Premier usage : le modèle (~170 Mo) se télécharge une fois, % sur le bouton.
   const toggleDictation = useCallback(async () => {
     if (dictationState === 'processing') return
 
+    // Échec précédent : on retente la transcription sur l'audio conservé
+    if (dictationState === 'retry') {
+      const blob = pendingAudioRef.current
+      if (blob) await runTranscription(blob)
+      else setDictationState('idle')
+      return
+    }
+
     if (dictationState === 'idle') {
       try {
-        recorderRef.current = await startRecording()
+        recorderRef.current = await startRecording({
+          onAutoStop: () => {
+            toast.info('Limite de 5 minutes atteinte : la transcription démarre, rien n\'est perdu.')
+            void finishDictation()
+          },
+        })
+        setRecordSeconds(0)
+        recordTimerRef.current = setInterval(() => setRecordSeconds(s => s + 1), 1000)
         setDictationState('recording')
       } catch (error) {
         console.error('[CaptureInput] Micro inaccessible:', error)
@@ -135,33 +201,13 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       return
     }
 
-    const recorder = recorderRef.current
-    recorderRef.current = null
-    if (!recorder) { setDictationState('idle'); return }
-    setDictationState('processing')
-    try {
-      const blob = await recorder.stop()
-      const text = await transcribe(blob, (p: DictationProgress) => {
-        setDownloadPct(p.phase === 'downloading' ? p.progress : null)
-      })
-      if (text) {
-        const el = editorRef.current
-        if (el) {
-          const needsSpace = !!el.textContent && !/\s$/.test(el.textContent)
-          el.appendChild(document.createTextNode((needsSpace ? ' ' : '') + text))
-          handleInput()
-        }
-      } else {
-        toast.info('Rien à transcrire : enregistrement trop court ou silencieux.')
-      }
-    } catch (error) {
-      console.error('[CaptureInput] Dictée impossible:', error)
-      toast.error('Dictée impossible : ' + (error instanceof Error ? error.message : 'erreur inconnue'))
-    } finally {
-      setDownloadPct(null)
-      setDictationState('idle')
-    }
-  }, [dictationState, handleInput])
+    await finishDictation()
+  }, [dictationState, finishDictation, runTranscription])
+
+  const discardDictation = useCallback(() => {
+    pendingAudioRef.current = null
+    setDictationState('idle')
+  }, [])
 
   const hasContent = useMemo(() => {
     const stripped = value.replace(/<[^>]*>/g, '').trim()
@@ -475,7 +521,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                 ? 'bg-red-500/15 text-red-500 animate-pulse'
                 : dictationState === 'processing'
                   ? 'text-muted-foreground'
-                  : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/10'
+                  : dictationState === 'retry'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/10'
               }
             `}
             title={
@@ -483,22 +531,45 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                 ? 'Arrêter et transcrire'
                 : dictationState === 'processing'
                   ? (downloadPct !== null ? `Téléchargement du modèle… ${downloadPct} %` : 'Transcription…')
-                  : 'Dicter (Whisper, 100 % local)'
+                  : dictationState === 'retry'
+                    ? 'Réessayer la transcription (ton audio est conservé)'
+                    : 'Dicter (Whisper, 100 % local)'
             }
-            aria-label={dictationState === 'recording' ? 'Arrêter la dictée' : 'Dicter'}
+            aria-label={dictationState === 'recording' ? 'Arrêter la dictée' : dictationState === 'retry' ? 'Réessayer la transcription' : 'Dicter'}
           >
             {dictationState === 'recording'
               ? <Square size={13} fill="currentColor" />
               : dictationState === 'processing'
                 ? <Loader2 size={16} className="animate-spin" />
-                : <Mic size={16} />
+                : dictationState === 'retry'
+                  ? <RotateCcw size={15} />
+                  : <Mic size={16} />
             }
+            {/* Badge : chrono pendant l'enregistrement (ambre près de la
+                limite de 5 min), % pendant le téléchargement du modèle */}
+            {dictationState === 'recording' && (
+              <span className={`absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-semibold tabular-nums bg-background border border-border px-1 rounded ${recordSeconds >= 270 ? 'text-amber-500' : 'text-red-500'}`}>
+                {Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')}
+              </span>
+            )}
             {downloadPct !== null && (
               <span className="absolute -top-1.5 -right-1.5 text-[8px] font-semibold text-primary bg-background border border-border px-0.5 rounded">
                 {downloadPct}%
               </span>
             )}
           </button>
+          {/* Abandonner un audio conservé après échec (choix explicite, jamais automatique) */}
+          {dictationState === 'retry' && (
+            <button
+              type="button"
+              onClick={discardDictation}
+              className="w-5 h-8 flex items-center justify-center text-muted-foreground/50 hover:text-red-500 transition-colors"
+              title="Abandonner cet audio"
+              aria-label="Abandonner l'audio en attente"
+            >
+              <X size={12} />
+            </button>
+          )}
           {/* Trade button — démarre un segment (clôt l'actif s'il y en a un) */}
           {onStartTrade && (
             <button

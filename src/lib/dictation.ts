@@ -57,7 +57,12 @@ export interface Recorder {
   cancel: () => void
 }
 
-export async function startRecording(): Promise<Recorder> {
+export interface RecordingOptions {
+  /** Appelé si la limite de durée arrête l'enregistrement toute seule */
+  onAutoStop?: () => void
+}
+
+export async function startRecording(options?: RecordingOptions): Promise<Recorder> {
   // Micro choisi dans les Paramètres (sinon le micro système par défaut).
   // `ideal` et pas `exact` : un micro débranché ne doit pas casser la dictée.
   let deviceId: string | undefined
@@ -77,9 +82,19 @@ export async function startRecording(): Promise<Recorder> {
   const recorder = new MediaRecorder(stream, { mimeType })
   const chunks: BlobPart[] = []
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
-  recorder.start()
+  // Timeslice 1 s : l'audio est découpé en morceaux au fil de l'eau au lieu
+  // d'un bloc unique remis à l'arrêt — la donnée existe déjà en mémoire
+  // pendant que tu parles (sécurité anti-perte sur les longues dictées)
+  recorder.start(1000)
 
-  const timeout = setTimeout(() => { if (recorder.state === 'recording') recorder.stop() }, MAX_RECORDING_MS)
+  // À la limite, on ARRÊTE ET ON TRANSCRIT (via onAutoStop) : on ne jette
+  // jamais ce qui a été dit
+  const timeout = setTimeout(() => {
+    if (recorder.state === 'recording') {
+      recorder.stop()
+      options?.onAutoStop?.()
+    }
+  }, MAX_RECORDING_MS)
   const cleanup = () => {
     clearTimeout(timeout)
     stream.getTracks().forEach(t => t.stop())
@@ -93,6 +108,7 @@ export async function startRecording(): Promise<Recorder> {
           resolve(new Blob(chunks, { type: mimeType }))
         }
         if (recorder.state === 'recording') recorder.stop()
+        // Déjà arrêté (limite de durée atteinte) : les chunks sont complets
         else recorder.onstop?.(new Event('stop'))
       }),
     cancel: () => {
