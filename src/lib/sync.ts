@@ -562,3 +562,53 @@ export async function verifySyncStatus(
     return { confirmed: 0, pending: 0, missing: 0, locallyExcluded: 0, journalExcluded: 0, journalOrphans: 0, missingNotes: [], verifyError: `Erreur : ${msg}` }
   }
 }
+
+// ── Mode mentorat ─────────────────────────────────────────────────────────────
+
+/** Miroir de MentoratBrief côté journal (src/lib/mentorat-brief.ts) */
+export interface MentoratBriefData {
+  periodDays: number
+  generatedAt: string
+  trades: {
+    total: number
+    gain: number
+    perte: number
+    be: number
+    open: number
+    graded: number
+    grades: Record<'A' | 'B' | 'C', number>
+    causes: Record<'technique' | 'connaissance' | 'emotionnel', number>
+    calibration: Record<'A' | 'B' | 'C', { gain: number; perte: number; be: number }>
+  }
+  warmups: {
+    count: number
+    avgEmotion: number | null
+    cShareAfterHighEmotion: number | null
+    cShareAfterLowEmotion: number | null
+  }
+  cooldowns: { count: number; topErrors: { text: string; count: number }[] }
+  noteGrades: Record<'A' | 'B' | 'C', number>
+  concepts: { name: string; count: number }[]
+  monthly: { month: string; A: number; B: number; C: number }[]
+  reviewBacklog: number
+  text: string
+}
+
+/**
+ * Récupère le brief compressé de l'élève connecté (étape 1 du mode mentorat).
+ * Calculé côté backend depuis la base — le condensé qu'un prompt copié ne
+ * peut pas produire.
+ */
+export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratBriefData; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté — connecte-toi dans le compte.' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/brief?days=${days}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return { error: `Brief indisponible (HTTP ${res.status})` }
+    return { brief: await res.json() as MentoratBriefData }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
