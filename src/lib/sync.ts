@@ -675,6 +675,19 @@ export async function generateMentoratPlan(days = 90): Promise<{ plan?: string; 
   }
 }
 
+/** Retire un jugement côté journal (la sync n'efface jamais d'elle-même) */
+export async function deleteJournalAnnotation(annotationId: string): Promise<void> {
+  try {
+    const token = await getBearerToken()
+    if (!token) return
+    await fetch(`${JOURNAL_API}/api/annotations`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ id: annotationId }),
+    })
+  } catch { /* best effort — la note locale est déjà retirée */ }
+}
+
 // ── Support IA ────────────────────────────────────────────────────────────────
 
 export async function sendSupportMessage(message: string, threadId?: string | null): Promise<{ threadId?: string; reply?: string; error?: string }> {
@@ -694,10 +707,14 @@ export async function sendSupportMessage(message: string, threadId?: string | nu
   }
 }
 
-/** « Parler à un humain » : marque le fil escaladé, renvoie l'email de contact */
-export async function escalateSupport(threadId?: string | null): Promise<{ email?: string; error?: string }> {
+/**
+ * « Parler à un humain » : marque le fil escaladé. Si le backend a pu envoyer
+ * l'email serveur à l'équipe (`notified`), le client n'a RIEN d'autre à faire ;
+ * sinon il retombe sur le mailto v1 avec l'adresse renvoyée.
+ */
+export async function escalateSupport(threadId?: string | null): Promise<{ email?: string; notified?: boolean; error?: string }> {
   const token = await getBearerToken()
-  if (!token) return { email: 'brice.d@aoknowledge.com' }
+  if (!token) return { email: 'brice.d@aoknowledge.com', notified: false }
   try {
     const res = await fetch(`${JOURNAL_API}/api/support/escalate`, {
       method: 'POST',
@@ -705,8 +722,34 @@ export async function escalateSupport(threadId?: string | null): Promise<{ email
       body: JSON.stringify({ threadId: threadId ?? undefined }),
     })
     const data = await res.json().catch(() => ({}))
-    return { email: data.email ?? 'brice.d@aoknowledge.com' }
+    return { email: data.email ?? 'brice.d@aoknowledge.com', notified: data.notified === true }
   } catch {
-    return { email: 'brice.d@aoknowledge.com' }
+    return { email: 'brice.d@aoknowledge.com', notified: false }
+  }
+}
+
+/**
+ * Le dernier fil de support de l'utilisateur, pour ROUVRIR la conversation au
+ * lieu de repartir de zéro : c'est par là qu'arrivent les réponses humaines
+ * posées depuis le cockpit.
+ */
+export async function fetchSupportThread(): Promise<{
+  threadId: string | null
+  messages: { role: string; content: string; at?: string }[]
+}> {
+  const token = await getBearerToken()
+  if (!token) return { threadId: null, messages: [] }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/support/thread`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return { threadId: null, messages: [] }
+    const data = await res.json().catch(() => ({}))
+    return {
+      threadId: typeof data.threadId === 'string' ? data.threadId : null,
+      messages: Array.isArray(data.messages) ? data.messages : [],
+    }
+  } catch {
+    return { threadId: null, messages: [] }
   }
 }

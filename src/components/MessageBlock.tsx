@@ -514,9 +514,13 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // (date, + tag, poubelle) deviennent une pastille en surimpression au
   // survol — zéro décalage de mise en page (même leçon que le bouton d'envoi
   // de la capture bar).
+  // ⚠️ Révélation par OPACITÉ, jamais par display : basculer le display au
+  // survol laissait des artefacts de peinture (zone basse fantôme en
+  // surimpression du texte, vidéo Brice du 29/08). L'opacité se compose sur
+  // le GPU sans re-peindre la zone.
   if (!tags || tags.length === 0) {
     return (
-      <div className="absolute -top-2.5 right-0 z-20 hidden group-hover:flex focus-within:flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground">
+      <div className="absolute -top-2.5 right-0 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
         <span>{formatSmartDate(timestamp)}</span>
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
@@ -539,11 +543,15 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
     )
   }
 
+  // Avec tags : l'horodatage ne réserve PLUS de place dans la ligne (l'espace
+  // vide avant les tags était incohérent, retour Brice 29/08) — il rejoint la
+  // pastille en surimpression, comme pour les blocs sans tag.
   return (
-    <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
-      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+    <>
+      <span className="absolute -top-2.5 right-0 z-20 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
         {formatSmartDate(timestamp)}
       </span>
+      <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
       {(tags ?? []).map(tag => (
         <span
           key={tag}
@@ -590,7 +598,8 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
           <Trash2 size={11} />
         </button>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

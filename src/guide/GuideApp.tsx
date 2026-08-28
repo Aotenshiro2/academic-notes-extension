@@ -65,6 +65,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.7.1',
+    title: 'Trois finitions',
+    items: [
+      'Correction : un fantôme de la zone du bas pouvait rester affiché par-dessus le texte pendant le survol des blocs. Réglé.',
+      'Correction : plus d\'espace vide avant les tags d\'un bloc — l\'horodatage apparaît désormais en surimpression au survol, comme partout ailleurs.',
+      'Nouveau : « Retirer la note » dans la fenêtre de notation — tu peux enlever un jugement A/B/C posé par erreur, le trade redevient non noté (dans l\'extension et le journal).',
+    ],
+  },
+  {
     version: '1.7.0',
     title: 'Dicte tes notes',
     items: [

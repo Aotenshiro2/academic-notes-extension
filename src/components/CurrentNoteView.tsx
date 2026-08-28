@@ -13,6 +13,7 @@ import WarmupCard from './WarmupCard'
 import DolBar from './DolBar'
 import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
+import { deleteJournalAnnotation } from '@/lib/sync'
 import { collectNoteImages } from '@/lib/note-images'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
@@ -233,6 +234,20 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           reviewDueAt: Date.now() + REVIEW_DELAY_MS,
         }
     await storage.saveNote({ ...note, annotations: [...rest, updated] })
+    setRemoteUpdatePending(false)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [note, notationTarget, noteAnnotation, findTradeAnnotation, onNoteUpdate])
+
+  // Retirer un jugement posé (le trade/la note redevient non noté). La sync
+  // n'efface jamais d'elle-même côté journal : on supprime explicitement.
+  const handleRemoveNotation = useCallback(async () => {
+    if (!note || !notationTarget) return
+    const tradeRef = notationTarget.tradeRef
+    const existing = tradeRef ? findTradeAnnotation(tradeRef) : noteAnnotation
+    if (!existing) return
+    await storage.saveNote({ ...note, annotations: (note.annotations ?? []).filter(a => a !== existing) })
+    void deleteJournalAnnotation(existing.id)
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
@@ -775,6 +790,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           existing={notationTarget.tradeRef ? findTradeAnnotation(notationTarget.tradeRef) : noteAnnotation}
           outcome={notationTarget.tradeRef ? (note.trades ?? []).find(t => t.id === notationTarget.tradeRef)?.outcome : undefined}
           onSave={handleSaveNotation}
+          onRemove={handleRemoveNotation}
           onClose={() => setNotationTarget(null)}
         />
       )}
@@ -930,7 +946,8 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
         onClick={() => setEditing(true)}
         title="Insérer du texte ici"
       >
-        <div className="w-full items-center gap-1 hidden group-hover/ins:flex">
+        {/* Révélation par opacité (jamais display : artefacts de peinture) */}
+        <div className="w-full items-center gap-1 flex opacity-0 group-hover/ins:opacity-100 transition-opacity pointer-events-none">
           <span className="flex-1 border-t border-primary/30" />
           <Plus size={12} className="text-primary/60 flex-shrink-0" />
           <span className="flex-1 border-t border-primary/30" />

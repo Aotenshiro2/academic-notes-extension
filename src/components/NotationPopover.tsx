@@ -6,6 +6,8 @@ interface NotationPopoverProps {
   existing?: Annotation
   outcome?: TradeOutcome // contexte trade : sur une perte, la cause est mise en avant (MC1/Tendler)
   onSave: (grade: AnnotationGrade, phrase: string, cause: AnnotationCause | null) => void
+  /** Retirer un jugement déjà posé (visible seulement si `existing`) */
+  onRemove?: () => void
   onClose: () => void
 }
 
@@ -24,7 +26,7 @@ const CAUSES: { value: AnnotationCause; label: string }[] = [
 const POPUP_WIDTH = 264
 const POPUP_HEIGHT = 240
 
-function NotationPopover({ position, existing, outcome, onSave, onClose }: NotationPopoverProps) {
+function NotationPopover({ position, existing, outcome, onSave, onRemove, onClose }: NotationPopoverProps) {
   const [grade, setGrade] = useState<AnnotationGrade | null>(existing?.grade ?? null)
   const [phrase, setPhrase] = useState(existing?.phrase ?? '')
   const [cause, setCause] = useState<AnnotationCause | null>(existing?.causeCategory ?? null)
@@ -138,9 +140,20 @@ function NotationPopover({ position, existing, outcome, onSave, onClose }: Notat
         ))}
       </div>
 
-      {/* Enregistrer */}
+      {/* Enregistrer — et retirer, si un jugement existe déjà (retour Brice
+          29/08 : on doit pouvoir revenir en arrière sur une note posée) */}
       <div className="flex items-center justify-between pt-0.5">
-        <span className="text-[10px] text-muted-foreground/60">Relecture dans 14 j</span>
+        {existing && onRemove ? (
+          <button
+            onClick={() => { onRemove(); onClose() }}
+            className="text-[10px] text-red-500/70 hover:text-red-500 hover:underline underline-offset-2 transition-colors"
+            title="Retirer ce jugement (le trade redevient non noté)"
+          >
+            Retirer la note
+          </button>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/60">Relecture dans 14 j</span>
+        )}
         <button
           onClick={handleSave}
           disabled={!canSave}
