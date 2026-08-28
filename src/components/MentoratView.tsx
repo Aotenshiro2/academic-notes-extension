@@ -6,8 +6,9 @@
 // Anthropic côté Vercel) : phase de dogfooding.
 import { toast } from '@/lib/toast'
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles } from 'lucide-react'
-import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
+import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Lock, LifeBuoy, User } from 'lucide-react'
+import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
+import { getSession } from '@/lib/auth'
 
 const PERIODS = [
   { days: 30, label: '30 j' },
@@ -53,11 +54,38 @@ function PlanText({ text }: { text: string }) {
   )
 }
 
-function MentoratView({ onBack }: { onBack: () => void }) {
+interface MentoratViewProps {
+  onBack: () => void
+  onOpenAccount: () => void
+  onOpenSupport: () => void
+}
+
+// Portail d'entrée (décision Brice 28/08) : le mode mentorat est réservé aux
+// membres. Pas connecté → invitation à se connecter ; connecté sans droits →
+// écran d'upgrade. L'affichage suit /api/mentorat/access, et le serveur
+// re-vérifie de toute façon sur chaque route (l'extension ne décide jamais).
+type GateState = 'checking' | 'anon' | 'denied' | 'gate-error' | 'ok'
+
+function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProps) {
+  const [gate, setGate] = useState<GateState>('checking')
   const [days, setDays] = useState(90)
   const [brief, setBrief] = useState<MentoratBriefData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const session = await getSession()
+      if (!alive) return
+      if (!session) { setGate('anon'); return }
+      const res = await fetchMentoratAccess()
+      if (!alive) return
+      if (res.access) setGate(res.access.entitled ? 'ok' : 'denied')
+      else setGate('gate-error')
+    })()
+    return () => { alive = false }
+  }, [])
 
   const load = useCallback(async (d: number) => {
     setLoading(true)
@@ -68,7 +96,7 @@ function MentoratView({ onBack }: { onBack: () => void }) {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load(days) }, [days, load])
+  useEffect(() => { if (gate === 'ok') load(days) }, [gate, days, load])
 
   const copyBrief = async () => {
     if (!brief) return
@@ -114,30 +142,97 @@ function MentoratView({ onBack }: { onBack: () => void }) {
         </button>
         <GraduationCap size={16} className="text-purple-500 flex-shrink-0" />
         <h2 className="flex-1 text-sm font-semibold text-foreground">Mode mentorat</h2>
-        <div className="flex items-center gap-0.5 rounded-lg bg-muted/50 p-0.5">
-          {PERIODS.map(p => (
+        {gate === 'ok' && (
+          <>
+            <div className="flex items-center gap-0.5 rounded-lg bg-muted/50 p-0.5">
+              {PERIODS.map(p => (
+                <button
+                  key={p.days}
+                  onClick={() => setDays(p.days)}
+                  className={`px-2 py-0.5 text-[11px] rounded-md transition-colors ${
+                    days === p.days ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
             <button
-              key={p.days}
-              onClick={() => setDays(p.days)}
-              className={`px-2 py-0.5 text-[11px] rounded-md transition-colors ${
-                days === p.days ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              onClick={() => load(days)}
+              disabled={loading}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
+              title="Recalculer"
+              aria-label="Recalculer le brief"
             >
-              {p.label}
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
-          ))}
-        </div>
-        <button
-          onClick={() => load(days)}
-          disabled={loading}
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
-          title="Recalculer"
-          aria-label="Recalculer le brief"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+          </>
+        )}
       </div>
 
+      {/* Portail : vérification, connexion, upgrade */}
+      {gate === 'checking' && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={22} className="animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {gate === 'anon' && (
+        <div className="p-4 border border-border rounded-xl space-y-3 text-center">
+          <User size={22} className="mx-auto text-muted-foreground" />
+          <p className="text-sm font-semibold text-foreground">Connecte-toi pour accéder au mentorat</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Le mode mentorat est lié à ton compte AOKnowledge : c'est lui qui porte
+            ton suivi et tes droits d'accès.
+          </p>
+          <button
+            onClick={onOpenAccount}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Se connecter
+          </button>
+        </div>
+      )}
+
+      {gate === 'denied' && (
+        <div className="space-y-3">
+          <div className="p-4 border border-purple-500/30 bg-purple-500/5 rounded-xl space-y-2">
+            <div className="flex items-center gap-2">
+              <Lock size={14} className="text-purple-500 flex-shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Le mode mentorat est réservé aux membres</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Il est inclus pour les membres du <strong className="text-foreground/80">Live Club</strong>,
+              les niveaux <strong className="text-foreground/80">Premium et VIP</strong>, et les élèves
+              des anciennes formations complètes. Un forfait mentorat dédié arrive aussi.
+            </p>
+            <button
+              onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com/live-club' })}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Sparkles size={13} />
+              Découvrir le Live Club
+            </button>
+          </div>
+          <button
+            onClick={onOpenSupport}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            title="Ton accès existe peut-être sous un autre email"
+          >
+            <LifeBuoy size={12} />
+            Déjà membre ? Contacte le support
+          </button>
+        </div>
+      )}
+
+      {gate === 'gate-error' && (
+        <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-700 dark:text-amber-400">
+          <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+          <span>Impossible de vérifier ton accès (réseau ?). Reviens sur l'écran et réessaie.</span>
+        </div>
+      )}
+
+      {gate === 'ok' && (<>
       <p className="text-xs text-muted-foreground leading-relaxed">
         Ton brief : le condensé chiffré de tes {days} derniers jours, calculé depuis tes
         notes, jugements et trades. C'est la matière du futur plan d'évolution.
@@ -271,6 +366,7 @@ function MentoratView({ onBack }: { onBack: () => void }) {
           </div>
         </>
       ) : null}
+      </>)}
     </div>
   )
 }

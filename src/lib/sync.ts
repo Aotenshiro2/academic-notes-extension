@@ -613,6 +613,26 @@ export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratB
   }
 }
 
+export interface MentoratAccessData {
+  entitled: boolean
+  reason: 'manuel' | 'liveclub' | 'skool-vip' | 'skool-premium' | null
+}
+
+/** Le mode mentorat est-il ouvert pour ce compte ? (le backend décide) */
+export async function fetchMentoratAccess(): Promise<{ access?: MentoratAccessData; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/access`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return { error: `Vérification impossible (HTTP ${res.status})` }
+    return { access: await res.json() as MentoratAccessData }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
 export interface MentoratPlanData {
   id: string
   periodDays: number

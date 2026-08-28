@@ -836,7 +836,11 @@ function App() {
           {showSupport ? (
             <SupportView onBack={() => setShowSupport(false)} />
           ) : showMentorat ? (
-            <MentoratView onBack={() => setShowMentorat(false)} />
+            <MentoratView
+              onBack={() => setShowMentorat(false)}
+              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
+              onOpenSupport={() => { closeAllViews(); setShowSupport(true) }}
+            />
           ) : showAiConfig ? (
             <AiConfigView
               settings={settings!}
