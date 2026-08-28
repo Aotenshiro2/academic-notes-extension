@@ -14,6 +14,35 @@ interface ChatMessage {
   content: string
 }
 
+// L'assistant cite des adresses (aoknowledge.com, journal…) : on les rend
+// cliquables. URL complètes et domaines nus, ouverts dans un nouvel onglet.
+const LINK_RE = /(https?:\/\/[^\s)>»]+|(?:[a-z0-9-]+\.)+(?:com|fr|net|org|io|app)(?:\/[^\s)>»]*)?)/gi
+
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(LINK_RE)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null
+        LINK_RE.lastIndex = 0
+        const isLink = LINK_RE.test(part) && part.length === part.match(LINK_RE)?.[0]?.length
+        if (!isLink) return <React.Fragment key={i}>{part}</React.Fragment>
+        const url = part.startsWith('http') ? part : `https://${part}`
+        return (
+          <button
+            key={i}
+            onClick={e => { e.stopPropagation(); chrome.tabs.create({ url }) }}
+            className="underline underline-offset-2 text-blue-600 dark:text-blue-400 hover:opacity-80 break-all"
+            title={`Ouvrir ${url}`}
+          >
+            {part}
+          </button>
+        )
+      })}
+    </>
+  )
+}
+
 function SupportView({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -86,7 +115,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
                 : 'mr-auto bg-muted/60 text-foreground/90 rounded-bl-sm'
             }`}
           >
-            {m.content}
+            {m.role === 'assistant' ? <Linkified text={m.content} /> : m.content}
           </div>
         ))}
         {sending && (
