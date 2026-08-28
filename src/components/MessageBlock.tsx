@@ -308,10 +308,10 @@ function MessageBlock({
       <div className="group relative block w-fit">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
-          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden w-[132px] aspect-[3/4] flex flex-col p-2.5"
+          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden w-[132px] h-[140px] flex flex-col p-2.5"
         >
           <p className="flex-1 overflow-hidden text-[9px] text-foreground/50 leading-snug break-words">
-            {plainText.slice(0, 450)}
+            {plainText.slice(0, 320)}
           </p>
           <div className="mt-1.5 flex-shrink-0">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/60 bg-background/70 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground/70">

@@ -433,6 +433,24 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             >
               <Edit3 size={13} />
             </button>
+            {/* Sans tag posé, le « + tag » vit ICI (au survol du titre) : la
+                rangée de tags vide réservait ~40 px de blanc sous l'en-tête
+                (retour Brice 28/08) */}
+            {note.tags.length === 0 && (
+              <button
+                onClick={e => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                  setTagPickerOpen(true)
+                }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
+                title="Ajouter un tag"
+                aria-label="Ajouter un tag"
+              >
+                <Plus size={10} />
+                <span>tag</span>
+              </button>
+            )}
             <button
               onClick={e => {
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -454,46 +472,49 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       </div>
 
       {/* Tags de note — même taxonomie que les tags de messages (picker journal).
-          Le « + tag » n'apparaît qu'au survol de la ligne (pollution visuelle, Brice 17/07) */}
-      <div className="group/notetags flex flex-wrap items-center gap-1.5 pb-1">
-        {note.tags.map((tag) => (
-          <span
-            key={tag}
-            className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full"
-          >
-            #{tag}
-            <button
-              onClick={() => handleRemoveTag(tag)}
-              className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
-              title="Retirer ce tag"
-              aria-label={`Retirer le tag ${tag}`}
+          La rangée n'existe QUE s'il y a des tags : vide, elle réservait ~40 px
+          de blanc sous l'en-tête (le « + tag » vit alors dans la ligne de titre) */}
+      {note.tags.length > 0 && (
+        <div className="group/notetags flex flex-wrap items-center gap-1.5 pb-1">
+          {note.tags.map((tag) => (
+            <span
+              key={tag}
+              className="group flex items-center gap-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded-full"
             >
-              <X size={9} />
-            </button>
-          </span>
-        ))}
-        <button
-          onClick={e => {
-            const rect = e.currentTarget.getBoundingClientRect()
-            setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
-            setTagPickerOpen(true)
-          }}
-          className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
-          title="Ajouter un tag"
-        >
-          <Plus size={10} />
-          <span>tag</span>
-        </button>
-        {tagPickerOpen && (
-          <TagPickerPopup
-            position={tagPickerPos}
-            currentTags={note.tags}
-            onAdd={handleAddTag}
-            onRemove={handleRemoveTag}
-            onClose={() => setTagPickerOpen(false)}
-          />
-        )}
-      </div>
+              #{tag}
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
+                title="Retirer ce tag"
+                aria-label={`Retirer le tag ${tag}`}
+              >
+                <X size={9} />
+              </button>
+            </span>
+          ))}
+          <button
+            onClick={e => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+              setTagPickerOpen(true)
+            }}
+            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
+            title="Ajouter un tag"
+          >
+            <Plus size={10} />
+            <span>tag</span>
+          </button>
+        </div>
+      )}
+      {tagPickerOpen && (
+        <TagPickerPopup
+          position={tagPickerPos}
+          currentTags={note.tags}
+          onAdd={handleAddTag}
+          onRemove={handleRemoveTag}
+          onClose={() => setTagPickerOpen(false)}
+        />
+      )}
 
       {/* Notation visible — le « pourquoi » se relit à chaque passage */}
       {noteAnnotation && (
@@ -732,37 +753,20 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
 
       {/* Séance — en bas de note, discret : DOL (cible HTF) puis lanceur de warmup.
           Le DOL reste en bas comme demandé ; les lanceurs sont compacts. */}
-      <div className="pt-1">
-        {(note.dols?.length ?? 0) > 0 && (
-          <div className="mb-2">
-            <DolBar
-              dols={note.dols ?? []}
-              onAdd={handleAddDol}
-              onCycleStatus={handleCycleDolStatus}
-              onDelete={handleDeleteDol}
-            />
-          </div>
-        )}
-        {/* Rangée d'actions compactes (lanceurs discrets) */}
-        <div className="flex flex-wrap items-center gap-1">
-          {(note.dols?.length ?? 0) === 0 && (
-            <DolBar
-              dols={[]}
-              onAdd={handleAddDol}
-              onCycleStatus={handleCycleDolStatus}
-              onDelete={handleDeleteDol}
-            />
-          )}
-          <button
-            onClick={handleLaunchWarmup}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-            title="Lancer un warmup — il s'ajoute dans le fil au moment du clic"
-          >
-            <Sunrise size={13} className="flex-shrink-0" />
-            Lancer un warmup
-          </button>
+      {/* DOLs posés — restent dans le fil. Les LANCEURS (« Poser un DOL »,
+          « Lancer un warmup »), eux, vivent désormais au-dessus de la barre
+          d'envoi (App) : en flottant au milieu du panneau, ils gênaient la
+          lecture (retour Brice 28/08) */}
+      {(note.dols?.length ?? 0) > 0 && (
+        <div className="pt-1">
+          <DolBar
+            dols={note.dols ?? []}
+            onAdd={handleAddDol}
+            onCycleStatus={handleCycleDolStatus}
+            onDelete={handleDeleteDol}
+          />
         </div>
-      </div>
+      )}
 
       {/* Popover de notation — note entière ou segment de trade */}
       {notationTarget && (

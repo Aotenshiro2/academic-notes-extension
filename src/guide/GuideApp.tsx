@@ -69,6 +69,7 @@ const CHANGELOG = [
     items: [
       'Nouveau : la dictée vocale — un bouton micro dans la barre de capture. Clique, parle, re-clique : ta dictée devient du texte. Propulsé par Whisper, 100 % local : ta voix ne quitte jamais ta machine.',
       'Au premier usage, le modèle de reconnaissance (~170 Mo) se télécharge une fois puis reste en cache — les dictées suivantes fonctionnent même hors ligne.',
+      'Rangement : « Poser un DOL » et « Lancer un warmup » sont désormais dockés au-dessus de la barre d\'envoi au lieu de flotter dans la note, les longs textes collés s\'affichent en vignette compacte, et l\'espace sous le titre a été resserré.',
     ],
   },
   {

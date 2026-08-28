@@ -11,8 +11,17 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const src = resolve(root, 'node_modules/onnxruntime-web/dist')
 const dest = resolve(root, 'dist/ort')
 
-// jsep = WebGPU (+ CPU) ; plain = CPU seul (fallback machines sans WebGPU)
+// Les 4 variantes du runtime : ort choisit selon le device ET le navigateur
+// (webgpu → asyncify OU jspi selon le support JSPI, jsep = ancien chemin
+// webgpu, plain = CPU). Bug réel du 28/08 : sans asyncify, la dictée plantait
+// en « Failed to fetch …asyncify.mjs » sur le Brave de Brice. On embarque
+// tout : c'est du poids de zip, pas du poids de mémoire (seul le variant
+// choisi est chargé).
 const FILES = [
+  'ort-wasm-simd-threaded.asyncify.mjs',
+  'ort-wasm-simd-threaded.asyncify.wasm',
+  'ort-wasm-simd-threaded.jspi.mjs',
+  'ort-wasm-simd-threaded.jspi.wasm',
   'ort-wasm-simd-threaded.jsep.mjs',
   'ort-wasm-simd-threaded.jsep.wasm',
   'ort-wasm-simd-threaded.mjs',

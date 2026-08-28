@@ -7,8 +7,10 @@ import {
   Mail,
   Star,
   BookOpen,
-  User
+  User,
+  Sunrise
 } from 'lucide-react'
+import DolBar from '@/components/DolBar'
 
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
@@ -30,7 +32,7 @@ import { exportNoteToDrive } from '@/lib/drive-export'
 import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
-import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
+import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot, DolLevel } from '@/types/academic'
 
 function App() {
   // Suppression du système de vue par tabs
@@ -289,6 +291,18 @@ function App() {
   // Fonction pour retourner à l'accueil (au lieu de créer une note vide)
   const handleGoHome = () => {
     setCurrentNoteId(null)
+  }
+
+  // « Poser un DOL » depuis la rangée dockée au-dessus de la barre d'envoi :
+  // ajoute le niveau à la note ouverte puis force son rechargement
+  const handleAddDolFromBar = async (dol: Omit<DolLevel, 'id' | 'createdAt' | 'status'>) => {
+    if (!currentNoteId) return
+    const fresh = await storage.getNote(currentNoteId)
+    if (!fresh) return
+    const entry: DolLevel = { ...dol, id: crypto.randomUUID(), status: 'actif', createdAt: Date.now() }
+    await storage.saveNote({ ...fresh, dols: [...(fresh.dols ?? []), entry] })
+    setNoteRefreshTrigger(Date.now())
+    await loadData()
   }
 
   // Bouton rituel du header : lance un warmup. Depuis l'accueil (aucune note ouverte),
@@ -943,6 +957,27 @@ function App() {
           )}
         </div>
         
+        {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
+            flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
+        {currentNoteId && !showSettings && !showAccount && (
+          <div className="bg-background px-4 pt-1.5 flex flex-wrap items-center gap-1">
+            <DolBar
+              dols={[]}
+              onAdd={handleAddDolFromBar}
+              onCycleStatus={() => {}}
+              onDelete={() => {}}
+            />
+            <button
+              onClick={handleRitualWarmup}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+              title="Lancer un warmup — il s'ajoute dans le fil au moment du clic"
+            >
+              <Sunrise size={13} className="flex-shrink-0" />
+              Lancer un warmup
+            </button>
+          </div>
+        )}
+
         {/* Hub de capture */}
         <div className="bg-background px-4 pt-3 pb-1">
           <CaptureInput
