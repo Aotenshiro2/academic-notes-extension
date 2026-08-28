@@ -65,7 +65,7 @@ const TIPS = [
 
 const CHANGELOG = [
   {
-    version: '1.6.13',
+    version: '1.7.0',
     title: 'Dicte tes notes',
     items: [
       'Nouveau : la dictée vocale — un bouton micro dans la barre de capture. Clique, parle, re-clique : ta dictée devient du texte. Propulsé par Whisper, 100 % local : ta voix ne quitte jamais ta machine.',
