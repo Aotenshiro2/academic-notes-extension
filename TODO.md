@@ -171,6 +171,24 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 
 ### 8. 💰 Mode mentorat — la première monétisation de l'extension (idée Brice, 17/07/2026)
 
+> 🚧 **AVANCEMENT (28/08/2026)** :
+> - ✅ **Étape 1 — le brief compressé** : `GET /api/mentorat/brief?days=N` (journal
+>   `1fb8ef4`, déployé). Calcul pur depuis la base : trades, A/B/C, causes,
+>   calibration, warmups×émotion, erreurs cooldown, concepts, retard de
+>   relecture + rendu texte ~15 lignes. Testé sur les données réelles de Brice.
+> - ✅ **Étape 2 — panel mentorat v0 dans l'extension** (`4271b05`, v1.6.13) :
+>   bouton 🎓 au footer, cartes chiffrées (trades, jugements, causes,
+>   calibration, relectures en retard), période 30/90/180 j, brief texte avec
+>   bouton Copier (à coller dans la conversation IA). Pas de gating encore.
+> - ⏭️ **Étape 3 — le plan d'évolution (notre IA)** : BLOQUÉ sur un prérequis
+>   Brice : créer une clé API Anthropic et la poser en variable d'env Vercel
+>   (`ANTHROPIC_API_KEY`) sur le projet journal-d-etude-beta. Ensuite :
+>   endpoint `/api/mentorat/plan` (le brief + la doctrine-cadre → plan proposé,
+>   stocké, validé par Brice avant livraison).
+> - ⏭️ **Étape 4 — gating Stripe + page de vente** (5,99/8,99 €).
+> - La question 3 (contenu doctrine ETM / interactions) reste la conversation
+>   produit à avoir — voir « Les questions encore ouvertes ».
+
 > À mettre en place **prochainement**, pas dans deux ans. C'est toute une conversation à
 > avoir : ce qui suit est la capture de l'intention, pas une spec validée.
 
