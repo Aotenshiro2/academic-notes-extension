@@ -180,11 +180,19 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 >   bouton 🎓 au footer, cartes chiffrées (trades, jugements, causes,
 >   calibration, relectures en retard), période 30/90/180 j, brief texte avec
 >   bouton Copier (à coller dans la conversation IA). Pas de gating encore.
-> - ⏭️ **Étape 3 — le plan d'évolution (notre IA)** : BLOQUÉ sur un prérequis
->   Brice : créer une clé API Anthropic et la poser en variable d'env Vercel
->   (`ANTHROPIC_API_KEY`) sur le projet journal-d-etude-beta. Ensuite :
->   endpoint `/api/mentorat/plan` (le brief + la doctrine-cadre → plan proposé,
->   stocké, validé par Brice avant livraison).
+> - ✅ **Étape 3 — le plan d'évolution (notre IA), CODÉ le 28/08** (journal
+>   `967fd80` déployé + extension `57bff9b`) : `POST /api/mentorat/plan` (brief →
+>   proposition, cadre ETM générique v1, table MentoratPlan statut `proposed`),
+>   section « Plan d'évolution » dans le panel. AUSSI CODÉ : **support IA**
+>   (`/api/support/chat` + `/api/support/escalate`, SupportView bouée dans
+>   l'extension, fils SupportThread en base) et **AiUsage** (chaque appel Claude
+>   loggé par membre : la source de l'écran cockpit). ⏳ EN ATTENTE pour tester :
+>   Brice pose `ANTHROPIC_API_KEY_CARNET` et `ANTHROPIC_API_KEY_SUPPORT` dans
+>   Vercel (journal-d-etude-beta) — d'ici là les routes répondent 503 avec un
+>   message clair. Modèles par env `AI_MODEL_MENTORAT`/`AI_MODEL_SUPPORT`
+>   (défaut claude-opus-5 ; passer le support à claude-haiku-4-5 = ~10× moins
+>   cher, décision Brice). La doctrine ETM payante (question 3) remplacera le
+>   cadre générique du plan.
 > - ⏭️ **Étape 4 — gating Stripe + page de vente** (5,99/8,99 €).
 > - La question 3 (contenu doctrine ETM / interactions) reste la conversation
 >   produit à avoir — voir « Les questions encore ouvertes ».
