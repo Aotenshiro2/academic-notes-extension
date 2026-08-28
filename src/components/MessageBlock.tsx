@@ -69,12 +69,12 @@ function MessageBlock({
     const hrEl = tmp.querySelector('hr')
     let excerpt = ''
     if (hrEl?.nextElementSibling) {
-      excerpt = (hrEl.nextElementSibling.textContent || '').trim().slice(0, 130)
+      excerpt = (hrEl.nextElementSibling.textContent || '').trim().slice(0, 700)
     }
     // Fallback: skip past the title in plainText
     if (!excerpt && plainText) {
       const startIdx = title ? plainText.indexOf(title) + title.length : 0
-      excerpt = plainText.slice(startIdx).trim().slice(0, 130)
+      excerpt = plainText.slice(startIdx).trim().slice(0, 700)
     }
     return { previewTitle: title.slice(0, 65), previewExcerpt: excerpt.trim() }
   }, [message.content, isLongText, plainText])
@@ -300,35 +300,35 @@ function MessageBlock({
     )
   }
 
-  // Render collapsed long text — carte pleine largeur (retour Brice 28/08 :
-  // le max-w-[240px] d'origine laissait un grand vide à droite du panneau)
+  // Render collapsed long text — tuile portrait 3:4 « comme une tablette »
+  // (demande Brice 28/08) : une miniature de page de document, titre en tête,
+  // long extrait qui remplit la hauteur, badge N lignes en pied.
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative block w-full">
+      <div className="group relative block w-full max-w-[220px]">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
-          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden"
+          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden aspect-[3/4] flex flex-col"
         >
-          {/* Title + excerpt */}
-          <div className="px-3 pt-2 pb-1 min-h-[36px]">
+          {/* Title + excerpt : l'extrait remplit la hauteur de la tuile */}
+          <div className="px-3 pt-2.5 flex-1 overflow-hidden">
             {previewTitle && (
-              <p className="text-[11px] font-semibold text-foreground/80 truncate leading-snug mb-0.5">
+              <p className="text-[11px] font-semibold text-foreground/80 truncate leading-snug mb-1">
                 {previewTitle}
               </p>
             )}
-            {previewExcerpt && (
-              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-3">
+            {previewExcerpt ? (
+              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-[12]">
                 {previewExcerpt}
               </p>
-            )}
-            {!previewTitle && !previewExcerpt && (
-              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-4">
-                {plainText.slice(0, 240)}
+            ) : !previewTitle && (
+              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-[13]">
+                {plainText.slice(0, 700)}
               </p>
             )}
           </div>
           {/* Footer badge */}
-          <div className="flex items-center gap-1 px-2.5 py-1 border-t border-border/30">
+          <div className="flex items-center gap-1 px-2.5 py-1.5 border-t border-border/30">
             <FileText size={9} className="text-muted-foreground/40 flex-shrink-0" />
             <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 truncate">
               {estimatedLines} lignes
