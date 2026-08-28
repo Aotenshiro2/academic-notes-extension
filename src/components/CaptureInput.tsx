@@ -629,16 +629,20 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         </div>
       </div>
 
-      {/* Keyboard hints - visible on focus only */}
-      {isFocused && (
-        <div className="flex items-center justify-end px-3 pt-1.5">
-          <div className="text-[11px] text-muted-foreground/60">
-            <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⏎</kbd> envoyer
-            <span className="mx-1.5">·</span>
-            <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⇧⏎</kbd> nouvelle ligne
-          </div>
+      {/* Raccourcis clavier — la ligne réserve sa place EN PERMANENCE et ne
+          joue que sur l'opacité : montée/démontée au focus, elle déplaçait
+          toute la barre de haut en bas (retour Brice 28/08 : « qu'elle
+          s'agrandisse pour le confort, oui ; qu'elle se déplace, non »). */}
+      <div
+        aria-hidden={!isFocused}
+        className={`flex items-center justify-end px-3 pt-1.5 h-[26px] pointer-events-none transition-opacity duration-150 ${isFocused ? 'opacity-100' : 'opacity-0'}`}
+      >
+        <div className="text-[11px] text-muted-foreground/60">
+          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⏎</kbd> envoyer
+          <span className="mx-1.5">·</span>
+          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⇧⏎</kbd> nouvelle ligne
         </div>
-      )}
+      </div>
     </div>
   )
 })
