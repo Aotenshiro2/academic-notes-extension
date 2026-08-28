@@ -9,11 +9,19 @@ import {
   GraduationCap,
   LifeBuoy,
   BookOpen,
-  Star
+  Star,
+  Link2,
+  Clock,
+  BadgeCheck,
+  UserPlus,
+  Compass
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import MentoratView from '@/components/MentoratView'
 import SupportView from '@/components/SupportView'
+import AiConfigView from '@/components/AiConfigView'
+import PlansView from '@/components/PlansView'
+import ToolsView from '@/components/ToolsView'
 
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
@@ -45,8 +53,22 @@ function App() {
   const [showAccount, setShowAccount] = useState(false)
   const [showMentorat, setShowMentorat] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
-  // Menu pop-up du bouton ⚙️ (Paramètres / Guide / Évaluer) — un petit menu à
-  // 3 choix plutôt qu'un écran-fleuve à scroller (retour Brice 28/08)
+  const [showAiConfig, setShowAiConfig] = useState(false)
+  const [showPlans, setShowPlans] = useState(false)
+  const [showTools, setShowTools] = useState(false)
+  // Ferme tous les écrans (une seule vue à la fois)
+  const closeAllViews = () => {
+    setShowSettings(false)
+    setShowAccount(false)
+    setShowMentorat(false)
+    setShowSupport(false)
+    setShowAiConfig(false)
+    setShowPlans(false)
+    setShowTools(false)
+  }
+
+  // Menu pop-up du bouton ⚙️ — le hub des écrans secondaires (retour Brice
+  // 28/08) : un petit menu plutôt qu'un écran-fleuve à scroller
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   const settingsMenuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -815,6 +837,20 @@ function App() {
             <SupportView onBack={() => setShowSupport(false)} />
           ) : showMentorat ? (
             <MentoratView onBack={() => setShowMentorat(false)} />
+          ) : showAiConfig ? (
+            <AiConfigView
+              settings={settings!}
+              onChange={async (newSettings) => {
+                await storage.saveSettings(newSettings)
+                const updated = await storage.getSettings()
+                setSettings(updated)
+              }}
+              onBack={() => setShowAiConfig(false)}
+            />
+          ) : showPlans ? (
+            <PlansView onBack={() => setShowPlans(false)} />
+          ) : showTools ? (
+            <ToolsView onBack={() => setShowTools(false)} />
           ) : showAccount ? (
             <AccountView
               notes={notes}
@@ -982,7 +1018,7 @@ function App() {
         
         {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
             flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
-        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && (
+        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && !showAiConfig && !showPlans && !showTools && (
           <div className="bg-background px-4 pt-1.5 flex flex-wrap items-center gap-1">
             <DolBar
               dols={[]}
@@ -1043,7 +1079,7 @@ function App() {
               <span className="text-muted-foreground/30">|</span>
               {/* État de sync — l'échec silencieux de sync ne doit plus JAMAIS être invisible */}
               <button
-                onClick={() => { setShowAccount(true); setShowSettings(false); setShowMentorat(false); setShowSupport(false) }}
+                onClick={() => { closeAllViews(); setShowAccount(true) }}
                 className={`px-1.5 py-0.5 text-[10px] rounded-full transition-colors ${
                   isAuthed === false
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium'
@@ -1087,14 +1123,6 @@ function App() {
               >
                 <GraduationCap size={14} />
               </button>
-              <button
-                onClick={() => { setShowAccount(!showAccount); setShowSettings(false); setShowMentorat(false); setShowSupport(false) }}
-                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showAccount ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
-                title="Compte AOKnowledge"
-                aria-label="Compte AOKnowledge"
-              >
-                <User size={14} />
-              </button>
               <div className="relative" ref={settingsMenuRef}>
                 <button
                   onClick={() => setSettingsMenuOpen(o => !o)}
@@ -1106,34 +1134,65 @@ function App() {
                 >
                   <Settings size={14} />
                 </button>
-                {settingsMenuOpen && (
-                  <div className="absolute bottom-8 right-0 z-50 w-44 rounded-lg border border-border bg-popover shadow-lg p-1" role="menu">
-                    <button
-                      onClick={() => { setSettingsMenuOpen(false); setShowSettings(true); setShowAccount(false); setShowMentorat(false); setShowSupport(false) }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
-                      role="menuitem"
-                    >
-                      <Settings size={13} className="text-muted-foreground flex-shrink-0" />
-                      Paramètres
-                    </button>
-                    <button
-                      onClick={() => { setSettingsMenuOpen(false); chrome.tabs.create({ url: chrome.runtime.getURL('src/guide/index.html') }) }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
-                      role="menuitem"
-                    >
-                      <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
-                      Guide
-                    </button>
-                    <button
-                      onClick={() => { setSettingsMenuOpen(false); chrome.tabs.create({ url: 'https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews' }) }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
-                      role="menuitem"
-                    >
-                      <Star size={13} className="text-muted-foreground flex-shrink-0" />
-                      Évaluer l'extension
-                    </button>
-                  </div>
-                )}
+                {settingsMenuOpen && (() => {
+                  const item = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors'
+                  const open = (setter: (v: boolean) => void) => () => { setSettingsMenuOpen(false); closeAllViews(); setter(true) }
+                  const tab = (url: string) => () => { setSettingsMenuOpen(false); chrome.tabs.create({ url }) }
+                  return (
+                    <div className="absolute bottom-8 right-0 z-50 w-52 rounded-lg border border-border bg-popover shadow-lg p-1" role="menu">
+                      <button onClick={open(setShowSettings)} className={item} role="menuitem">
+                        <Settings size={13} className="text-muted-foreground flex-shrink-0" />
+                        Paramètres
+                      </button>
+                      <button onClick={open(setShowAiConfig)} className={item} role="menuitem">
+                        <Link2 size={13} className="text-muted-foreground flex-shrink-0" />
+                        Configurer son IA
+                      </button>
+                      <button onClick={open(setShowAccount)} className={item} role="menuitem">
+                        <User size={13} className="text-muted-foreground flex-shrink-0" />
+                        Compte AOKnowledge
+                      </button>
+                      <div className="my-1 border-t border-border/60" />
+                      <button onClick={tab(chrome.runtime.getURL('src/guide/index.html'))} className={item} role="menuitem">
+                        <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
+                        Bonnes pratiques
+                      </button>
+                      <button onClick={tab(chrome.runtime.getURL('src/guide/index.html') + '#versions')} className={item} role="menuitem">
+                        <Clock size={13} className="text-muted-foreground flex-shrink-0" />
+                        Versions et feuille de route
+                      </button>
+                      <div className="my-1 border-t border-border/60" />
+                      <button onClick={open(setShowPlans)} className={item} role="menuitem">
+                        <BadgeCheck size={13} className="text-muted-foreground flex-shrink-0" />
+                        Mon forfait
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setSettingsMenuOpen(false)
+                          try {
+                            await navigator.clipboard.writeText('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic')
+                            toast.success('Lien de l\'extension copié — partage-le !')
+                          } catch {
+                            toast.error('Copie impossible.')
+                          }
+                        }}
+                        className={item}
+                        role="menuitem"
+                      >
+                        <UserPlus size={13} className="text-muted-foreground flex-shrink-0" />
+                        Inviter un ami
+                      </button>
+                      <button onClick={open(setShowTools)} className={item} role="menuitem">
+                        <Compass size={13} className="text-muted-foreground flex-shrink-0" />
+                        Autres outils AOK
+                      </button>
+                      <button onClick={tab('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews')} className={item} role="menuitem">
+                        <Star size={13} className="text-muted-foreground flex-shrink-0" />
+                        Évaluer l'extension
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
         </div>

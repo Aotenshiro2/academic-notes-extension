@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   Keyboard,
   BookOpen,
@@ -7,6 +7,7 @@ import {
   Shield,
   ArrowLeft,
   Command,
+  Map,
 } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -440,8 +441,37 @@ function Section({ icon: Icon, title, children }: { icon: typeof Keyboard; title
   )
 }
 
+// Feuille de route publique — le teaser des chantiers à venir, sans détail
+// business. Alimentée au fil des livraisons (source interne : TODO.md).
+const ROADMAP = [
+  {
+    title: 'Mode mentorat',
+    desc: 'Ton suivi de progression chiffré et un plan d\'évolution proposé par l\'IA puis validé par un mentor humain. Option payante, le carnet gratuit reste entier.',
+  },
+  {
+    title: 'Capture intelligente nouvelle génération',
+    desc: 'La capture de page repensée et propulsée par l\'IA pour des résumés vraiment utiles.',
+  },
+  {
+    title: 'Transcription vidéo',
+    desc: 'Le même moteur local que la dictée vocale, appliqué aux vidéos que tu étudies.',
+  },
+  {
+    title: 'Forfaits dans l\'extension',
+    desc: 'Voir et gérer son forfait directement depuis le panneau, sans passer par le site.',
+  },
+]
+
 export default function GuideApp() {
   const isMac = navigator.platform.toUpperCase().includes('MAC')
+
+  // Deux entrées de menu ouvrent cette même page : « Bonnes pratiques » (haut)
+  // et « Versions et feuille de route » (#versions) — on défile à l'ancre
+  useEffect(() => {
+    if (window.location.hash) {
+      document.querySelector(window.location.hash)?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -517,6 +547,24 @@ export default function GuideApp() {
               </li>
             ))}
           </ul>
+        </Section>
+
+        {/* Versions et feuille de route — ancre du menu ⚙️ */}
+        <div id="versions" />
+
+        {/* Feuille de route */}
+        <Section icon={Map} title="Feuille de route">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ce qui arrive dans les prochaines versions. La liste bouge au rythme de vos retours.
+            </p>
+            {ROADMAP.map((r, i) => (
+              <div key={i}>
+                <h3 className="text-sm font-semibold text-foreground mb-1">{r.title}</h3>
+                <p className="text-sm text-muted-foreground ml-4">{r.desc}</p>
+              </div>
+            ))}
+          </div>
         </Section>
 
         {/* Changelog */}

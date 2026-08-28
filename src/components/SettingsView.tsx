@@ -7,14 +7,11 @@ import {
   Zap,
   FileText,
   Globe,
-  Info,
-  Link2,
   Mic
 } from 'lucide-react'
 import { micPermissionState, listMicrophones, openMicPermissionPage } from '@/lib/dictation'
-import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
+import type { Settings as SettingsType } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
-import { PROVIDER_LIST } from '@/lib/analysis-providers'
 import StorageHealth from './StorageHealth'
 
 interface SettingsViewProps {
@@ -55,7 +52,6 @@ function SettingsView({
     window.addEventListener('focus', refresh)
     return () => { alive = false; window.removeEventListener('focus', refresh) }
   }, [])
-  const [tabUrlErrors, setTabUrlErrors] = useState<Partial<Record<AnalysisProvider, boolean>>>({})
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
     onChange({ [key]: value })
@@ -84,21 +80,6 @@ function SettingsView({
       }
     } catch (error) {
       toast.error('Erreur de connexion : ' + error)
-    }
-  }
-
-  const setThreadUrlFromCurrentTab = async (providerId: AnalysisProvider, baseUrl: string) => {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      const domain = new URL(baseUrl).hostname
-      if (tab?.url?.includes(domain)) {
-        onChange({ providerThreadUrls: { ...settings.providerThreadUrls, [providerId]: tab.url } })
-        setTabUrlErrors(prev => ({ ...prev, [providerId]: false }))
-      } else {
-        setTabUrlErrors(prev => ({ ...prev, [providerId]: true }))
-      }
-    } catch {
-      setTabUrlErrors(prev => ({ ...prev, [providerId]: true }))
     }
   }
 
@@ -225,60 +206,8 @@ function SettingsView({
         </div>
       </div>
 
-      {/* Threads d'analyse IA */}
-      <div className="mb-6">
-        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
-          <Link2 size={16} className="mr-2" />
-          Threads d'analyse IA
-        </h3>
-
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg mb-3">
-          <div className="flex items-start space-x-2">
-            <Info size={14} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              Collez ici l'URL d'une conversation ouverte — vos notes y seront envoyées directement au lieu d'ouvrir une nouvelle fenêtre.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {PROVIDER_LIST.map(p => (
-            <div key={p.id} className="p-3 border rounded-lg">
-              <p className="text-sm font-medium text-foreground mb-2">{p.label}</p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  placeholder={`URL d'une conversation ${p.label}`}
-                  value={settings.providerThreadUrls?.[p.id] || ''}
-                  onChange={e => onChange({ providerThreadUrls: { ...settings.providerThreadUrls, [p.id]: e.target.value } })}
-                  className="flex-1 text-xs px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/20 placeholder:text-muted-foreground"
-                />
-                <button
-                  title={`Définir depuis l'onglet ${p.label} actif`}
-                  onClick={() => setThreadUrlFromCurrentTab(p.id, p.url)}
-                  className="px-2 py-1.5 rounded border border-border bg-muted hover:bg-muted/80 text-sm transition-colors"
-                >
-                  📎
-                </button>
-                {settings.providerThreadUrls?.[p.id] && (
-                  <button
-                    onClick={() => onChange({ providerThreadUrls: { ...settings.providerThreadUrls, [p.id]: '' } })}
-                    className="px-2 py-1.5 rounded border border-border bg-muted hover:bg-muted/80 text-muted-foreground text-xs transition-colors"
-                    title="Effacer"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              {tabUrlErrors[p.id] && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                  Ouvrez d'abord une conversation {p.label} dans le navigateur.
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Les threads d'analyse IA ont leur propre écran désormais :
+          « Configurer son IA » dans le menu du rouage (AiConfigView) */}
 
       <StorageHealth />
 
