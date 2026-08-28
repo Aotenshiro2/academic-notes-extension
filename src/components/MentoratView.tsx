@@ -27,6 +27,32 @@ const CAUSE_LABEL: Record<string, string> = {
   emotionnel: 'Émotionnel',
 }
 
+// Le plan sort en markdown léger (## titres, **gras**) : on le rend proprement
+// au lieu d'afficher les marqueurs bruts
+function renderBold(s: string): React.ReactNode {
+  return s.split(/\*\*([^*]+)\*\*/g).map((part, i) =>
+    i % 2 === 1 ? <strong key={i} className="font-semibold text-foreground">{part}</strong> : part
+  )
+}
+
+function PlanText({ text }: { text: string }) {
+  return (
+    <div className="space-y-1">
+      {text.split('\n').map((line, i) => {
+        const t = line.trim()
+        if (!t) return <div key={i} className="h-1.5" />
+        if (t.startsWith('## ')) {
+          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{t.slice(3)}</p>
+        }
+        if (t.startsWith('# ')) {
+          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{t.slice(2)}</p>
+        }
+        return <p key={i} className="text-[11px] leading-relaxed text-foreground/80">{renderBold(t)}</p>
+      })}
+    </div>
+  )
+}
+
 function MentoratView({ onBack }: { onBack: () => void }) {
   const [days, setDays] = useState(90)
   const [brief, setBrief] = useState<MentoratBriefData | null>(null)
@@ -217,7 +243,7 @@ function MentoratView({ onBack }: { onBack: () => void }) {
                     {new Date(lastPlan.createdAt).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
-                <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/80 font-sans">{lastPlan.plan}</pre>
+                <PlanText text={lastPlan.plan} />
               </>
             ) : (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
