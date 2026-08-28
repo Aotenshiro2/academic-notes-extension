@@ -203,9 +203,16 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 >   l'extension ne décide jamais. Un inscrit newsletter n'a pas accès.
 >   Pour accorder un accès à la main : INSERT dans MentoratGrant (email, note).
 > - ⏭️ **Étape 4b — le forfait mentorat dédié (5,99/8,99 €)** : PRÉREQUIS BRICE :
->   créer le produit + Payment Link Stripe et la page de vente sur le site.
->   Ensuite : webhook/vérification Stripe dans checkMentoratAccess + l'écran
->   d'upgrade pointe vers la page de paiement en plus du Live Club.
+>   créer le produit + Payment Link Stripe. ⚠️ **Décision Brice 28/08 : cet
+>   abonnement vit sur le Stripe de BRICE (compte aoknowledge)**, à l'inverse du
+>   Live Club (Stripe Mélanie) — le sens de la redistribution s'inverse donc
+>   (Brice encaisse, reverse la part de Mélanie ; comptabilité Adil concernée).
+>   La page de vente et la mise à jour du site viendront APRÈS, une fois le
+>   reste en place (pas bloquant). Ensuite côté code : vérification Stripe
+>   (compte Brice) dans checkMentoratAccess + bouton de paiement dans l'écran
+>   d'upgrade en plus du Live Club.
+> - Grants manuels posés le 28/08 : brice.d@ (propriétaire) et
+>   melaniesommer93@yahoo.com (équipe — Mélanie).
 > - La question 3 (contenu doctrine ETM / interactions) reste la conversation
 >   produit à avoir — voir « Les questions encore ouvertes ».
 
