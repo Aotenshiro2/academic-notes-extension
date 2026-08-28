@@ -7,7 +7,9 @@ import {
   User,
   Sunrise,
   GraduationCap,
-  LifeBuoy
+  LifeBuoy,
+  BookOpen,
+  Star
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import MentoratView from '@/components/MentoratView'
@@ -43,6 +45,20 @@ function App() {
   const [showAccount, setShowAccount] = useState(false)
   const [showMentorat, setShowMentorat] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
+  // Menu pop-up du bouton ⚙️ (Paramètres / Guide / Évaluer) — un petit menu à
+  // 3 choix plutôt qu'un écran-fleuve à scroller (retour Brice 28/08)
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
+  const settingsMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!settingsMenuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setSettingsMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [settingsMenuOpen])
   // Résumés, pas les notes complètes : charger 1000 notes entières (donc toutes
   // les images en base64) à chaque rafraîchissement saturait la mémoire
   const [notes, setNotes] = useState<NoteSummary[]>([])
@@ -1079,14 +1095,46 @@ function App() {
               >
                 <User size={14} />
               </button>
-              <button
-                onClick={() => { setShowSettings(!showSettings); setShowAccount(false); setShowMentorat(false); setShowSupport(false) }}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                title="Paramètres"
-                aria-label="Paramètres"
-              >
-                <Settings size={14} />
-              </button>
+              <div className="relative" ref={settingsMenuRef}>
+                <button
+                  onClick={() => setSettingsMenuOpen(o => !o)}
+                  className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSettings || settingsMenuOpen ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
+                  title="Paramètres et aide"
+                  aria-label="Paramètres et aide"
+                  aria-haspopup="menu"
+                  aria-expanded={settingsMenuOpen}
+                >
+                  <Settings size={14} />
+                </button>
+                {settingsMenuOpen && (
+                  <div className="absolute bottom-8 right-0 z-50 w-44 rounded-lg border border-border bg-popover shadow-lg p-1" role="menu">
+                    <button
+                      onClick={() => { setSettingsMenuOpen(false); setShowSettings(true); setShowAccount(false); setShowMentorat(false); setShowSupport(false) }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
+                      role="menuitem"
+                    >
+                      <Settings size={13} className="text-muted-foreground flex-shrink-0" />
+                      Paramètres
+                    </button>
+                    <button
+                      onClick={() => { setSettingsMenuOpen(false); chrome.tabs.create({ url: chrome.runtime.getURL('src/guide/index.html') }) }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
+                      role="menuitem"
+                    >
+                      <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
+                      Guide
+                    </button>
+                    <button
+                      onClick={() => { setSettingsMenuOpen(false); chrome.tabs.create({ url: 'https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews' }) }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors"
+                      role="menuitem"
+                    >
+                      <Star size={13} className="text-muted-foreground flex-shrink-0" />
+                      Évaluer l'extension
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
         </div>
       </main>
