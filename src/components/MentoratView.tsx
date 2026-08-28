@@ -10,6 +10,11 @@ import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkl
 import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
 import { getSession } from '@/lib/auth'
 
+// Lien de paiement Stripe du Carnet Premium (5,99 €/mois, prix de lancement).
+// Vide tant que le produit n'est pas créé → l'écran affiche « Ouverture
+// imminente ». URL publique et stable une fois créée.
+const PREMIUM_PAYMENT_LINK = ''
+
 const PERIODS = [
   { days: 30, label: '30 j' },
   { days: 90, label: '90 j' },
@@ -196,24 +201,49 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProp
 
       {gate === 'denied' && (
         <div className="space-y-3">
-          <div className="p-4 border border-purple-500/30 bg-purple-500/5 rounded-xl space-y-2">
+          {/* Ce qu'on vend ICI : le mode boosté de l'extension (recadrage
+              Brice 28/08 — pas le Live Club, lui est une piste parmi d'autres) */}
+          <div className="p-4 border border-purple-500/30 bg-purple-500/5 rounded-xl space-y-2.5">
             <div className="flex items-center gap-2">
-              <Lock size={14} className="text-purple-500 flex-shrink-0" />
-              <p className="text-sm font-semibold text-foreground">Le mode mentorat est réservé aux membres</p>
+              <GraduationCap size={15} className="text-purple-500 flex-shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Carnet Premium</p>
+              <span className="ml-auto text-sm font-semibold text-foreground">5,99 €<span className="text-[10px] font-normal text-muted-foreground">/mois</span></span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Il est inclus pour les membres du <strong className="text-foreground/80">Live Club</strong>,
-              les niveaux <strong className="text-foreground/80">Premium et VIP</strong>, et les élèves
-              des anciennes formations complètes. Un forfait mentorat dédié arrive aussi.
+              Le mode boosté de ton carnet : ton suivi de progression chiffré, et un
+              plan d'évolution rédigé par l'IA à partir de TES trades puis validé par
+              un mentor humain. Le carnet gratuit reste entier, Premium s'ajoute par-dessus.
             </p>
-            <button
-              onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com/live-club' })}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <Sparkles size={13} />
-              Découvrir le Live Club
-            </button>
+            <p className="text-[10px] text-muted-foreground/70">Prix de lancement.</p>
+            {PREMIUM_PAYMENT_LINK ? (
+              <button
+                onClick={() => chrome.tabs.create({ url: PREMIUM_PAYMENT_LINK })}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Sparkles size={13} />
+                Passer en Premium
+              </button>
+            ) : (
+              <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-dashed border-border text-muted-foreground">
+                <Lock size={12} />
+                Ouverture imminente
+              </div>
+            )}
           </div>
+
+          {/* Les autres portes : déjà incluses dans ces offres */}
+          <div className="p-3 border border-border/60 rounded-xl space-y-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Aussi inclus avec</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Le mode mentorat est offert aux membres du{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com/live-club' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">Live Club</button>,
+              aux niveaux Premium et VIP, et aux élèves des{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">formations complètes</button>.
+              Et pour travailler tes notes en profondeur, il y a le{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://journal.aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">Journal d'Études</button>.
+            </p>
+          </div>
+
           <button
             onClick={onOpenSupport}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
