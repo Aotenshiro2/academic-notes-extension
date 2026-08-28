@@ -202,15 +202,22 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 >   grant de Brice est posé). Le serveur re-vérifie brief et plan en 403 :
 >   l'extension ne décide jamais. Un inscrit newsletter n'a pas accès.
 >   Pour accorder un accès à la main : INSERT dans MentoratGrant (email, note).
-> - ⏭️ **Étape 4b — le forfait mentorat dédié (5,99/8,99 €)** : PRÉREQUIS BRICE :
->   créer le produit + Payment Link Stripe. ⚠️ **Décision Brice 28/08 : cet
->   abonnement vit sur le Stripe de BRICE (compte aoknowledge)**, à l'inverse du
->   Live Club (Stripe Mélanie) — le sens de la redistribution s'inverse donc
->   (Brice encaisse, reverse la part de Mélanie ; comptabilité Adil concernée).
->   La page de vente et la mise à jour du site viendront APRÈS, une fois le
->   reste en place (pas bloquant). Ensuite côté code : vérification Stripe
->   (compte Brice) dans checkMentoratAccess + bouton de paiement dans l'écran
->   d'upgrade en plus du Live Club.
+> - ✅ **Étape 4b — CARNET PREMIUM CRÉÉ ET BRANCHÉ le 28/08** (journal `59d1ec0`
+>   + extension `20fa7d4`) : produit Stripe `prod_V9jniZCCbIJsmV` sur le compte
+>   AOKNOWLEDGE (décision Brice : à l'inverse du Live Club chez Mélanie — la
+>   redistribution s'inverse, Brice encaisse et reverse ; compta Adil), prix
+>   5,99 €/mois « Lancement » (`price_1U9QKMEAT4qWdUNVv0OSIusl`), Payment Link
+>   https://buy.stripe.com/fZucN51ma7Iz0vP2wp7ok00 branché sur le bouton
+>   « Passer en Premium » de l'écran d'upgrade. `checkMentoratAccess` reconnaît
+>   les abonnés en DIRECT via l'API Stripe (accès dans la minute après
+>   paiement, raison `carnet-premium`). ⏳ UN GESTE BRICE pour activer cette
+>   reconnaissance : poser `STRIPE_KEY_CARNET` dans Vercel journal-d-etude-beta
+>   (= la clé restreinte « Cockpit AOK » du compte aoknowledge, celle de
+>   `credentials.local/stripe-api.local.json`) + Redeploy. Sans elle, le
+>   paiement marche mais l'accès n'est reconnu que par le cockpit du lendemain.
+>   ⚠️ Piège connu : l'abonné doit payer avec l'email de son compte AOK, sinon
+>   grant manuel via le support. Page de vente site : APRÈS, pas bloquant.
+>   Créé via la clé Cockpit AOK élargie (Products+Payment Links en écriture).
 > - Grants manuels posés le 28/08 : brice.d@ (propriétaire) et
 >   melaniesommer93@yahoo.com (équipe — Mélanie).
 > - La question 3 (contenu doctrine ETM / interactions) reste la conversation
