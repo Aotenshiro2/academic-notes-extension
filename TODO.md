@@ -17,7 +17,7 @@
 La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
 27/08/2026** sur ce qui y restait d'ouvert côté extension :
 
-- [x] **Dictée vocale Whisper** ✅ **FAIT le 28/08/2026 (v1.6.13, zip généré, À DOGFOODER)** :
+- [x] **Dictée vocale Whisper** ✅ **FAIT le 28/08/2026 (v1.7.0, zip généré, À DOGFOODER)** :
       bouton micro dans la capture bar, Whisper small via @huggingface/transformers
       dans un Web Worker (WebGPU si dispo, wasm sinon), 100 % local. Modèle
       (~170 Mo) téléchargé au 1er usage puis en cache. Runtime onnx embarqué
@@ -176,7 +176,7 @@ Piste bonus : joindre les transcriptions correspondant aux `concepts` de la note
 >   `1fb8ef4`, déployé). Calcul pur depuis la base : trades, A/B/C, causes,
 >   calibration, warmups×émotion, erreurs cooldown, concepts, retard de
 >   relecture + rendu texte ~15 lignes. Testé sur les données réelles de Brice.
-> - ✅ **Étape 2 — panel mentorat v0 dans l'extension** (`4271b05`, v1.6.13) :
+> - ✅ **Étape 2 — panel mentorat v0 dans l'extension** (`4271b05`, v1.7.0) :
 >   bouton 🎓 au footer, cartes chiffrées (trades, jugements, causes,
 >   calibration, relectures en retard), période 30/90/180 j, brief texte avec
 >   bouton Copier (à coller dans la conversation IA). Pas de gating encore.
