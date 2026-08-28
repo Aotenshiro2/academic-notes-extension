@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Keyboard,
   BookOpen,
@@ -462,16 +462,22 @@ const ROADMAP = [
   },
 ]
 
+type GuidePage = 'pratiques' | 'versions'
+
 export default function GuideApp() {
   const isMac = navigator.platform.toUpperCase().includes('MAC')
 
-  // Deux entrées de menu ouvrent cette même page : « Bonnes pratiques » (haut)
-  // et « Versions et feuille de route » (#versions) — on défile à l'ancre
+  // DEUX ÉCRANS distincts (retour Brice 28/08 : pas une ancre, deux pages) :
+  // « Bonnes pratiques » (raccourcis, utilisation typique, bonnes pratiques)
+  // et « Versions » (feuille de route + historique). Le menu ⚙️ ouvre l'un ou
+  // l'autre via le hash ; les onglets d'en-tête permettent de basculer.
+  const [page, setPage] = useState<GuidePage>(
+    window.location.hash === '#versions' ? 'versions' : 'pratiques'
+  )
   useEffect(() => {
-    if (window.location.hash) {
-      document.querySelector(window.location.hash)?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
-    }
-  }, [])
+    window.history.replaceState(null, '', page === 'versions' ? '#versions' : '#pratiques')
+    window.scrollTo(0, 0)
+  }, [page])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -489,16 +495,35 @@ export default function GuideApp() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-foreground">Le Carnet du Trader</h1>
-              <p className="text-xs text-muted-foreground">Guide d'utilisation — v{version}</p>
+              <p className="text-xs text-muted-foreground">
+                {page === 'versions' ? 'Versions et feuille de route' : 'Guide d\'utilisation'} — v{version}
+              </p>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
+              <button
+                onClick={() => setPage('pratiques')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${page === 'pratiques' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Bonnes pratiques
+              </button>
+              <button
+                onClick={() => setPage('versions')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${page === 'versions' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Versions
+              </button>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
       {/* Content */}
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
 
+        {page === 'pratiques' && (<>
         {/* Raccourcis clavier */}
         <Section icon={Keyboard} title="Raccourcis clavier">
           <div className="space-y-3">
@@ -548,10 +573,9 @@ export default function GuideApp() {
             ))}
           </ul>
         </Section>
+        </>)}
 
-        {/* Versions et feuille de route — ancre du menu ⚙️ */}
-        <div id="versions" />
-
+        {page === 'versions' && (<>
         {/* Feuille de route */}
         <Section icon={Map} title="Feuille de route">
           <div className="space-y-4">
@@ -588,8 +612,10 @@ export default function GuideApp() {
             ))}
           </div>
         </Section>
+        </>)}
 
         {/* Confidentialité */}
+        {page === 'pratiques' && (
         <Section icon={Shield} title="Confidentialit\u00e9">
           <div className="space-y-2.5">
             {[
@@ -605,6 +631,7 @@ export default function GuideApp() {
             ))}
           </div>
         </Section>
+        )}
 
         {/* Footer */}
         <div className="text-center py-6 text-xs text-muted-foreground/60">
