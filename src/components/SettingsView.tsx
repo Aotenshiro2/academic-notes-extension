@@ -9,7 +9,9 @@ import {
   Globe,
   Info,
   Link2,
-  Mic
+  Mic,
+  BookOpen,
+  Star
 } from 'lucide-react'
 import { micPermissionState, listMicrophones, openMicPermissionPage } from '@/lib/dictation'
 import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
@@ -222,6 +224,36 @@ function SettingsView({
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Aide — déménagé du footer (allègement, 28/08) */}
+      <div className="mb-6">
+        <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
+          <BookOpen size={16} className="mr-2" />
+          Aide
+        </h3>
+        <div className="space-y-2">
+          <button
+            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/guide/index.html') })}
+            className="w-full flex items-center gap-3 p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors text-left"
+          >
+            <BookOpen size={16} className="text-muted-foreground flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground text-sm">Ouvrir le guide</p>
+              <p className="text-xs text-muted-foreground">Prise en main et nouveautés de chaque version</p>
+            </div>
+          </button>
+          <button
+            onClick={() => chrome.tabs.create({ url: 'https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews' })}
+            className="w-full flex items-center gap-3 p-3 bg-muted/50 hover:bg-muted rounded-lg transition-colors text-left"
+          >
+            <Star size={16} className="text-muted-foreground flex-shrink-0" />
+            <div>
+              <p className="font-medium text-foreground text-sm">Évaluer l'extension</p>
+              <p className="text-xs text-muted-foreground">Un avis sur le Chrome Web Store nous aide beaucoup</p>
+            </div>
+          </button>
         </div>
       </div>
 

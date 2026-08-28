@@ -4,9 +4,6 @@ import {
   Settings,
   ArrowLeft,
   Loader2,
-  Mail,
-  Star,
-  BookOpen,
   User,
   Sunrise,
   GraduationCap,
@@ -988,25 +985,28 @@ function App() {
           </div>
         )}
 
-        {/* Hub de capture */}
-        <div className="bg-background px-4 pt-3 pb-1">
-          <CaptureInput
-            ref={editorRef}
-            value={editorContent}
-            onChange={setEditorContent}
-            placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
-            onInsertScreenshot={handleScreenshot}
-            onInsertExternalScreenshot={handleExternalScreenshot}
-            onScreenshotToNote={handleScreenshotToNote}
-            onSubmit={(content) => handleAddContent(content, currentNoteId)}
-            onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
-            isSmartCapturing={isSmartCapturing}
-            onStartTrade={handleStartTrade}
-            hasActiveTrade={!!currentNote?.hasOpenTrade}
-            currentPageInfo={currentPageInfo || undefined}
-            className="w-full"
-          />
-        </div>
+        {/* Hub de capture — masqué dans l'écran support : il a sa propre
+            saisie, la double barre était illisible (retour Brice 28/08) */}
+        {!showSupport && (
+          <div className="bg-background px-4 pt-3 pb-1">
+            <CaptureInput
+              ref={editorRef}
+              value={editorContent}
+              onChange={setEditorContent}
+              placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
+              onInsertScreenshot={handleScreenshot}
+              onInsertExternalScreenshot={handleExternalScreenshot}
+              onScreenshotToNote={handleScreenshotToNote}
+              onSubmit={(content) => handleAddContent(content, currentNoteId)}
+              onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
+              isSmartCapturing={isSmartCapturing}
+              onStartTrade={handleStartTrade}
+              hasActiveTrade={!!currentNote?.hasOpenTrade}
+              currentPageInfo={currentPageInfo || undefined}
+              className="w-full"
+            />
+          </div>
+        )}
 
         {/* Footer utilitaire */}
         <div className="px-4 pb-2 flex items-center justify-between">
@@ -1052,30 +1052,9 @@ function App() {
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle compact />
-              <button
-                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/guide/index.html') })}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                title="Guide"
-                aria-label="Guide"
-              >
-                <BookOpen size={14} />
-              </button>
-              <button
-                onClick={() => chrome.tabs.create({ url: 'mailto:brice.d@aoknowledge.com' })}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                title="Nous contacter"
-                aria-label="Nous contacter"
-              >
-                <Mail size={14} />
-              </button>
-              <button
-                onClick={() => chrome.tabs.create({ url: 'https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews' })}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                title="Évaluez-nous"
-                aria-label="Évaluez-nous"
-              >
-                <Star size={14} />
-              </button>
+              {/* Footer allégé (retour Brice 28/08) : « Nous contacter » supprimé
+                  (le support intégré le remplace), Guide et « Évaluez-nous »
+                  déménagés dans Paramètres > Aide */}
               <button
                 onClick={() => { setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}

@@ -67,14 +67,6 @@ function SupportView({ onBack }: { onBack: () => void }) {
         </button>
         <LifeBuoy size={16} className="text-blue-500 flex-shrink-0" />
         <h2 className="flex-1 text-sm font-semibold text-foreground">Support</h2>
-        <button
-          onClick={talkToHuman}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          title="Envoyer un email à l'équipe avec la transcription"
-        >
-          <User size={12} />
-          Parler à un humain
-        </button>
       </div>
 
       {/* Fil */}
@@ -105,6 +97,17 @@ function SupportView({ onBack }: { onBack: () => void }) {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* « Parler à un humain » — bandeau léger juste au-dessus de la saisie
+          (placement demandé par Brice 28/08 : visible sans crier) */}
+      <button
+        onClick={talkToHuman}
+        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-border/60 bg-muted/30 shadow-sm text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+        title="Envoyer un email à l'équipe avec la transcription de cet échange"
+      >
+        <User size={12} />
+        Parler à un humain
+      </button>
 
       {/* Saisie */}
       <div className="flex items-end gap-2">
