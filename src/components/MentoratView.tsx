@@ -11,9 +11,8 @@ import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchM
 import { getSession } from '@/lib/auth'
 
 // Lien de paiement Stripe du Carnet Premium (5,99 €/mois, prix de lancement).
-// Vide tant que le produit n'est pas créé → l'écran affiche « Ouverture
-// imminente ». URL publique et stable une fois créée.
-const PREMIUM_PAYMENT_LINK = ''
+// Produit prod_V9jniZCCbIJsmV sur le Stripe aoknowledge, créé le 28/08/2026.
+const PREMIUM_PAYMENT_LINK = 'https://buy.stripe.com/fZucN51ma7Iz0vP2wp7ok00'
 
 const PERIODS = [
   { days: 30, label: '30 j' },
