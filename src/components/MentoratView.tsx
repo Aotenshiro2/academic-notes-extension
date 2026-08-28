@@ -6,8 +6,8 @@
 // Anthropic côté Vercel) : phase de dogfooding.
 import { toast } from '@/lib/toast'
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle } from 'lucide-react'
-import { fetchMentoratBrief, type MentoratBriefData } from '@/lib/sync'
+import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles } from 'lucide-react'
+import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
 
 const PERIODS = [
   { days: 30, label: '30 j' },
@@ -51,6 +51,25 @@ function MentoratView({ onBack }: { onBack: () => void }) {
       toast.success('Brief copié — colle-le dans ta conversation IA.')
     } catch {
       toast.error('Copie impossible.')
+    }
+  }
+
+  // Plan d'évolution : notre IA propose (statut « proposition »), Brice valide
+  const [lastPlan, setLastPlan] = useState<MentoratPlanData | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
+  useEffect(() => {
+    fetchLastMentoratPlan().then(r => { if (r.plan) setLastPlan(r.plan) })
+  }, [])
+
+  const generatePlan = async () => {
+    setPlanLoading(true)
+    const res = await generateMentoratPlan(days)
+    setPlanLoading(false)
+    if (res.plan) {
+      setLastPlan({ id: '', periodDays: days, plan: res.plan, status: res.status ?? 'proposed', createdAt: new Date().toISOString() })
+      toast.success('Proposition de plan générée.')
+    } else {
+      toast.error(res.error ?? 'Plan indisponible.')
     }
   }
 
@@ -174,6 +193,40 @@ function MentoratView({ onBack }: { onBack: () => void }) {
               </p>
             </div>
           )}
+
+          {/* Plan d'évolution : l'IA propose, Brice valide avant diffusion */}
+          <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Plan d'évolution</p>
+              <button
+                onClick={generatePlan}
+                disabled={planLoading}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 rounded-md transition-colors disabled:opacity-50"
+              >
+                {planLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                {lastPlan ? 'Regénérer' : 'Générer une proposition'}
+              </button>
+            </div>
+            {lastPlan ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                    {lastPlan.status === 'proposed' ? 'Proposition — en attente de validation' : lastPlan.status}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {new Date(lastPlan.createdAt).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+                <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/80 font-sans">{lastPlan.plan}</pre>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                L'IA rédige une proposition de plan à partir de ton brief : où tu en es, le
+                chantier prioritaire, 3 actions pour 2 semaines, et le signal de passage.
+                Chaque proposition est validée par Brice avant d'être considérée comme un plan.
+              </p>
+            )}
+          </div>
 
           {/* Le brief texte */}
           <div className="p-3 bg-muted/30 border border-border/50 rounded-lg">

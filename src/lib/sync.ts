@@ -612,3 +612,81 @@ export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratB
     return { error: err instanceof Error ? err.message : 'Erreur réseau' }
   }
 }
+
+export interface MentoratPlanData {
+  id: string
+  periodDays: number
+  plan: string
+  status: string
+  createdAt: string
+}
+
+/** Le dernier plan d'évolution proposé/validé de l'élève */
+export async function fetchLastMentoratPlan(): Promise<{ plan?: MentoratPlanData | null; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté — connecte-toi dans le compte.' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/plan`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return { error: `Plan indisponible (HTTP ${res.status})` }
+    const data = await res.json()
+    return { plan: data.plan ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+/** Génère une PROPOSITION de plan (notre IA propose, Brice valide) */
+export async function generateMentoratPlan(days = 90): Promise<{ plan?: string; status?: string; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté — connecte-toi dans le compte.' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ days }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { error: data.error ?? `Plan indisponible (HTTP ${res.status})` }
+    return { plan: data.plan, status: data.status }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+// ── Support IA ────────────────────────────────────────────────────────────────
+
+export async function sendSupportMessage(message: string, threadId?: string | null): Promise<{ threadId?: string; reply?: string; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté — connecte-toi dans le compte pour contacter le support.' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/support/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ message, threadId: threadId ?? undefined, app: 'extension' }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { error: data.error ?? `Support indisponible (HTTP ${res.status})` }
+    return { threadId: data.threadId, reply: data.reply }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+/** « Parler à un humain » : marque le fil escaladé, renvoie l'email de contact */
+export async function escalateSupport(threadId?: string | null): Promise<{ email?: string; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { email: 'brice.d@aoknowledge.com' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/support/escalate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ threadId: threadId ?? undefined }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return { email: data.email ?? 'brice.d@aoknowledge.com' }
+  } catch {
+    return { email: 'brice.d@aoknowledge.com' }
+  }
+}

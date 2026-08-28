@@ -70,6 +70,8 @@ const CHANGELOG = [
       'Nouveau : la dictée vocale — un bouton micro dans la barre de capture. Clique, parle, re-clique : ta dictée devient du texte. Propulsé par Whisper, 100 % local : ta voix ne quitte jamais ta machine.',
       'Au premier usage, le modèle de reconnaissance (~170 Mo) se télécharge une fois puis reste en cache — les dictées suivantes fonctionnent même hors ligne.',
       'Rangement : « Poser un DOL » et « Lancer un warmup » sont désormais dockés au-dessus de la barre d\'envoi au lieu de flotter dans la note, les longs textes collés s\'affichent en vignette compacte, et l\'espace sous le titre a été resserré.',
+      'Nouveau : le support intégré — un bouton bouée dans le pied du panneau ouvre un chat avec l\'assistant AOK, et « Parler à un humain » envoie ta question par email avec la transcription.',
+      'Mode mentorat : le panel affiche ton brief chiffré et peut générer une proposition de plan d\'évolution — chaque proposition est validée par un mentor humain avant de compter.',
     ],
   },
   {

@@ -9,10 +9,12 @@ import {
   BookOpen,
   User,
   Sunrise,
-  GraduationCap
+  GraduationCap,
+  LifeBuoy
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import MentoratView from '@/components/MentoratView'
+import SupportView from '@/components/SupportView'
 
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
@@ -43,6 +45,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
   const [showMentorat, setShowMentorat] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
   // Résumés, pas les notes complètes : charger 1000 notes entières (donc toutes
   // les images en base64) à chaque rafraîchissement saturait la mémoire
   const [notes, setNotes] = useState<NoteSummary[]>([])
@@ -795,7 +798,9 @@ function App() {
       <main className="content-section flex flex-col">
         {/* Contenu de la note courante */}
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto p-4">
-          {showMentorat ? (
+          {showSupport ? (
+            <SupportView onBack={() => setShowSupport(false)} />
+          ) : showMentorat ? (
             <MentoratView onBack={() => setShowMentorat(false)} />
           ) : showAccount ? (
             <AccountView
@@ -964,7 +969,7 @@ function App() {
         
         {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
             flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
-        {currentNoteId && !showSettings && !showAccount && !showMentorat && (
+        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && (
           <div className="bg-background px-4 pt-1.5 flex flex-wrap items-center gap-1">
             <DolBar
               dols={[]}
@@ -1022,7 +1027,7 @@ function App() {
               <span className="text-muted-foreground/30">|</span>
               {/* État de sync — l'échec silencieux de sync ne doit plus JAMAIS être invisible */}
               <button
-                onClick={() => { setShowAccount(true); setShowSettings(false); setShowMentorat(false) }}
+                onClick={() => { setShowAccount(true); setShowSettings(false); setShowMentorat(false); setShowSupport(false) }}
                 className={`px-1.5 py-0.5 text-[10px] rounded-full transition-colors ${
                   isAuthed === false
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium'
@@ -1072,7 +1077,15 @@ function App() {
                 <Star size={14} />
               </button>
               <button
-                onClick={() => { setShowMentorat(!showMentorat); setShowAccount(false); setShowSettings(false) }}
+                onClick={() => { setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
+                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
+                title="Contacter le support"
+                aria-label="Contacter le support"
+              >
+                <LifeBuoy size={14} />
+              </button>
+              <button
+                onClick={() => { setShowMentorat(!showMentorat); setShowSupport(false); setShowAccount(false); setShowSettings(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showMentorat ? 'text-purple-500 bg-muted' : 'text-muted-foreground'}`}
                 title="Mode mentorat"
                 aria-label="Mode mentorat"
@@ -1080,7 +1093,7 @@ function App() {
                 <GraduationCap size={14} />
               </button>
               <button
-                onClick={() => { setShowAccount(!showAccount); setShowSettings(false); setShowMentorat(false) }}
+                onClick={() => { setShowAccount(!showAccount); setShowSettings(false); setShowMentorat(false); setShowSupport(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showAccount ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
                 title="Compte AOKnowledge"
                 aria-label="Compte AOKnowledge"
@@ -1088,7 +1101,7 @@ function App() {
                 <User size={14} />
               </button>
               <button
-                onClick={() => { setShowSettings(!showSettings); setShowAccount(false); setShowMentorat(false) }}
+                onClick={() => { setShowSettings(!showSettings); setShowAccount(false); setShowMentorat(false); setShowSupport(false) }}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                 title="Paramètres"
                 aria-label="Paramètres"
