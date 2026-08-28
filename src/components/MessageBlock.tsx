@@ -300,37 +300,22 @@ function MessageBlock({
     )
   }
 
-  // Render collapsed long text — tuile portrait 3:4 « comme une tablette »
-  // (demande Brice 28/08) : une miniature de page de document, titre en tête,
-  // long extrait qui remplit la hauteur, badge N lignes en pied.
+  // Render collapsed long text — tuile portrait 3:4 façon chip « PASTED » de
+  // Claude Desktop (inspiration Brice 28/08) : petite carte, texte brut
+  // minuscule qui remplit la tuile, badge en bas à gauche.
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative block w-full max-w-[220px]">
+      <div className="group relative block w-fit">
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
-          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden aspect-[3/4] flex flex-col"
+          className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden w-[132px] aspect-[3/4] flex flex-col p-2.5"
         >
-          {/* Title + excerpt : l'extrait remplit la hauteur de la tuile */}
-          <div className="px-3 pt-2.5 flex-1 overflow-hidden">
-            {previewTitle && (
-              <p className="text-[11px] font-semibold text-foreground/80 truncate leading-snug mb-1">
-                {previewTitle}
-              </p>
-            )}
-            {previewExcerpt ? (
-              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-[12]">
-                {previewExcerpt}
-              </p>
-            ) : !previewTitle && (
-              <p className="text-[11px] text-foreground/50 leading-relaxed line-clamp-[13]">
-                {plainText.slice(0, 700)}
-              </p>
-            )}
-          </div>
-          {/* Footer badge */}
-          <div className="flex items-center gap-1 px-2.5 py-1.5 border-t border-border/30">
-            <FileText size={9} className="text-muted-foreground/40 flex-shrink-0" />
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 truncate">
+          <p className="flex-1 overflow-hidden text-[9px] text-foreground/50 leading-snug break-words">
+            {plainText.slice(0, 450)}
+          </p>
+          <div className="mt-1.5 flex-shrink-0">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/60 bg-background/70 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <FileText size={8} className="flex-shrink-0" />
               {estimatedLines} lignes
             </span>
           </div>
