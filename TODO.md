@@ -1,4 +1,5 @@
 # TODO — Le Carnet du Trader (extension)
+<!-- ontologie: id=ch-todo-extension; statut=actif; concerne=extension,mentorat-ia,carnet-premium,ou-anthropic -->
 
 ## Priorités (ordre validé par Brice le 10 juillet 2026)
 
