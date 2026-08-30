@@ -65,6 +65,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.1',
+    title: 'Le mentorat devient une vraie conversation',
+    items: [
+      'L’écran du mentorat donnait l’impression qu’on pouvait lui répondre. C’est maintenant le cas : tu écris, il répond.',
+      'Le fil vit dans une note épinglée, « Mentorat AOK », qui reste en tête de ton historique. Ce n’est pas un chat à part : c’est une note comme les autres, qui se synchronise, s’exporte et se relit.',
+      'Deux boutons, et la différence compte. « Écrire » pose ton texte dans la note sans rien envoyer, c’est gratuit et instantané : tu peux prendre des notes dans ce fil, revenir demain, réfléchir. « Demander au mentor » est le seul moment où quelque chose part.',
+      'Quand tu demandes, le mentor reçoit tout ce que tu as écrit depuis sa dernière réponse, pas seulement ta dernière ligne. Tu peux poser ta pensée en trois fois et ne demander qu’une seule fois.',
+      'Il répond à partir de ton brief chiffré : tes trades, tes jugements A/B/C, tes causes d’erreur, tes relectures en retard. Il ne juge jamais une décision à son résultat et il n’invente aucun chiffre.',
+    ],
+  },
+  {
     version: '1.8.0',
     title: 'La capture intelligente devient vraiment intelligente',
     items: [
@@ -75,6 +86,9 @@ const CHANGELOG = [
       'Correction : sur YouTube, la description de la vidéo était perdue et le titre répété trois fois. La description est maintenant lue en entier, avec les chapitres et la durée.',
       'Correction : sur TradingView, « Prix : — » restait vide et les points clés se résumaient à l\'heure du graphique et à l\'heure de ton ordinateur. Le prix et l\'OHLC sont lus dans la légende, les horloges retournent dans les métadonnées.',
       'Si l\'IA n\'est pas disponible — hors ligne, quota atteint — la capture continue de fonctionner comme avant. Tu ne tombes jamais en panne.',
+      'La capture intelligente est reconnaissable dans le menu + : un liseré arc-en-ciel l\'entoure quand elle passe par l\'IA. Sans droit ou sans quota, elle reste ce qu\'elle a toujours été et fonctionne comme avant.',
+      'Nouveau : « Approfondir cette note », juste sous le résumé. La capture te donne la matière, ce bouton la relit dans le cadre de la méthode et écrit la lecture dans la note. Tu peux le faire tout de suite ou deux semaines plus tard à la relecture, là où ça vaut le plus.',
+      'Le bouton de warmup a quitté la barre du haut : « Lancer un warmup » est déjà au-dessus de la zone de saisie, là où tu t\'en sers.',
       'Nouveau : dans « Configurer son IA », tu choisis le modèle qui fait l\'étude. Ceux que ton forfait ne couvre pas restent visibles avec un cadenas, et en face de chacun tu vois combien d\'études il te reste. Tu peux descendre en gamme quand tu veux : c\'est un peu moins fin, et ça multiplie le nombre d\'études qui tiennent dans ton quota.',
       'Nouveau : le compte connecté s\'affiche en tête du menu des paramètres. Tu vois d\'un coup d\'œil avec quel email tu travailles, et « Visiteur » si tu n\'es pas connecté. Au retour de l\'écran Compte, l\'affichage se met à jour tout de suite au lieu d\'attendre la réouverture du panneau.',
     ],

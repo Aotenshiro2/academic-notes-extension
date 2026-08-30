@@ -1,12 +1,12 @@
 # TODO — Le Carnet du Trader (extension)
 <!-- ontologie: id=ch-todo-extension; statut=actif; concerne=extension,mentorat-ia,carnet-premium,ou-anthropic -->
 
-## ✅ v1.8.0 — CAPTURE INTELLIGENTE IA, en deux temps (30/08/2026)
+## ✅ v1.8.1 — CAPTURE INTELLIGENTE IA, en deux temps (30/08/2026)
 
 Clôt le backlog « capture intelligente à retravailler » du 17/07 et l'orientation
 Brice du 27/08 (« remplacer par de la vraie IA, appel via le backend, l'extension
-ne décide jamais »). Zip généré : `D:\8_Developpement\le-carnet-du-trader-v1.8.0.zip`
-(39 fichiers, 23,9 Mo, manifest 1.8.0, clé dev retirée, 0 secret — le seul JWT du
+ne décide jamais »). Zip généré : `D:\8_Developpement\le-carnet-du-trader-v1.8.1.zip`
+(39 fichiers, 23,9 Mo, manifest 1.8.1, clé dev retirée, 0 secret — le seul JWT du
 bundle est la clé anon Supabase, publique par construction).
 
 **Le découpage en deux temps** (idée de Brice, 30/08). La capture IA ne donne plus
@@ -85,7 +85,7 @@ retombe sur le défaut du palier, vérifié.
    `appliquer-migration.sh` n'accepte que le dossier canonique, et la base du
    journal est bien ce projet Supabase (`aws-0-eu-west-3.pooler.supabase.com`).
 2. ✅ `ANTHROPIC_API_KEY_CARNET` confirmée dans Vercel `journal-d-etude-beta`.
-3. ⏳ Charger le zip 1.8.0 sur le Store. **Brice travaille sur Windows**, le Mac
+3. ⏳ Charger le zip 1.8.1 sur le Store. **Brice travaille sur Windows**, le Mac
    ne sert qu'en déplacement : ne plus écrire « depuis son Mac » dans les notes.
 
 **VÉRIFIÉ BOUT EN BOUT le 30/08 contre la vraie base et la vraie clé** : palier
@@ -99,6 +99,44 @@ Budgets par défaut, surchargeables sans redéployer (`IA_BUDGET_LIBRE`,
 libre 0,25 € · premium 1,40 € · club 4 € par 30 jours glissants, plus un plafond
 global de 50 € sur le niveau libre. À revoir sur les relevés réels après trois
 semaines : le quota est un pare-feu, pas un prix.
+
+## ✅ v1.8.1 (suite) — LE MENTORAT DEVIENT UNE CONVERSATION
+
+Version 1.8.1 et non 1.9.0 : arbitrage Brice, la 1.8.0 n'a jamais été publiée et
+on modifie de l'existant. Les deux livrent ensemble.
+
+**La conversation est une NOTE ÉPINGLÉE**, « Mentorat AOK » (idée de Brice). Pas
+d'objet « conversation » inventé : elle se synchronise, s'exporte et se relit
+comme les autres, et l'élève peut y écrire pour lui-même entre deux échanges.
+Les réponses du mentor portent le tag `mentor` sur leur bloc — aucun type de
+bloc nouveau, aucune migration.
+
+**L'épinglage n'existait pas.** Champ `pinned` sur `AcademicNote` et
+`NoteSummary`, tri en tête dans `getNoteSummaries`. Local à l'extension : c'est
+un confort de navigation, pas une donnée d'étude, le journal n'a pas besoin de
+la colonne.
+
+**Le déclencheur** (la question que Brice a posée : chaque message ne doit pas
+appeler l'IA, l'élève doit pouvoir prendre des notes dans le fil) — écrire est
+GRATUIT, demander est un GESTE. « Écrire » pose le texte dans la note sans qu'un
+jeton parte. « Demander au mentor » envoie TOUT ce qui a été écrit depuis la
+dernière réponse, pas seulement la dernière ligne : on écrit dans un carnet par
+petits bouts, on réfléchit, puis on demande une fois. C'est la même grammaire que
+la capture, où le secrétaire écrit et l'étude demande.
+
+**Côté journal** : `POST /api/mentorat/chat`, déployée et vérifiée en ligne. Le
+serveur ne stocke pas le fil, il répond à un tour. Même palier et même enveloppe
+budgétaire que l'étude. Fil borné à 20 tours, le brief chiffré portant déjà
+l'historique long.
+
+**Vérifié contre la vraie clé** : 2,1 centimes l'échange, 10 s. Le mentor a
+utilisé les chiffres du brief sans en inventer, n'a pas cité le cadre comme un
+document, n'a pas félicité, et a reporté explicitement un sujet secondaire. Deux
+messages écrits d'affilée ont bien été traités comme une seule pensée.
+
+**Reste ouvert de ce chantier** : la 5e entrée dans « Analyser avec une IA » pour
+partir vers le mentorat sans quitter l'extension. Moins urgente maintenant que le
+fil vit dans l'écran mentorat.
 
 **Reste ouvert** : les blocs `meta` (les métadonnées vivent encore dans le contenu
 plutôt que dans des blocs dédiés) ; le rapprochement positions clôturées ↔ trades

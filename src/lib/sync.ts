@@ -870,3 +870,38 @@ export function capturerAvecIA(d: DemandeCaptureIA) {
 export function etudierNoteAvecIA(d: DemandeCaptureIA) {
   return posterCapture('/api/capture/analyse', d)
 }
+
+// ── Mentorat conversationnel (1.8.1) ─────────────────────────────────────────
+//
+// Le fil vit dans la note épinglée « Mentorat AOK », côté extension : le
+// serveur ne stocke rien, il répond à un tour. Écrire dans la note est gratuit
+// et n'appelle jamais cette route ; seul le bouton « demander au mentor » le
+// fait. Même grammaire que la capture, où le secrétaire écrit et l'étude
+// demande.
+
+export interface TourConversation {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export async function demanderAuMentor(
+  messages: TourConversation[],
+  days = 90
+): Promise<{ reply?: string; error?: string; statut?: number }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ messages, days }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return { error: typeof data.message === 'string' ? data.message : `HTTP ${res.status}`, statut: res.status }
+    }
+    return { reply: typeof data.reply === 'string' ? data.reply : '', statut: res.status }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}

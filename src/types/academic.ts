@@ -39,6 +39,10 @@ export interface NoteSummary {
   folderId?: string
   lastSyncAt?: number
   syncExcluded?: boolean
+  /** Note epinglee : remonte en tete de l'historique quoi qu'il arrive.
+   *  Introduit en 1.8.1 pour la note « Mentorat AOK », qui doit rester
+   *  atteignable en un geste meme apres cinquante captures. */
+  pinned?: boolean
   metadata: ContentMetadata
   summary?: string
   /** Nombre de jugements A/B/C posés — sert au filtre « non triées » */
@@ -99,6 +103,10 @@ export interface AcademicNote {
   timestamp: number
   lastSyncAt?: number
   syncExcluded?: boolean // true = exclue du journal (ne sera pas re-synquée automatiquement)
+  /** Note epinglee : remonte en tete de l'historique. Local a l'extension pour
+   *  l'instant (le journal ne porte pas la colonne), ce qui suffit : c'est un
+   *  confort de navigation, pas une donnee d'etude. */
+  pinned?: boolean
   folderId?: string // undefined = note libre (sans dossier)
   type: ContentType
   metadata: ContentMetadata

@@ -6,8 +6,14 @@
 // Anthropic côté Vercel) : phase de dogfooding.
 import { toast } from '@/lib/toast'
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Lock, LifeBuoy, User } from 'lucide-react'
-import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
+import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Lock, LifeBuoy, User, ArrowUp } from 'lucide-react'
+import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, demanderAuMentor, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
+import {
+  obtenirNoteMentorat, lireConversation, enAttenteDeReponse,
+  ecrireTourEleve, ecrireReponseMentor, TITRE_NOTE_MENTORAT,
+  type TourMentorat,
+} from '@/lib/note-mentorat'
+import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
 
 // Lien de paiement Stripe du Carnet Premium (5,99 €/mois, prix de lancement).
@@ -71,8 +77,86 @@ interface MentoratViewProps {
 type GateState = 'checking' | 'anon' | 'denied' | 'gate-error' | 'ok'
 
 function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProps) {
+
   const [gate, setGate] = useState<GateState>('checking')
   const [days, setDays] = useState(90)
+
+  // ── Le fil avec le mentor (1.8.1) ────────────────────────────────────────
+  // Il vit dans la note epinglee « Mentorat AOK » : c'est elle la source de
+  // verite, pas un etat local. On la relit apres chaque ecriture.
+  const [noteMentoratId, setNoteMentoratId] = useState<string | null>(null)
+  const [tours, setTours] = useState<TourMentorat[]>([])
+  const [brouillon, setBrouillon] = useState('')
+  const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const enAttente = enAttenteDeReponse(tours)
+
+  const relireFil = useCallback(async (id: string) => {
+    const note = await storage.getNote(id)
+    if (note) setTours(lireConversation(note))
+  }, [])
+
+  useEffect(() => {
+    let vivant = true
+    obtenirNoteMentorat()
+      .then(note => {
+        if (!vivant) return
+        setNoteMentoratId(note.id)
+        setTours(lireConversation(note))
+      })
+      .catch(err => console.warn('[mentorat] note indisponible', err))
+    return () => { vivant = false }
+  }, [])
+
+  // Ecrire : gratuit, aucun appel au modele. C'est le geste par defaut, pour
+  // que l'eleve puisse prendre des notes dans ce fil sans rien declencher.
+  const ecrire = useCallback(async () => {
+    const texte = brouillon.trim()
+    if (!texte || !noteMentoratId) return
+    await ecrireTourEleve(noteMentoratId, texte)
+    setBrouillon('')
+    await relireFil(noteMentoratId)
+  }, [brouillon, noteMentoratId, relireFil])
+
+  // Demander : le seul endroit ou un jeton part. On envoie TOUT ce qui a ete
+  // ecrit depuis la derniere reponse du mentor, pas seulement la derniere
+  // ligne — on ecrit dans un carnet par petits bouts, puis on demande.
+  const demander = useCallback(async () => {
+    if (!noteMentoratId || envoiEnCours) return
+    const texte = brouillon.trim()
+
+    let fil = tours
+    if (texte) {
+      await ecrireTourEleve(noteMentoratId, texte)
+      setBrouillon('')
+      const note = await storage.getNote(noteMentoratId)
+      fil = note ? lireConversation(note) : tours
+      setTours(fil)
+    }
+    if (enAttenteDeReponse(fil).length === 0) {
+      toast.info('Écris quelque chose avant de demander au mentor.')
+      return
+    }
+
+    setEnvoiEnCours(true)
+    try {
+      const { reply, error, statut } = await demanderAuMentor(
+        fil.map(x => ({ role: x.role, content: x.content })),
+        days
+      )
+      if (!reply) {
+        if (statut === 403) toast.info(error || 'Le mode mentorat fait partie du Carnet Premium.')
+        else toast.error(error || 'Le mentor est indisponible pour le moment.')
+        return
+      }
+      await ecrireReponseMentor(noteMentoratId, reply)
+      await relireFil(noteMentoratId)
+    } catch (err) {
+      console.error('[mentorat] echec', err)
+      toast.error('Le mentor est indisponible pour le moment.')
+    } finally {
+      setEnvoiEnCours(false)
+    }
+  }, [noteMentoratId, brouillon, tours, envoiEnCours, relireFil, days])
   const [brief, setBrief] = useState<MentoratBriefData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -392,6 +476,90 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProp
               </button>
             </div>
             <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/70 font-sans">{brief.text}</pre>
+          </div>
+
+          {/* ── Le fil avec le mentor (1.8.1) ─────────────────────────────
+              L'écran donnait l'impression qu'on pouvait répondre dedans ; il
+              le peut maintenant. Le fil vit dans la note épinglée « Mentorat
+              AOK », donc il se synchronise, s'exporte et se relit comme le
+              reste du carnet.
+
+              La règle, la même que la capture : ÉCRIRE EST GRATUIT, DEMANDER
+              EST UN GESTE. La flèche pose le texte dans la note sans qu'un
+              jeton parte. Le bouton du mentor envoie tout ce qui a été écrit
+              depuis sa dernière réponse — on écrit par petits bouts, on
+              réfléchit, puis on demande une fois. */}
+          <div className="p-3 border border-border/50 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ton fil avec le mentor</p>
+              {tours.length > 0 && (
+                <span className="text-[10px] text-muted-foreground/60">note « {TITRE_NOTE_MENTORAT} »</span>
+              )}
+            </div>
+
+            {tours.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                Écris ici ce que tu veux : une question, un doute, une observation de séance.
+                Rien ne part tant que tu ne cliques pas sur le bouton du mentor.
+              </p>
+            ) : (
+              <div className="space-y-2 mb-3 max-h-72 overflow-y-auto scrollbar-thin pr-1">
+                {tours.map(t => (
+                  <div
+                    key={t.messageId}
+                    className={`p-2 rounded-lg text-[11px] leading-relaxed whitespace-pre-wrap ${
+                      t.role === 'assistant'
+                        ? 'bg-amber-500/10 border border-amber-500/20 text-foreground'
+                        : 'bg-muted/40 text-foreground/85'
+                    }`}
+                  >
+                    <span className="block text-[9px] uppercase tracking-wide text-muted-foreground/70 mb-0.5">
+                      {t.role === 'assistant' ? 'Mentor' : 'Toi'}
+                    </span>
+                    {t.content}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <textarea
+              value={brouillon}
+              onChange={e => setBrouillon(e.target.value)}
+              rows={3}
+              placeholder="Écris ici…"
+              className="w-full text-[11px] px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/20 placeholder:text-muted-foreground resize-y"
+            />
+
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={ecrire}
+                disabled={!brouillon.trim() || envoiEnCours}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-muted text-foreground hover:bg-muted/70 transition-colors disabled:opacity-40"
+                title="Écrire dans la note, sans rien envoyer"
+              >
+                <ArrowUp size={12} />
+                Écrire
+              </button>
+
+              <button
+                onClick={demander}
+                disabled={envoiEnCours || (!brouillon.trim() && enAttente.length === 0)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors disabled:opacity-40 ${
+                  envoiEnCours ? 'bg-muted text-muted-foreground cursor-wait' : 'aura-ia bg-background text-foreground hover:bg-muted'
+                }`}
+                title="Envoyer au mentor tout ce que tu as écrit depuis sa dernière réponse"
+              >
+                {envoiEnCours
+                  ? <><Loader2 size={12} className="animate-spin" /> Le mentor réfléchit…</>
+                  : <><Sparkles size={12} className="text-purple-500" /> Demander au mentor</>}
+              </button>
+
+              {!envoiEnCours && enAttente.length > 0 && (
+                <span className="text-[10px] text-muted-foreground/70">
+                  {enAttente.length} message{enAttente.length > 1 ? 's' : ''} en attente
+                </span>
+              )}
+            </div>
           </div>
         </>
       ) : null}

@@ -23,6 +23,8 @@ interface CaptureInputProps {
   onSubmit?: (content: string) => void
   onSmartCapture?: () => void
   isSmartCapturing?: boolean
+  /** la capture intelligente passe-t-elle par l'IA pour ce compte ? allume l'aura */
+  captureIaActive?: boolean
   onStartTrade?: () => void
   hasActiveTrade?: boolean
   className?: string
@@ -42,6 +44,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   onSubmit,
   onSmartCapture,
   isSmartCapturing = false,
+  captureIaActive = false,
   onStartTrade,
   hasActiveTrade = false,
   currentPageInfo,
@@ -659,10 +662,14 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                   )}
 
                   {onSmartCapture && (
+                    // L'aura arc-en-ciel ne s'allume que si le compte a
+                    // réellement droit à la capture IA. Sinon le bouton reste
+                    // ce qu'il a toujours été : la capture par heuristiques,
+                    // qui marche et qui ne promet rien qu'elle ne tient pas.
                     <button
                       onClick={() => { onSmartCapture(); setIsMenuOpen(false) }}
                       disabled={isSmartCapturing}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50 ${captureIaActive ? 'aura-ia' : ''}`}
                     >
                       {isSmartCapturing
                         ? <Loader2 size={18} className="text-purple-500 flex-shrink-0 animate-spin" />
@@ -670,7 +677,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                       }
                       <div className="text-left">
                         <div className="font-medium">{isSmartCapturing ? 'Capture...' : 'Capture intelligente'}</div>
-                        <div className="text-xs text-muted-foreground">Résumé + points clés</div>
+                        <div className="text-xs text-muted-foreground">
+                          {captureIaActive ? 'Résumé et points clés, lus par l’IA' : 'Résumé + points clés'}
+                        </div>
                       </div>
                     </button>
                   )}

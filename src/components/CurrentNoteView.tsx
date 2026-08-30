@@ -1,6 +1,6 @@
 import { toast } from '../lib/toast'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2 } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -46,9 +46,17 @@ interface CurrentNoteViewProps {
   onNoteUpdate?: () => void
   refreshTrigger?: number
   initialLightboxIndex?: number
+  /** 2e temps de la capture (1.8.0) : relire la note dans le cadre de la
+   *  methode et ecrire la lecture dedans. Le bouton s'affiche sous le resume. */
+  onEtudier?: () => void
+  /** l'approfondissement est-il ouvert a ce compte ? sinon le bouton reste
+   *  visible mais verrouille : voir la fonction et savoir pourquoi on ne l'a
+   *  pas convertit mieux qu'un bouton absent. */
+  etudeOuverte?: boolean
+  etudeEnCours?: boolean
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightboxIndex }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightboxIndex, onEtudier, etudeOuverte = false, etudeEnCours = false }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(initialLightboxIndex ?? null)
@@ -556,11 +564,41 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} onDelete={handleDeleteLegacyWarmup} />
       )}
 
-      {/* Résumé */}
+      {/* Résumé, et juste dessous l'approfondissement (1.8.0).
+          Le 2e temps de la capture vit ICI et pas dans une barre d'outils : le
+          moment où on a envie d'aller plus loin, c'est en relisant le résumé,
+          pas en cherchant une icône en haut de l'écran. Et comme on peut y
+          revenir des semaines après, le bouton reste disponible tant que la
+          note existe. */}
       {note.summary && (
         <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
           <h3 className="text-sm font-semibold text-primary mb-2">Résumé</h3>
           <p className="text-sm text-foreground/90">{note.summary}</p>
+
+          {onEtudier && (
+            <button
+              onClick={() => { if (!etudeEnCours) onEtudier() }}
+              disabled={etudeEnCours}
+              className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                etudeEnCours
+                  ? 'bg-muted text-muted-foreground cursor-wait'
+                  : etudeOuverte
+                    ? 'aura-ia bg-background text-foreground hover:bg-muted'
+                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+              }`}
+              title={
+                etudeOuverte
+                  ? 'Relire cette note dans le cadre de la méthode et écrire la lecture dedans'
+                  : 'L’approfondissement fait partie du Carnet Premium'
+              }
+            >
+              {etudeEnCours
+                ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> Étude en cours…</>
+                : etudeOuverte
+                  ? <><Sparkles size={13} className="text-purple-500 flex-shrink-0" /> Approfondir cette note</>
+                  : <><Lock size={13} className="flex-shrink-0" /> Approfondir · Carnet Premium</>}
+            </button>
+          )}
         </div>
       )}
 

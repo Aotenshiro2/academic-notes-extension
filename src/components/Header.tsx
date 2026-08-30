@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown, Sunrise, BookOpenCheck } from 'lucide-react'
+import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown } from 'lucide-react'
 
 function GoogleDriveIcon({ size = 14 }: { size?: number }) {
   return (
@@ -16,26 +16,16 @@ function GoogleDriveIcon({ size = 14 }: { size?: number }) {
 
 interface HeaderProps {
   onShowHistory?: () => void
-  onShowRitual?: () => void
   onHome?: () => void
   onFullscreen?: () => void
   onExportPDF?: () => void
   onExportDocx?: () => void
   onExportDrive?: () => void
   onAnalyze?: () => void
-  /** 2e temps de la capture (1.8.0) : relire la note dans le cadre de
-   *  l'académie, et écrire la lecture DANS la note. À ne pas confondre avec
-   *  onAnalyze, qui envoie la note vers l'IA personnelle de l'élève. */
-  onEtudier?: () => void
-  /** l'étude est-elle ouverte à ce compte ? sinon le bouton reste visible mais
-   *  verrouillé : voir la fonction et savoir pourquoi on ne l'a pas convertit
-   *  mieux qu'un bouton absent. */
-  etudeOuverte?: boolean
-  etudeEnCours?: boolean
   isExporting?: boolean
 }
 
-function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, onEtudier, etudeOuverte = false, etudeEnCours = false, isExporting = false }: HeaderProps) {
+function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, isExporting = false }: HeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const canExport = !!(onExportPDF || onExportDocx)
@@ -134,14 +124,10 @@ function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF
             )}
           </div>
 
-          <button
-            onClick={onShowRitual}
-            className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-500/10 rounded-md transition-colors"
-            title="Lancer un warmup (crée une note de séance si besoin)"
-            aria-label="Lancer un warmup"
-          >
-            <Sunrise size={18} />
-          </button>
+          {/* Le warmup a quitté le header en 1.8.0 : « Lancer un warmup » est
+              déjà docké au-dessus de la barre de capture, là où on l'utilise
+              vraiment. Deux entrées pour la même action encombraient une barre
+              qui n'a pas de place à perdre. */}
 
           <button
             onClick={onAnalyze}
@@ -157,29 +143,9 @@ function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF
             <Sparkles size={18} />
           </button>
 
-          {onEtudier && (
-            <button
-              onClick={onEtudier}
-              disabled={etudeEnCours}
-              className={`p-2 rounded-md transition-colors ${
-                etudeEnCours
-                  ? 'text-muted-foreground/40 cursor-wait'
-                  : etudeOuverte
-                    ? 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10'
-                    : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted'
-              }`}
-              title={
-                etudeEnCours
-                  ? 'Étude en cours…'
-                  : etudeOuverte
-                    ? 'Étudier la note'
-                    : 'Étudier la note (Carnet Premium)'
-              }
-              aria-label="Étudier la note"
-            >
-              <BookOpenCheck size={18} />
-            </button>
-          )}
+          {/* L'approfondissement n'est PAS ici : il vit dans la note, juste
+              sous le résumé que la capture vient d'écrire. C'est là qu'on a
+              envie d'aller plus loin, pas dans une barre d'outils globale. */}
 
           <button
             onClick={onFullscreen}

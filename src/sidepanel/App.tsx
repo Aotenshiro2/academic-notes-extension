@@ -96,9 +96,11 @@ function App() {
   const [isSmartCapturing, setIsSmartCapturing] = useState(false)
   const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
   const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
-  // Étude (1.8.0). `etudeOuverte` ne sert QU'À AFFICHER : le serveur
-  // re-vérifie le droit et le budget à chaque appel, un client bidouillé ne
-  // contourne rien.
+  // Capture IA et étude (1.8.0). Ces deux drapeaux ne servent QU'À AFFICHER —
+  // l'aura sur « Capture intelligente », le bouton d'approfondissement sous le
+  // résumé. Le serveur re-vérifie le droit et le budget à chaque appel : un
+  // client bidouillé ne contourne rien.
+  const [captureIaActive, setCaptureIaActive] = useState(false)
   const [etudeOuverte, setEtudeOuverte] = useState(false)
   const [etudeEnCours, setEtudeEnCours] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -142,15 +144,22 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, pendingSyncCount])
 
-  // Droit à l'étude (1.8.0). Une seule question au backend à la connexion :
-  // le bouton reste visible pour tout le monde, seul son état change.
+  // Ce à quoi le compte a droit (1.8.0). Une seule question au backend à la
+  // connexion. `captureIaActive` exige aussi qu'il reste du budget : allumer
+  // l'aura alors que le quota est épuisé promettrait quelque chose qu'on ne
+  // tiendrait pas, et la capture retomberait sur les heuristiques.
   useEffect(() => {
-    if (isAuthed !== true) { setEtudeOuverte(false); return }
+    if (isAuthed !== true) { setEtudeOuverte(false); setCaptureIaActive(false); return }
     let vivant = true
-    fetchAccesCaptureIA()
-      .then(({ acces }) => { if (vivant && acces) setEtudeOuverte(Boolean(acces.etude)) })
-      .catch(() => { /* le serveur retranchera de toute façon */ })
+    fetchAccesCaptureIA(settings?.modeleEtude ?? null)
+      .then(({ acces }) => {
+        if (!vivant || !acces) return
+        setEtudeOuverte(Boolean(acces.etude))
+        setCaptureIaActive(Boolean(acces.capture && acces.autorise))
+      })
+      .catch(() => { /* le serveur tranchera de toute façon */ })
     return () => { vivant = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed])
 
   // Charger les données initiales
@@ -950,16 +959,12 @@ function App() {
     <div className="sidebar-container">
       <Header
         onShowHistory={() => setShowHistoryDropdown(!showHistoryDropdown)}
-        onShowRitual={handleRitualWarmup}
         onHome={handleGoHome}
         onFullscreen={handleFullscreen}
         onExportPDF={currentNote ? handleExportPDF : undefined}
         onExportDocx={currentNote ? handleExportDocx : undefined}
         onExportDrive={currentNote ? handleExportDrive : undefined}
         onAnalyze={currentNote ? handleOpenAnalyze : undefined}
-        onEtudier={currentNote ? handleEtudierNote : undefined}
-        etudeOuverte={etudeOuverte}
-        etudeEnCours={etudeEnCours}
         isExporting={isExporting}
       />
 
@@ -1122,6 +1127,9 @@ function App() {
               noteId={currentNoteId}
               onNoteUpdate={loadData}
               refreshTrigger={noteRefreshTrigger}
+              onEtudier={handleEtudierNote}
+              etudeOuverte={etudeOuverte}
+              etudeEnCours={etudeEnCours}
             />
           ) : (
             <>
@@ -1190,6 +1198,7 @@ function App() {
               onSubmit={(content) => handleAddContent(content, currentNoteId)}
               onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
               isSmartCapturing={isSmartCapturing}
+              captureIaActive={captureIaActive}
               onStartTrade={handleStartTrade}
               hasActiveTrade={!!currentNote?.hasOpenTrade}
               currentPageInfo={currentPageInfo || undefined}

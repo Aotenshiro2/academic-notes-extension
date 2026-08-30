@@ -453,3 +453,52 @@
     margin: 2px 0;
   }
 }
+/* ── Aura « boosté à l'IA » (1.8.0) ───────────────────────────────────────────
+   Un liseré arc-en-ciel qui défile autour d'un élément, pour dire d'un coup
+   d'œil que cette action-là passe par le modèle. Posé sur « Capture
+   intelligente » dans le menu +, et sur le bouton d'approfondissement d'une
+   note. Volontairement discret : un liseré d'un pixel et une lueur, pas un
+   feu d'artifice — l'élève le voit une fois, puis c'est du décor.
+
+   La technique : un pseudo-élément qui peint le dégradé, masqué en anneau par
+   la composition de deux masques, pour n'en garder que la bordure. Ça marche
+   sans bibliothèque et ça suit le border-radius du parent. */
+.aura-ia {
+  position: relative;
+}
+
+.aura-ia::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(90deg, #a855f7, #22d3ee, #34d399, #fbbf24, #f472b6, #a855f7);
+  background-size: 300% 100%;
+  animation: aura-ia-defile 5s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* La lueur, séparée du liseré : elle vit derrière et ne subit pas le masque. */
+.aura-ia::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 14px -6px rgba(168, 85, 247, 0.85);
+  pointer-events: none;
+}
+
+@keyframes aura-ia-defile {
+  to { background-position: 300% 0; }
+}
+
+/* Une animation qui tourne en boucle n'a rien d'indispensable ici : on la coupe
+   pour qui a demandé moins de mouvement, le liseré reste. */
+@media (prefers-reduced-motion: reduce) {
+  .aura-ia::before { animation: none; }
+}

@@ -390,6 +390,7 @@ function toSummary(note: AcademicNote): NoteSummary {
     folderId: note.folderId,
     lastSyncAt: note.lastSyncAt,
     syncExcluded: note.syncExcluded,
+    pinned: note.pinned,
     metadata: note.metadata ?? { domain: '', title: note.title, language: 'fr' },
     summary: note.summary,
     annotationCount: note.annotations?.length ?? 0,
@@ -534,8 +535,14 @@ export const storage = {
    * les images en base64) n'est jamais matérialisé en mémoire — c'était la cause
    * des plantages « Out of Memory ».
    */
+  /** Les notes epinglees remontent en tete, le reste garde son ordre. Fait
+   *  APRES la pagination Dexie : une note epinglee est rare (une ou deux), et
+   *  la faire remonter au niveau de l'index couterait un index composite pour
+   *  un gain nul. */
   async getNoteSummaries(limit = 1000, offset = 0): Promise<NoteSummary[]> {
     try {
+      const epingleesDabord = (l: NoteSummary[]) =>
+        [...l].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
       const summaries: NoteSummary[] = []
       await db.notes
         .orderBy('id')
@@ -554,11 +561,11 @@ export const storage = {
             .offset(offset)
             .limit(limit)
             .each(note => { retry.push(toSummary(note)) })
-          return retry
+          return epingleesDabord(retry)
         }
       }
 
-      return summaries
+      return epingleesDabord(summaries)
     } catch (error) {
       console.error('[Storage] getNoteSummaries failed:', error)
       return []
