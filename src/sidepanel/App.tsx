@@ -36,6 +36,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
 import { fetchAccesCaptureIA } from '@/lib/sync'
+import { obtenirNoteMentorat } from '@/lib/note-mentorat'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
@@ -67,6 +68,14 @@ function App() {
     setShowAiConfig(false)
     setShowPlans(false)
     setShowTools(false)
+  }
+
+  // Ouvrir une note referme l ecran en cours. Sans ca, choisir une note
+  // depuis l historique alors qu on etait dans le mentorat laissait l ecran
+  // mentorat au premier plan, par-dessus la note qu on venait de demander.
+  const ouvrirNote = (id: string) => {
+    closeAllViews()
+    setCurrentNoteId(id)
   }
 
   // Menu pop-up du bouton ⚙️ — le hub des écrans secondaires (retour Brice
@@ -156,6 +165,16 @@ function App() {
         if (!vivant || !acces) return
         setEtudeOuverte(Boolean(acces.etude))
         setCaptureIaActive(Boolean(acces.capture && acces.autorise))
+        // La note « Mentorat AOK » est creee des l ouverture pour ceux qui y
+        // ont droit, pas seulement quand on visite l ecran mentorat : elle est
+        // epinglee en tete de l historique, elle doit donc y etre AVANT qu on
+        // la cherche. Les comptes sans mentorat n heritent pas d une note
+        // qu ils ne peuvent pas utiliser.
+        if (acces.etude) {
+          obtenirNoteMentorat()
+            .then(() => loadData())
+            .catch(err => console.warn('[mentorat] note indisponible', err))
+        }
       })
       .catch(() => { /* le serveur tranchera de toute façon */ })
     return () => { vivant = false }
@@ -1155,7 +1174,7 @@ function App() {
                     ? notes.reduce((latest, n) => n.timestamp > latest.timestamp ? n : latest)
                     : undefined
                   }
-                  onSelectNote={setCurrentNoteId}
+                  onSelectNote={ouvrirNote}
                 />
               )}
             </>
@@ -1377,7 +1396,7 @@ function App() {
         notes={notes}
         folders={folders}
         currentNoteId={currentNoteId}
-        onSelectNote={setCurrentNoteId}
+        onSelectNote={ouvrirNote}
         onNotesUpdate={loadData}
         onFolderCreate={handleFolderCreate}
         onFolderRename={handleFolderRename}

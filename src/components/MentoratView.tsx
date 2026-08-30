@@ -10,7 +10,7 @@ import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkl
 import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, demanderAuMentor, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
 import {
   obtenirNoteMentorat, lireConversation, enAttenteDeReponse,
-  ecrireTourEleve, ecrireReponseMentor, TITRE_NOTE_MENTORAT,
+  ecrireTourEleve, ecrireReponseMentor, TITRE_NOTE_MENTORAT, apercuDuTour,
   type TourMentorat,
 } from '@/lib/note-mentorat'
 import storage from '@/lib/storage'
@@ -508,15 +508,20 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProp
                   <div
                     key={t.messageId}
                     className={`p-2 rounded-lg text-[11px] leading-relaxed whitespace-pre-wrap ${
-                      t.role === 'assistant'
-                        ? 'bg-amber-500/10 border border-amber-500/20 text-foreground'
-                        : 'bg-muted/40 text-foreground/85'
+                      t.pieceJointe
+                        ? 'bg-primary/5 border border-primary/20 text-foreground/80 italic'
+                        : t.role === 'assistant'
+                          ? 'bg-amber-500/10 border border-amber-500/20 text-foreground'
+                          : 'bg-muted/40 text-foreground/85'
                     }`}
                   >
                     <span className="block text-[9px] uppercase tracking-wide text-muted-foreground/70 mb-0.5">
-                      {t.role === 'assistant' ? 'Mentor' : 'Toi'}
+                      {t.pieceJointe ? 'Note jointe' : t.role === 'assistant' ? 'Mentor' : 'Toi'}
                     </span>
-                    {t.content}
+                    {/* Une note jointe n'est pas recopiée en entier dans le fil :
+                        ça le rendrait illisible. Le mentor, lui, en reçoit tout
+                        le contenu quand tu lui demandes. */}
+                    {apercuDuTour(t, t.pieceJointe)}
                   </div>
                 ))}
               </div>

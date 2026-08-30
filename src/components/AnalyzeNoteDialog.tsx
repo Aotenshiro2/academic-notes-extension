@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { toast } from '@/lib/toast'
 import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
+import { obtenirNoteMentorat, joindreNoteAuMentor } from '@/lib/note-mentorat'
+import { fetchAccesCaptureIA } from '@/lib/sync'
 import type { AcademicNote, NoteSummary, AnalysisProvider, NoteFolder } from '@/types/academic'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib/pdf-export'
@@ -169,7 +172,39 @@ function AnalyzeNoteDialog({
   const [status, setStatus] = useState<SendStatus>('idle')
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [providerThreadUrls, setProviderThreadUrls] = useState<Partial<Record<AnalysisProvider, string>>>({})
-  const [sendMode, setSendMode] = useState<'new' | 'thread'>('new')
+  // 'mentor' (1.8.1) : au lieu de sortir vers l'IA personnelle de l'élève, la
+  // note rejoint son fil de mentorat, dans le carnet. Ce n'est pas la même
+  // chose et les deux coexistent : l'injection fait lire la note par SON IA et
+  // la réponse reste dans son onglet, le mentor fait grossir le carnet.
+  const [sendMode, setSendMode] = useState<'new' | 'thread' | 'mentor'>('new')
+  const [mentorDisponible, setMentorDisponible] = useState(false)
+
+  useEffect(() => {
+    let vivant = true
+    fetchAccesCaptureIA()
+      .then(({ acces }) => { if (vivant && acces) setMentorDisponible(Boolean(acces.etude)) })
+      .catch(() => { /* hors ligne : l'option reste cachée, rien de cassé */ })
+    return () => { vivant = false }
+  }, [])
+
+  // Joindre la note au fil du mentor. On n'y recopie PAS la note en entier à
+  // l'affichage : une ligne suffit à dire qu'elle est là. Le contenu part quand
+  // même au modèle le moment venu — il est dans le même bloc, et c'est le fil
+  // qui n'en montre que la première ligne.
+  const envoyerAuMentor = async (): Promise<boolean> => {
+    try {
+      const noteMentorat = await obtenirNoteMentorat()
+      const corps = await buildFullPrompt()
+      const titre = isMultiNote ? `${selectedNoteIds.length} notes` : (note?.title ?? 'une note')
+      await joindreNoteAuMentor(noteMentorat.id, titre, corps)
+      toast.success(`Ajoutée au fil du mentor : ${titre}`)
+      return true
+    } catch (err) {
+      console.error('[analyse] envoi au mentor impossible', err)
+      toast.error('Impossible d’ajouter la note au fil du mentor.')
+      return false
+    }
+  }
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('preparing')
 
   // Multi-note picker state
@@ -294,6 +329,16 @@ function AnalyzeNoteDialog({
     if (!fullPrompt.trim()) return
 
     setStatus('loading')
+
+    // Destination « mentor » : rien ne sort de l'extension, la note rejoint le
+    // fil et on s'arrête là. Aucun jeton ne part — le mentor ne répondra que
+    // lorsque l'élève cliquera « Demander au mentor » dans son fil.
+    if (sendMode === 'mentor') {
+      const ok = await envoyerAuMentor()
+      setStatus(ok ? 'success' : 'idle')
+      if (ok) onClose()
+      return
+    }
 
     const threadUrl = sendMode === 'thread' ? (providerThreadUrls[provider] || undefined) : undefined
 
@@ -591,7 +636,7 @@ function AnalyzeNoteDialog({
           </div>
 
           {/* Thread mode segmented control */}
-          {hasThreadUrl && (
+          {(hasThreadUrl || mentorDisponible) && (
             <div className="px-5 mt-3 flex items-center gap-2">
               <span className="text-xs text-muted-foreground whitespace-nowrap">Envoyer dans :</span>
               <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
@@ -617,8 +662,30 @@ function AnalyzeNoteDialog({
                 >
                   Conv. existante
                 </button>
+                {mentorDisponible && (
+                  <button
+                    onClick={() => setSendMode('mentor')}
+                    disabled={isLoading}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${
+                      sendMode === 'mentor'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title="Ajouter cette note à ton fil de mentorat, sans quitter le carnet"
+                  >
+                    <GraduationCap size={12} className="text-amber-600 dark:text-amber-400" />
+                    Mentor AOK
+                  </button>
+                )}
               </div>
             </div>
+          )}
+
+          {sendMode === 'mentor' && (
+            <p className="px-5 mt-2 text-[11px] text-muted-foreground leading-relaxed">
+              La note rejoint ton fil « Mentorat AOK ». Rien ne part tout de suite :
+              le mentor répondra quand tu cliqueras « Demander au mentor » dans ce fil.
+            </p>
           )}
 
           {/* Prompt d'ouverture : rappeler qu'il ne sert qu'une fois par conversation */}

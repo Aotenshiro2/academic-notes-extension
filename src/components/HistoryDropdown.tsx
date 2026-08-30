@@ -1,6 +1,7 @@
 import { toast } from '../lib/toast'
 import React, { useRef, useEffect, useState } from 'react'
-import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff, Search } from 'lucide-react'
+import { X, FileText, Clock, Edit3, Check, XCircle, Trash2, FolderOpen, Folder, FolderPlus, ChevronRight, ChevronDown, GripVertical, CloudOff, Search, GraduationCap } from 'lucide-react'
+import { TITRE_NOTE_MENTORAT } from '@/lib/note-mentorat'
 import ConfirmDialog from './ConfirmDialog'
 import SearchBar from './SearchBar'
 import storage from '@/lib/storage'
@@ -290,9 +291,17 @@ function HistoryDropdown({
     >
       <div className="flex items-start space-x-2">
         <GripVertical size={12} className="text-muted-foreground/30 mt-1 flex-shrink-0 cursor-grab" />
-        <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-          <FileText size={12} className="text-primary" />
-        </div>
+        {/* La note du mentorat porte le chapeau, pas la feuille : elle est
+            épinglée en tête et on doit la reconnaître sans lire le titre. */}
+        {note.title === TITRE_NOTE_MENTORAT ? (
+          <div className="w-7 h-7 bg-amber-500/15 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <GraduationCap size={13} className="text-amber-600 dark:text-amber-400" />
+          </div>
+        ) : (
+          <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <FileText size={12} className="text-primary" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-1">
             {editingNoteId === note.id ? (

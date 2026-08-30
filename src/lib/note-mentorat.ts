@@ -14,12 +14,16 @@ import type { AcademicNote, NoteMessage } from '@/types/academic'
 export const TITRE_NOTE_MENTORAT = 'Mentorat AOK'
 const TAG_MENTOR = 'mentor'
 const CLE_ID = 'aok_note_mentorat_id'
+export const TAG_PIECE_JOINTE = 'piece-jointe'
 
 export interface TourMentorat {
   role: 'user' | 'assistant'
   content: string
   at: number
   messageId: string
+  /** note jointe depuis « Analyser cette note » : le fil n'en montre que
+   *  l'en-tête, le modèle en reçoit le contenu entier */
+  pieceJointe: boolean
 }
 
 /** HTML vers texte : ce qu'on renvoie au modèle et ce qu'on affiche dans le
@@ -133,6 +137,7 @@ export function lireConversation(note: AcademicNote): TourMentorat[] {
       content: versTexte(m.content),
       at: m.timestamp,
       messageId: m.id,
+      pieceJointe: (m.tags ?? []).includes(TAG_PIECE_JOINTE),
     }))
     .filter(t => t.content.length > 0)
 }
@@ -160,4 +165,37 @@ export async function ecrireReponseMentor(noteId: string, texte: string): Promis
     content: versHtml(texte),
     tags: [TAG_MENTOR],
   })
+}
+
+/**
+ * Joindre une note au fil, depuis « Analyser cette note ».
+ *
+ * Le bloc contient DEUX choses : une première ligne qui dit qu'une note a été
+ * jointe, et le contenu complet en dessous. Le fil n'affiche que la première
+ * ligne — recopier une note entière dans une conversation la rendrait
+ * illisible — mais le modèle, lui, reçoit tout : c'est le même bloc, et
+ * `lireConversation` ne tronque rien.
+ *
+ * Aucun jeton ne part à ce moment-là. Le mentor ne verra cette note que
+ * lorsque l'élève cliquera « Demander au mentor ».
+ */
+export async function joindreNoteAuMentor(
+  noteId: string,
+  titre: string,
+  contenu: string
+): Promise<void> {
+  const entete = `Note jointe : ${titre}`
+  await storage.addMessageToNote(noteId, {
+    type: 'text',
+    content: versHtml(`${entete}\n\n${contenu}`),
+    tags: [TAG_PIECE_JOINTE],
+  })
+}
+
+/** Ce que le FIL affiche d'un tour : tout, sauf pour une pièce jointe dont on
+ *  ne montre que l'en-tête. Le modèle, lui, reçoit `content` en entier. */
+export function apercuDuTour(tour: TourMentorat, estPieceJointe: boolean): string {
+  if (!estPieceJointe) return tour.content
+  const [premiere] = tour.content.split('\n')
+  return premiere || tour.content.slice(0, 120)
 }
