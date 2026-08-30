@@ -1,4 +1,5 @@
 import React from 'react'
+import { t } from '@/lib/i18n'
 import { BookOpen, Camera, History, Sparkles, Loader2 } from 'lucide-react'
 import { formatSmartDate } from '@/lib/date-utils'
 import type { NoteSummary } from '@/types/academic'
@@ -20,10 +21,10 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
           <BookOpen size={32} className="text-primary" />
         </div>
         <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Prêt à prendre des notes ?
+          {t('accueil.titre')}
         </h2>
         <p className="text-muted-foreground max-w-md">
-          Écrivez dans la zone ci-dessous ou capturez cette page.
+          {t('accueil.sous')}
         </p>
       </div>
 
@@ -39,7 +40,7 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
               <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <div className="font-medium text-foreground">Capture intelligente</div>
+              <div className="font-medium text-foreground">{t('capture.intelligente')}</div>
               <div className="text-sm text-muted-foreground">Résumé + points clés de la page</div>
             </div>
           </button>
@@ -59,8 +60,8 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
               }
             </div>
             <div>
-              <div className="font-medium text-foreground">{isCapturing ? 'Capture en cours...' : 'Capturer cette page'}</div>
-              <div className="text-sm text-muted-foreground">Screenshot + titre et URL</div>
+              <div className="font-medium text-foreground">{isCapturing ? t('capture.enCours') : t('accueil.capturerPage')}</div>
+              <div className="text-sm text-muted-foreground">{t('accueil.capturerPageSous')}</div>
             </div>
           </button>
         )}

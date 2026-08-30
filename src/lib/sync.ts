@@ -2,6 +2,7 @@ import type { AcademicNote } from '@/types/academic'
 import { getSession, getBearerToken } from './auth'
 import { compressImage } from './image-utils'
 
+import { getLangue } from './i18n'
 const JOURNAL_API = 'https://journal-d-etude-beta.vercel.app'
 
 // ── Image upload helpers ──────────────────────────────────────────────────────
@@ -837,6 +838,8 @@ export interface DemandeCaptureIA {
   noteId?: string
   /** modèle préféré pour l'étude — une PROPOSITION, le serveur tranche */
   modele?: string | null
+  /** langue d'usage : la sortie du modèle la suit */
+  langue?: string | null
 }
 
 async function posterCapture(
@@ -894,7 +897,7 @@ export async function demanderAuMentor(
     const res = await fetch(`${JOURNAL_API}/api/mentorat/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ messages, days }),
+      body: JSON.stringify({ messages, days, langue: getLangue() }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {

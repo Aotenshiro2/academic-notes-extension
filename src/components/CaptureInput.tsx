@@ -3,6 +3,7 @@ import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
 import { startRecording, transcribe, micPermissionState, openMicPermissionPage, type Recorder, type DictationProgress } from '@/lib/dictation'
 import { toast } from '@/lib/toast'
+import { t } from '@/lib/i18n'
 
 export interface CaptureInputHandle {
   focus: () => void
@@ -13,6 +14,7 @@ export interface CaptureInputHandle {
 interface CaptureInputProps {
   value: string
   onChange: (content: string) => void
+  /** absent = « Écrivez ou capturez… » dans la langue courante */
   placeholder?: string
   onInsertScreenshot?: () => Promise<string | null>
   onInsertExternalScreenshot?: () => Promise<string | null>
@@ -37,7 +39,7 @@ interface CaptureInputProps {
 const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function CaptureInput({
   value,
   onChange,
-  placeholder = 'Écrivez ou capturez...',
+  placeholder,
   onInsertScreenshot,
   onInsertExternalScreenshot,
   onScreenshotToNote,
@@ -500,7 +502,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
             onDragOver={handleDragOver}
             onKeyDown={handleKeyDown}
             className="min-h-[44px] max-h-[160px] overflow-y-auto pl-4 pr-1 py-3 focus:outline-none text-foreground text-sm leading-relaxed"
-            data-placeholder={placeholder}
+            data-placeholder={placeholder ?? t('capture.placeholder')}
           />
         </div>
 
@@ -622,8 +624,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                   >
                     <ImageIcon size={18} className="text-blue-500 flex-shrink-0" />
                     <div className="text-left">
-                      <div className="font-medium">Image</div>
-                      <div className="text-xs text-muted-foreground">Depuis vos fichiers</div>
+                      <div className="font-medium">{t('capture.image')}</div>
+                      <div className="text-xs text-muted-foreground">{t('capture.imageSous')}</div>
                     </div>
                   </button>
 
@@ -655,8 +657,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                         : <Monitor size={18} className="text-orange-500 flex-shrink-0" />
                       }
                       <div className="text-left">
-                        <div className="font-medium">{isCapturingExternal ? 'Capture...' : 'Capture externe'}</div>
-                        <div className="text-xs text-muted-foreground">Zoom, app desktop...</div>
+                        <div className="font-medium">{isCapturingExternal ? t('capture.enCours') : t('capture.externe')}</div>
+                        <div className="text-xs text-muted-foreground">{t('capture.externeSous')}</div>
                       </div>
                     </button>
                   )}
@@ -676,9 +678,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                         : <Sparkles size={18} className="text-purple-500 flex-shrink-0" />
                       }
                       <div className="text-left">
-                        <div className="font-medium">{isSmartCapturing ? 'Capture...' : 'Capture intelligente'}</div>
+                        <div className="font-medium">{isSmartCapturing ? t('capture.enCours') : t('capture.intelligente')}</div>
                         <div className="text-xs text-muted-foreground">
-                          {captureIaActive ? 'Résumé et points clés, lus par l’IA' : 'Résumé + points clés'}
+                          {captureIaActive ? t('capture.intelligenteSousIA') : t('capture.intelligenteSous')}
                         </div>
                       </div>
                     </button>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { t } from '@/lib/i18n'
 import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown } from 'lucide-react'
 
 function GoogleDriveIcon({ size = 14 }: { size?: number }) {
@@ -86,11 +87,11 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
                   : 'text-muted-foreground/40 cursor-not-allowed'
               }`}
               title={
-                isExporting ? 'Export en cours…'
-                  : canExport ? 'Exporter la note'
-                  : 'Sélectionnez une note pour exporter'
+                isExporting ? t('entete.exporterEnCours')
+                  : canExport ? t('entete.exporter')
+                  : t('entete.exporterAucune')
               }
-              aria-label="Exporter la note"
+              aria-label={t('entete.exporter')}
             >
               {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             </button>
@@ -102,14 +103,14 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 >
                   <FileDown size={14} className="text-red-500 flex-shrink-0" />
-                  Exporter en PDF
+                  {t('entete.exportPdf')}
                 </button>
                 <button
                   onClick={handleDocx}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 >
                   <FileText size={14} className="text-blue-500 flex-shrink-0" />
-                  Google Docs (.docx)
+                  {t('entete.exportDocx')}
                 </button>
                 {onExportDrive && (
                   <button
@@ -117,7 +118,7 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                   >
                     <GoogleDriveIcon size={14} />
-                    Google Drive
+                    {t('entete.exportDrive')}
                   </button>
                 )}
               </div>
@@ -137,8 +138,8 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
                 ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-500/10'
                 : 'text-muted-foreground/40 cursor-not-allowed'
             }`}
-            title={onAnalyze ? 'Analyser avec une IA' : 'Sélectionnez une note pour analyser'}
-            aria-label="Analyser avec une IA"
+            title={onAnalyze ? t('entete.analyser') : t('entete.analyserAucune')}
+            aria-label={t('entete.analyser')}
           >
             <Sparkles size={18} />
           </button>
@@ -150,8 +151,8 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
           <button
             onClick={onFullscreen}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Ouvrir dans Journal d'Études"
-            aria-label="Ouvrir dans Journal d'Études"
+            title={t('entete.pleinEcran')}
+            aria-label={t('entete.pleinEcran')}
           >
             <Maximize2 size={18} />
           </button>
@@ -159,8 +160,8 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
           <button
             onClick={onShowHistory}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Historique des notes"
-            aria-label="Historique des notes"
+            title={t('entete.historique')}
+            aria-label={t('entete.historique')}
           >
             <Clock size={18} />
           </button>
@@ -168,8 +169,8 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
           <button
             onClick={onHome}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            title="Nouvelle capture"
-            aria-label="Nouvelle capture"
+            title={t('entete.nouvelle')}
+            aria-label={t('entete.nouvelle')}
           >
             <Plus size={18} />
           </button>

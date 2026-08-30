@@ -1,4 +1,5 @@
 import { toast } from '../lib/toast'
+import { t } from '@/lib/i18n'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2 } from 'lucide-react'
 import storage from '@/lib/storage'
@@ -572,7 +573,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           note existe. */}
       {note.summary && (
         <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <h3 className="text-sm font-semibold text-primary mb-2">Résumé</h3>
+          <h3 className="text-sm font-semibold text-primary mb-2">{t('note.resume')}</h3>
           <p className="text-sm text-foreground/90">{note.summary}</p>
 
           {onEtudier && (
@@ -588,15 +589,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               }`}
               title={
                 etudeOuverte
-                  ? 'Relire cette note dans le cadre de la méthode et écrire la lecture dedans'
-                  : 'L’approfondissement fait partie du Carnet Premium'
+                  ? t('note.approfondirAide')
+                  : t('note.approfondirRefus')
               }
             >
               {etudeEnCours
-                ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> Étude en cours…</>
+                ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> {t('note.approfondirEnCours')}</>
                 : etudeOuverte
-                  ? <><Sparkles size={13} className="text-purple-500 flex-shrink-0" /> Approfondir cette note</>
-                  : <><Lock size={13} className="flex-shrink-0" /> Approfondir · Carnet Premium</>}
+                  ? <><Sparkles size={13} className="text-purple-500 flex-shrink-0" /> {t('note.approfondir')}</>
+                  : <><Lock size={13} className="flex-shrink-0" /> {t('note.approfondirVerrouille')}</>}
             </button>
           )}
         </div>

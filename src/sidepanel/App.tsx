@@ -37,6 +37,7 @@ import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
 import { fetchAccesCaptureIA } from '@/lib/sync'
 import { obtenirNoteMentorat } from '@/lib/note-mentorat'
+import { t, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
@@ -123,6 +124,11 @@ function App() {
   // emails coexistent (perso, aoknowledge, celui du Skool) et se tromper de
   // compte veut dire synchroniser dans le mauvais journal.
   const [emailConnecte, setEmailConnecte] = useState<string | null>(null)
+
+  // Langue d'usage. Le drapeau du pied de panneau la fait tourner ; toutes les
+  // vues ouvertes suivent sans rechargement, comme pour l'affichage des métas.
+  const [langue, setLangueLocale] = useState<Langue>(getLangue)
+  useEffect(() => subscribeLangue(setLangueLocale), [])
 
   // Relit la session. Appelée à l'ouverture ET au retour de l'écran Compte :
   // sans ça, on se connectait et le panneau continuait d'afficher « Visiteur »
@@ -712,7 +718,7 @@ function App() {
       await loadData()
     } catch (error) {
       console.error('Smart capture error:', error)
-      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture intelligente')
+      setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -939,7 +945,7 @@ function App() {
         return
       }
       if (refus || !sortie) {
-        toast.error(message || 'Étude indisponible pour le moment.')
+        toast.error(message || t('note.etudeIndisponible'))
         return
       }
 
@@ -965,10 +971,10 @@ function App() {
 
       await loadData()
       setNoteRefreshTrigger(Date.now())
-      toast.success('Étude ajoutée à la note.')
+      toast.success(t('note.etudeAjoutee'))
     } catch (e) {
       console.error('[etude]', e)
-      toast.error('Étude indisponible pour le moment.')
+      toast.error(t('note.etudeIndisponible'))
     } finally {
       setEtudeEnCours(false)
     }
@@ -1156,7 +1162,7 @@ function App() {
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">Analyse de la page en cours...</p>
+                    <p className="text-sm text-muted-foreground">{t('smart.analyse')}</p>
                   </div>
                 </div>
               )}
@@ -1231,17 +1237,21 @@ function App() {
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground/60 select-none">v{chrome.runtime.getManifest().version}</span>
               <span className="text-muted-foreground/30">|</span>
-              <span
-                className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground/60 select-none"
-                title="Langue : Français"
+              {/* Le drapeau était décoratif depuis toujours. Il fait maintenant
+                  tourner les langues disponibles — un cycle plutôt qu'une
+                  bascule, pour que le geste reste juste quand il y en aura
+                  quatre. */}
+              <button
+                onClick={() => setLangue(langueSuivante())}
+                className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground/60 hover:text-foreground hover:bg-muted rounded transition-colors"
+                title={`${t('sync.langue')} : ${infoLangue(langue).nom} — ${infoLangue(langueSuivante(langue)).nom}`}
+                aria-label={`${t('sync.langue')} : ${infoLangue(langue).nom}`}
               >
-                <svg width="14" height="10" viewBox="0 0 3 2" className="rounded-[1px] flex-shrink-0">
-                  <rect width="1" height="2" x="0" fill="#002395"/>
-                  <rect width="1" height="2" x="1" fill="#fff"/>
-                  <rect width="1" height="2" x="2" fill="#ED2939"/>
-                </svg>
-                FR
-              </span>
+                <span className="text-[11px] leading-none flex-shrink-0" aria-hidden="true">
+                  {infoLangue(langue).drapeau}
+                </span>
+                {langue.toUpperCase()}
+              </button>
               <span className="text-muted-foreground/30">|</span>
               {/* État de sync — l'échec silencieux de sync ne doit plus JAMAIS être invisible */}
               <button
@@ -1293,8 +1303,8 @@ function App() {
                 <button
                   onClick={() => setSettingsMenuOpen(o => !o)}
                   className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSettings || settingsMenuOpen ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
-                  title="Paramètres et aide"
-                  aria-label="Paramètres et aide"
+                  title={t('menu.aide')}
+                  aria-label={t('menu.aide')}
                   aria-haspopup="menu"
                   aria-expanded={settingsMenuOpen}
                 >
@@ -1315,7 +1325,7 @@ function App() {
                         onClick={open(setShowAccount)}
                         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors text-left"
                         role="menuitem"
-                        title={emailConnecte ?? 'Se connecter à AOKnowledge'}
+                        title={emailConnecte ?? t('menu.seConnecter')}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isAuthed ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
@@ -1323,39 +1333,39 @@ function App() {
                         />
                         <span className="min-w-0">
                           <span className="block text-[11px] leading-tight text-foreground truncate">
-                            {emailConnecte ?? 'Visiteur'}
+                            {emailConnecte ?? t('menu.visiteur')}
                           </span>
                           <span className="block text-[10px] leading-tight text-muted-foreground">
-                            {isAuthed ? 'Connecté' : 'Non connecté'}
+                            {isAuthed ? t('menu.connecte') : t('menu.nonConnecte')}
                           </span>
                         </span>
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowSettings)} className={item} role="menuitem">
                         <Settings size={13} className="text-muted-foreground flex-shrink-0" />
-                        Paramètres
+                        {t('menu.parametres')}
                       </button>
                       <button onClick={open(setShowAiConfig)} className={item} role="menuitem">
                         <Link2 size={13} className="text-muted-foreground flex-shrink-0" />
-                        Configurer son IA
+                        {t('menu.configurerIA')}
                       </button>
                       <button onClick={open(setShowAccount)} className={item} role="menuitem">
                         <User size={13} className="text-muted-foreground flex-shrink-0" />
-                        Compte AOKnowledge
+                        {t('menu.compte')}
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={tab(chrome.runtime.getURL('src/guide/index.html'))} className={item} role="menuitem">
                         <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
-                        Bonnes pratiques
+                        {t('menu.bonnesPratiques')}
                       </button>
                       <button onClick={tab(chrome.runtime.getURL('src/guide/index.html') + '#versions')} className={item} role="menuitem">
                         <Clock size={13} className="text-muted-foreground flex-shrink-0" />
-                        Versions et feuille de route
+                        {t('menu.versions')}
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowPlans)} className={item} role="menuitem">
                         <BadgeCheck size={13} className="text-muted-foreground flex-shrink-0" />
-                        Mon forfait
+                        {t('menu.forfait')}
                       </button>
                       <button
                         onClick={async () => {
@@ -1371,15 +1381,15 @@ function App() {
                         role="menuitem"
                       >
                         <UserPlus size={13} className="text-muted-foreground flex-shrink-0" />
-                        Inviter un ami
+                        {t('menu.inviter')}
                       </button>
                       <button onClick={open(setShowTools)} className={item} role="menuitem">
                         <Compass size={13} className="text-muted-foreground flex-shrink-0" />
-                        Autres outils AOK
+                        {t('menu.autresOutils')}
                       </button>
                       <button onClick={tab('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews')} className={item} role="menuitem">
                         <Star size={13} className="text-muted-foreground flex-shrink-0" />
-                        Évaluer l'extension
+                        {t('menu.evaluer')}
                       </button>
                     </div>
                   )

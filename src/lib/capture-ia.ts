@@ -8,6 +8,7 @@
 // Le backend décide de tout (qui a droit, à quel palier, dans quel budget).
 // L'extension ne connaît ni les paliers ni les prix : elle envoie et elle lit.
 import { capturerAvecIA, etudierNoteAvecIA, type SortieCaptureIA } from './sync'
+import { getLangue } from './i18n'
 
 /** Le sous-ensemble d'une capture heuristique qui nous intéresse ici. */
 export interface CaptureHeuristique {
@@ -99,6 +100,7 @@ export async function enrichirCapture(
     url: h.url,
     contenu,
     image: screenshot ?? null,
+    langue: getLangue(),
   })
   if (!sortie) {
     if (error) console.info('[capture IA] repli sur les heuristiques :', error)
@@ -149,6 +151,7 @@ export async function etudierNote(
     image: screenshot ?? null,
     noteId,
     modele: modelePrefere ?? null,
+    langue: getLangue(),
   })
   if (sortie) return { sortie }
   if (statut === 403) return { refus: 'reservee', message: error }
