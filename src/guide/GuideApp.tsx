@@ -65,6 +65,21 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.0',
+    title: 'La capture intelligente devient vraiment intelligente',
+    items: [
+      'La capture trie enfin. Un secrétaire lit la page à ta place, garde ce qu\'elle dit vraiment et jette le reste : menus, vidéos recommandées, pseudos des commentateurs, encarts d\'abonnement. Quand quelque chose n\'a pas pu être lu, il te le dit au lieu de combler le trou.',
+      'La capture d\'écran est enfin lue. Sur un graphique TradingView, la page ne contient que des métadonnées : tes niveaux, tes zones et tes outils de position sont sur l\'image. Ils sont maintenant pris en compte.',
+      'Nouveau : « Étudier la note », le deuxième temps. Quand tu veux, sur le moment ou deux semaines plus tard à la relecture, la note est relue dans le cadre de la méthode et la lecture s\'écrit dans la note. Réservé au Carnet Premium.',
+      'Nouveau : SimpleFX est reconnu. Le compte, l\'instrument, les onglets de positions et le tableau des positions clôturées sont lus tels quels, sans recalcul, et le nombre de lignes non visibles est signalé.',
+      'Correction : sur YouTube, la description de la vidéo était perdue et le titre répété trois fois. La description est maintenant lue en entier, avec les chapitres et la durée.',
+      'Correction : sur TradingView, « Prix : — » restait vide et les points clés se résumaient à l\'heure du graphique et à l\'heure de ton ordinateur. Le prix et l\'OHLC sont lus dans la légende, les horloges retournent dans les métadonnées.',
+      'Si l\'IA n\'est pas disponible — hors ligne, quota atteint — la capture continue de fonctionner comme avant. Tu ne tombes jamais en panne.',
+      'Nouveau : dans « Configurer son IA », tu choisis le modèle qui fait l\'étude. Ceux que ton forfait ne couvre pas restent visibles avec un cadenas, et en face de chacun tu vois combien d\'études il te reste. Tu peux descendre en gamme quand tu veux : c\'est un peu moins fin, et ça multiplie le nombre d\'études qui tiennent dans ton quota.',
+      'Nouveau : le compte connecté s\'affiche en tête du menu des paramètres. Tu vois d\'un coup d\'œil avec quel email tu travailles, et « Visiteur » si tu n\'es pas connecté. Au retour de l\'écran Compte, l\'affichage se met à jour tout de suite au lieu d\'attendre la réouverture du panneau.',
+    ],
+  },
+  {
     version: '1.7.1',
     title: 'Trois finitions',
     items: [

@@ -38,6 +38,7 @@ import CurrentNoteView from '@/components/CurrentNoteView'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
 import storage, { restoredFromBackup } from '@/lib/storage'
+import { enrichirCapture } from '@/lib/capture-ia'
 import { stateSync } from '@/lib/state-sync'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
@@ -310,25 +311,32 @@ function FullscreenApp() {
         console.warn('Screenshot capture failed:', screenshotError)
       }
 
+      // Passe secrétaire, avec repli silencieux sur les heuristiques (1.8.0)
+      const enrichi = await enrichirCapture(result, screenshotDataUrl || null)
+
       const newNoteId = Date.now().toString()
+      const titreNote = enrichi.pageTitle || result.pageTitle || 'Capture'
       let noteContent = ''
       if (screenshotDataUrl) {
         noteContent += `<p><img src="${screenshotDataUrl}" alt="Capture de la page" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
+      }
+      if (enrichi.manquant) {
+        noteContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
       }
       noteContent += '<p></p><p><em>Mes notes:</em></p><p></p>'
 
       const newNote: AcademicNote = {
         id: newNoteId,
-        title: result.pageTitle.slice(0, 80) + (result.pageTitle.length > 80 ? '...' : ''),
+        title: titreNote.slice(0, 80) + (titreNote.length > 80 ? '...' : ''),
         content: noteContent,
-        summary: result.summary || '',
-        keyPoints: result.keyPoints || [],
+        summary: enrichi.summary,
+        keyPoints: enrichi.keyPoints,
         url: result.url,
         favicon: result.favicon,
         timestamp: Date.now(),
         type: result.contentType || 'webpage',
-        tags: result.tags || [],
-        concepts: result.concepts || [],
+        tags: enrichi.tags,
+        concepts: enrichi.concepts,
         screenshots: [],
         metadata: {
           domain: result.domain,
@@ -370,15 +378,30 @@ function FullscreenApp() {
         throw new Error(result?.error || 'Extraction échouée')
       }
 
-      // Construire le contenu texte (résumé + points clés)
-      let textContent = `<hr><p><strong>--- Capture: ${result.pageTitle} ---</strong></p>`
-      if (result.summary) {
-        textContent += `<p><strong>Résumé:</strong> ${result.summary}</p>`
+      // Le screenshot d'abord : sur un graphique, c'est lui qui porte
+      // l'analyse, et la passe secrétaire doit pouvoir le lire.
+      let apercu = ''
+      try {
+        const r = await chrome.runtime.sendMessage({ type: 'CAPTURE_SCREENSHOT', payload: { targetTabId } })
+        apercu = r?.dataUrl || ''
+      } catch (e) {
+        console.warn('Screenshot capture failed:', e)
       }
-      if (result.keyPoints?.length > 0) {
-        textContent += '<p><strong>Points clés:</strong></p><ul>'
-        result.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
+
+      const enrichi = await enrichirCapture(result, apercu || null)
+
+      // Construire le contenu texte (résumé + points clés)
+      let textContent = `<hr><p><strong>--- Capture : ${enrichi.pageTitle || result.pageTitle} ---</strong></p>`
+      if (enrichi.summary) {
+        textContent += `<p><strong>Résumé :</strong> ${enrichi.summary}</p>`
+      }
+      if (enrichi.keyPoints.length > 0) {
+        textContent += '<p><strong>Points clés :</strong></p><ul>'
+        enrichi.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
         textContent += '</ul>'
+      }
+      if (enrichi.manquant) {
+        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
       }
 
       // Ajouter comme message (met à jour messages[] ET content)
@@ -399,21 +422,15 @@ function FullscreenApp() {
         }
       }
 
-      // Screenshot ciblé via le service worker
-      try {
-        const screenshotResult = await chrome.runtime.sendMessage({
-          type: 'CAPTURE_SCREENSHOT',
-          payload: { targetTabId }
+      // Le screenshot, déjà pris plus haut pour la passe secrétaire, rejoint
+      // la note comme bloc image. Une seule prise : deux basculements d'onglet
+      // pour la même capture se voyaient à l'écran.
+      if (apercu) {
+        await storage.addMessageToNote(currentNoteId, {
+          type: 'image',
+          content: apercu,
+          metadata: { alt: 'Capture de la page' }
         })
-        if (screenshotResult?.dataUrl) {
-          await storage.addMessageToNote(currentNoteId, {
-            type: 'image',
-            content: screenshotResult.dataUrl,
-            metadata: { alt: 'Capture de la page' }
-          })
-        }
-      } catch (e) {
-        console.warn('Screenshot capture failed:', e)
       }
 
       await loadData()

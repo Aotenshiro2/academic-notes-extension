@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown, Sunrise } from 'lucide-react'
+import { Upload, Maximize2, Clock, Plus, Loader2, Sparkles, FileText, FileDown, Sunrise, BookOpenCheck } from 'lucide-react'
 
 function GoogleDriveIcon({ size = 14 }: { size?: number }) {
   return (
@@ -23,10 +23,19 @@ interface HeaderProps {
   onExportDocx?: () => void
   onExportDrive?: () => void
   onAnalyze?: () => void
+  /** 2e temps de la capture (1.8.0) : relire la note dans le cadre de
+   *  l'académie, et écrire la lecture DANS la note. À ne pas confondre avec
+   *  onAnalyze, qui envoie la note vers l'IA personnelle de l'élève. */
+  onEtudier?: () => void
+  /** l'étude est-elle ouverte à ce compte ? sinon le bouton reste visible mais
+   *  verrouillé : voir la fonction et savoir pourquoi on ne l'a pas convertit
+   *  mieux qu'un bouton absent. */
+  etudeOuverte?: boolean
+  etudeEnCours?: boolean
   isExporting?: boolean
 }
 
-function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, isExporting = false }: HeaderProps) {
+function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF, onExportDocx, onExportDrive, onAnalyze, onEtudier, etudeOuverte = false, etudeEnCours = false, isExporting = false }: HeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const canExport = !!(onExportPDF || onExportDocx)
@@ -147,6 +156,30 @@ function Header({ onShowHistory, onShowRitual, onHome, onFullscreen, onExportPDF
           >
             <Sparkles size={18} />
           </button>
+
+          {onEtudier && (
+            <button
+              onClick={onEtudier}
+              disabled={etudeEnCours}
+              className={`p-2 rounded-md transition-colors ${
+                etudeEnCours
+                  ? 'text-muted-foreground/40 cursor-wait'
+                  : etudeOuverte
+                    ? 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10'
+                    : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted'
+              }`}
+              title={
+                etudeEnCours
+                  ? 'Étude en cours…'
+                  : etudeOuverte
+                    ? 'Étudier la note'
+                    : 'Étudier la note (Carnet Premium)'
+              }
+              aria-label="Étudier la note"
+            >
+              <BookOpenCheck size={18} />
+            </button>
+          )}
 
           <button
             onClick={onFullscreen}

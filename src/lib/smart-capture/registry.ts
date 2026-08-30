@@ -11,6 +11,7 @@ import {
 } from './strategies/topstep'
 import { topStepXTradeStrategy, topStepXStatsStrategy, topStepXGenericStrategy } from './strategies/topstepx'
 import { tradovateStrategy } from './strategies/tradovate'
+import { simpleFxStrategy } from './strategies/simplefx'
 import { forexFactoryStrategy } from './strategies/forex-factory'
 import { investingStrategy } from './strategies/investing'
 import { youtubeStrategy } from './strategies/youtube'
@@ -30,6 +31,9 @@ const strategies: SiteStrategy[] = [
   topStepPayoutsStrategy,
   topStepGenericStrategy,
   tradovateStrategy,
+  // SimpleFX — 5e site le plus capturé, sans stratégie jusqu'à la 1.8.0 :
+  // ses captures tombaient sur le fallback générique et ne donnaient rien.
+  simpleFxStrategy,
   // Trading
   tradingViewStrategy,
   // Community

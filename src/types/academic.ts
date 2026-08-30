@@ -271,6 +271,10 @@ export interface Settings {
   language: 'fr' | 'en'
   /** Micro choisi pour la dictée vocale (deviceId) ; absent = micro système */
   dictationDeviceId?: string
+  /** Modèle PRÉFÉRÉ pour « Étudier la note » (1.8.0). Une préférence, pas un
+   *  droit : le serveur la valide contre le palier du compte et retombe sur
+   *  le défaut du palier si elle ne tient pas. Absent = défaut du palier. */
+  modeleEtude?: string
 }
 
 // Messages pour communication entre composants

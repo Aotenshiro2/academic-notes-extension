@@ -34,6 +34,8 @@ import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { restoredFromBackup } from '@/lib/storage'
+import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
+import { fetchAccesCaptureIA } from '@/lib/sync'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
@@ -94,12 +96,31 @@ function App() {
   const [isSmartCapturing, setIsSmartCapturing] = useState(false)
   const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
   const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
+  // Étude (1.8.0). `etudeOuverte` ne sert QU'À AFFICHER : le serveur
+  // re-vérifie le droit et le budget à chaque appel, un client bidouillé ne
+  // contourne rien.
+  const [etudeOuverte, setEtudeOuverte] = useState(false)
+  const [etudeEnCours, setEtudeEnCours] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
   // Note complète chargée UNIQUEMENT le temps de l'analyse, puis relâchée
   const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
+  // L'email du compte connecté, affiché en tête du menu des paramètres. On
+  // sait ainsi d'un coup d'œil AVEC QUEL COMPTE on travaille : plusieurs
+  // emails coexistent (perso, aoknowledge, celui du Skool) et se tromper de
+  // compte veut dire synchroniser dans le mauvais journal.
+  const [emailConnecte, setEmailConnecte] = useState<string | null>(null)
+
+  // Relit la session. Appelée à l'ouverture ET au retour de l'écran Compte :
+  // sans ça, on se connectait et le panneau continuait d'afficher « Visiteur »
+  // jusqu'à la prochaine réouverture.
+  const rafraichirAuth = () => {
+    getSession()
+      .then(s => { setIsAuthed(!!s); setEmailConnecte(s?.user?.email ?? null) })
+      .catch(() => { setIsAuthed(false); setEmailConnecte(null) })
+  }
 
   // Notes qui ne sont pas encore dans le journal (hors exclues volontaires)
   const pendingSyncCount = notes.filter(n => !n.lastSyncAt && !n.syncExcluded).length
@@ -120,6 +141,17 @@ function App() {
       .catch(err => console.warn('[AOK AutoSync] Rattrapage échoué:', err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, pendingSyncCount])
+
+  // Droit à l'étude (1.8.0). Une seule question au backend à la connexion :
+  // le bouton reste visible pour tout le monde, seul son état change.
+  useEffect(() => {
+    if (isAuthed !== true) { setEtudeOuverte(false); return }
+    let vivant = true
+    fetchAccesCaptureIA()
+      .then(({ acces }) => { if (vivant && acces) setEtudeOuverte(Boolean(acces.etude)) })
+      .catch(() => { /* le serveur retranchera de toute façon */ })
+    return () => { vivant = false }
+  }, [isAuthed])
 
   // Charger les données initiales
   useEffect(() => {
@@ -228,7 +260,7 @@ function App() {
       }
 
       // État d'auth pour l'indicateur de sync (non bloquant)
-      getSession().then(s => setIsAuthed(!!s)).catch(() => setIsAuthed(false))
+      rafraichirAuth()
 
       // Warn user if data was restored from backup
       if (restoredFromBackup) {
@@ -547,13 +579,16 @@ function App() {
     }
   }
 
-  // Fonction de capture intelligente (mode gratuit - extraction heuristique)
+  // Capture intelligente. Les heuristiques extraient, l'IA trie ensuite si le
+  // compte y a droit (1.8.0). Repli silencieux sur les heuristiques dès que
+  // l'IA ne répond pas : quota atteint, hors ligne, clé absente. L'élève n'a
+  // jamais de panne, seulement une capture moins bonne.
   const handleSmartCapture = async () => {
     setIsSmartCapturing(true)
     setSmartCaptureError(null)
 
     try {
-      // Extraction du contenu structuré via service worker (heuristiques, pas d'IA)
+      // Extraction du contenu structuré via service worker (heuristiques)
       const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE' })
 
       if (!result?.success) {
@@ -568,21 +603,25 @@ function App() {
         console.warn('Screenshot capture failed:', screenshotError)
       }
 
-      // Créer la note directement avec les données extraites par heuristiques
+      // Passe secrétaire : le modèle trie ce que la page dit vraiment. Sur un
+      // graphique, c'est le screenshot qui porte l'analyse, pas le DOM.
+      const enrichi = await enrichirCapture(result, screenshotDataUrl || null)
+
       const newNoteId = Date.now().toString()
+      const titreNote = enrichi.pageTitle || result.pageTitle || 'Capture'
 
       const newNote: AcademicNote = {
         id: newNoteId,
-        title: result.pageTitle.slice(0, 80) + (result.pageTitle.length > 80 ? '...' : ''),
+        title: titreNote.slice(0, 80) + (titreNote.length > 80 ? '...' : ''),
         content: '',
-        summary: result.summary || '',
-        keyPoints: result.keyPoints || [],
+        summary: enrichi.summary,
+        keyPoints: enrichi.keyPoints,
         url: result.url,
         favicon: result.favicon,
         timestamp: Date.now(),
         type: result.contentType || 'webpage',
-        tags: result.tags || [],
-        concepts: result.concepts || [],
+        tags: enrichi.tags,
+        concepts: enrichi.concepts,
         screenshots: [],
         metadata: {
           domain: result.domain,
@@ -607,14 +646,19 @@ function App() {
       }
 
       // 2. Contenu structuré (text message)
-      let textContent = `<p><strong>${result.pageTitle}</strong></p>`
-      if (result.summary) {
-        textContent += `<p><em>${result.summary}</em></p>`
+      // Le titre n'est PAS repris ici : la note l'affiche déjà en tête, et le
+      // redonner était la cause de la triple répétition vue en 1.7.1.
+      let textContent = ''
+      if (enrichi.summary) {
+        textContent += `<p><em>${enrichi.summary}</em></p>`
       }
-      if (result.keyPoints?.length > 0) {
+      if (enrichi.keyPoints.length > 0) {
         textContent += '<p><strong>Points clés :</strong></p><ul>'
-        result.keyPoints.forEach((p: string) => { textContent += `<li>${p}</li>` })
+        enrichi.keyPoints.forEach((p: string) => { textContent += `<li>${p}</li>` })
         textContent += '</ul>'
+      }
+      if (enrichi.manquant) {
+        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
       }
       if (result.content) {
         textContent += `<hr>${result.content}`
@@ -658,15 +702,29 @@ function App() {
         throw new Error(result?.error || 'Extraction échouée')
       }
 
-      // Construire le contenu texte (résumé + points clés)
-      let textContent = `<hr><p><strong>--- Capture: ${result.pageTitle} ---</strong></p>`
-      if (result.summary) {
-        textContent += `<p><strong>Résumé:</strong> ${result.summary}</p>`
+      // Le screenshot est pris AVANT le tri : sur un graphique, c'est lui qui
+      // porte l'analyse, et la passe secrétaire doit pouvoir le lire.
+      let screenshotDataUrl = ''
+      try {
+        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
+      } catch (e) {
+        console.warn('Screenshot capture failed:', e)
       }
-      if (result.keyPoints?.length > 0) {
-        textContent += '<p><strong>Points clés:</strong></p><ul>'
-        result.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
+
+      const enrichi = await enrichirCapture(result, screenshotDataUrl || null)
+
+      // Construire le contenu texte (résumé + points clés)
+      let textContent = `<hr><p><strong>--- Capture : ${enrichi.pageTitle || result.pageTitle} ---</strong></p>`
+      if (enrichi.summary) {
+        textContent += `<p><strong>Résumé :</strong> ${enrichi.summary}</p>`
+      }
+      if (enrichi.keyPoints.length > 0) {
+        textContent += '<p><strong>Points clés :</strong></p><ul>'
+        enrichi.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
         textContent += '</ul>'
+      }
+      if (enrichi.manquant) {
+        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
       }
       if (result.content) {
         textContent += `<hr>${result.content}`
@@ -690,9 +748,8 @@ function App() {
         }
       }
 
-      // Capturer et ajouter le screenshot comme message image séparé
+      // Le screenshot, déjà pris plus haut, rejoint la note comme bloc image
       try {
-        const screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
         if (screenshotDataUrl) {
           await storage.addMessageToNote(currentNoteId, {
             type: 'image',
@@ -815,6 +872,80 @@ function App() {
     setShowAnalyzeDialog(true)
   }
 
+  // 2e temps de la capture (1.8.0) : l'étude. Relit la note dans le cadre de
+  // l'académie et écrit la lecture DANS la note, contrairement à « Analyser »
+  // qui envoie la note vers l'IA personnelle de l'élève et laisse la réponse
+  // là-bas. Les deux gardent leur raison d'être.
+  //
+  // Volontairement déclenchée à la main : la lecture n'est voulue qu'une fois
+  // sur cinq, et elle vaut le plus au moment de la relecture, deux semaines
+  // après la capture, pas dans la seconde qui suit.
+  const handleEtudierNote = async () => {
+    if (!currentNoteId || etudeEnCours) return
+    const full = await storage.getNote(currentNoteId)
+    if (!full) return
+
+    setEtudeEnCours(true)
+    try {
+      // On relit le contenu BRUT de la note, pas un résumé : au banc, la
+      // meilleure trouvaille venait de la lecture du tableau brut.
+      const image = full.messages?.find(m => m.type === 'image')?.content ?? null
+      const { sortie, refus, message } = await etudierNote(
+        {
+          url: full.url,
+          pageTitle: full.title,
+          content: full.content || full.messages?.filter(m => m.type === 'text').map(m => m.content).join('\n') || '',
+          summary: full.summary,
+          keyPoints: full.keyPoints,
+          concepts: full.concepts,
+          tags: full.tags,
+        },
+        image,
+        currentNoteId,
+        settings.modeleEtude ?? null
+      )
+
+      if (refus === 'reservee') {
+        toast.info(message || 'L’étude fait partie du Carnet Premium.')
+        setShowMentorat(true)
+        return
+      }
+      if (refus || !sortie) {
+        toast.error(message || 'Étude indisponible pour le moment.')
+        return
+      }
+
+      let bloc = '<hr><p><strong>Étude de la note</strong></p>'
+      if (sortie.resume) bloc += `<p><em>${sortie.resume}</em></p>`
+      if (sortie.pointsCles?.length) {
+        bloc += '<p><strong>Ce qu’il faut en retenir :</strong></p><ul>'
+        sortie.pointsCles.forEach(p => { bloc += `<li>${p}</li>` })
+        bloc += '</ul>'
+      }
+      if (sortie.pourToi) bloc += `<p><strong>Pour toi :</strong> ${sortie.pourToi}</p>`
+      await storage.addMessageToNote(currentNoteId, { type: 'text', content: bloc })
+
+      // Les concepts et tags trouvés par l'étude enrichissent la note sans
+      // écraser ce que l'élève a posé à la main.
+      if (sortie.concepts?.length || sortie.tags?.length) {
+        await storage.saveNote({
+          ...full,
+          concepts: [...new Set([...(full.concepts ?? []), ...(sortie.concepts ?? [])])].slice(0, 12),
+          tags: [...new Set([...(full.tags ?? []), ...(sortie.tags ?? [])])].slice(0, 10),
+        })
+      }
+
+      await loadData()
+      setNoteRefreshTrigger(Date.now())
+      toast.success('Étude ajoutée à la note.')
+    } catch (e) {
+      console.error('[etude]', e)
+      toast.error('Étude indisponible pour le moment.')
+    } finally {
+      setEtudeEnCours(false)
+    }
+  }
+
   return (
     <div className="sidebar-container">
       <Header
@@ -826,6 +957,9 @@ function App() {
         onExportDocx={currentNote ? handleExportDocx : undefined}
         onExportDrive={currentNote ? handleExportDrive : undefined}
         onAnalyze={currentNote ? handleOpenAnalyze : undefined}
+        onEtudier={currentNote ? handleEtudierNote : undefined}
+        etudeOuverte={etudeOuverte}
+        etudeEnCours={etudeEnCours}
         isExporting={isExporting}
       />
 
@@ -932,7 +1066,7 @@ function App() {
                 await loadData()
                 return { imported, skipped }
               }}
-              onBack={() => setShowAccount(false)}
+              onBack={() => { setShowAccount(false); rafraichirAuth() }}
             />
           ) : showSettings ? (
             <div className="space-y-4">
@@ -1144,6 +1278,31 @@ function App() {
                   const tab = (url: string) => () => { setSettingsMenuOpen(false); chrome.tabs.create({ url }) }
                   return (
                     <div className="absolute bottom-8 right-0 z-50 w-52 rounded-lg border border-border bg-popover shadow-lg p-1" role="menu">
+                      {/* Qui est connecté. En tête de menu parce que c'est la
+                          question qu'on se pose avant de cliquer sur quoi que
+                          ce soit ici : plusieurs comptes coexistent, et se
+                          tromper veut dire synchroniser dans le mauvais
+                          journal. Cliquer ouvre le compte. */}
+                      <button
+                        onClick={open(setShowAccount)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors text-left"
+                        role="menuitem"
+                        title={emailConnecte ?? 'Se connecter à AOKnowledge'}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isAuthed ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-[11px] leading-tight text-foreground truncate">
+                            {emailConnecte ?? 'Visiteur'}
+                          </span>
+                          <span className="block text-[10px] leading-tight text-muted-foreground">
+                            {isAuthed ? 'Connecté' : 'Non connecté'}
+                          </span>
+                        </span>
+                      </button>
+                      <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowSettings)} className={item} role="menuitem">
                         <Settings size={13} className="text-muted-foreground flex-shrink-0" />
                         Paramètres

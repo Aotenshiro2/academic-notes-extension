@@ -94,6 +94,23 @@ function extractTradingView(): SiteExtractResult {
     // Override le prix du titre si une source DOM a trouvé le prix live
     if (livePrice) price = livePrice
 
+    // --- OHLC de la légende (1.8.0) --------------------------------------
+    // La capture du 30/08/2026 sortait « Prix : — » alors que la légende
+    // affichait « O29 635,50 H29 811,50 B29 436,25 C29 491,75 » juste sous le
+    // symbole. C'est la seule VRAIE donnée de marché de la page, et la plus
+    // stable : le sélecteur du prix live change à chaque refonte, la légende
+    // OHLC non. TradingView en français écrit B (bas) là où l'anglais met L.
+    const ohlc = (() => {
+      const m = bodyText.match(
+        /\bO\s*([\d   ,.]+?)\s+H\s*([\d   ,.]+?)\s+[LB]\s*([\d   ,.]+?)\s+C\s*([\d   ,.]+?)(?:\s|$)/
+      )
+      if (!m) return null
+      const n = (s: string) => s.trim().replace(/[  ]/g, ' ').replace(/\s+/g, ' ')
+      return { o: n(m[1]), h: n(m[2]), l: n(m[3]), c: n(m[4]) }
+    })()
+    // La clôture de la bougie courante EST le prix courant.
+    if (!price && ohlc) price = ohlc.c
+
     // --- Timeframe ---
     // Chercher dans les boutons de la toolbar
     const timeframe = (() => {
@@ -224,6 +241,7 @@ function extractTradingView(): SiteExtractResult {
     parts.push(`<p><strong>Symbole :</strong> ${symbol || '—'}</p>`)
     if (timeframe) parts.push(`<p><strong>Timeframe :</strong> ${timeframe}</p>`)
     parts.push(`<p><strong>Prix :</strong> ${price || '—'}</p>`)
+    if (ohlc) parts.push(`<p><strong>OHLC :</strong> O ${ohlc.o} · H ${ohlc.h} · B ${ohlc.l} · C ${ohlc.c}</p>`)
     if (changePct) parts.push(`<p><strong>Variation :</strong> ${changePct}</p>`)
     if (chartTime) parts.push(`<p><strong>Heure chart :</strong> ${chartTime}</p>`)
     parts.push(`<p><strong>Heure utilisateur :</strong> ${systemTimeWithTz}</p>`)
@@ -231,19 +249,29 @@ function extractTradingView(): SiteExtractResult {
     if (exchange) parts.push(`<p><strong>Exchange :</strong> ${exchange}</p>`)
     if (contractInfo) parts.push(`<p><strong>Contrat :</strong> ${contractInfo}</p>`)
     if (indicators.length > 0) parts.push(`<p><strong>Indicateurs :</strong> ${indicators.join(', ')}</p>`)
+    // Le travail de l'élève (niveaux tracés, zones, outils de position) n'est
+    // pas dans le DOM : il est dans le graphe. La capture d'écran l'accompagne
+    // et c'est elle qui porte l'analyse, pas ce bloc de métadonnées.
+    parts.push(
+      `<p><em>Les niveaux, zones et outils tracés sur ce graphique ne sont pas lisibles dans la page : ils sont sur la capture d'écran jointe.</em></p>`
+    )
 
     const content = parts.join('\n')
 
-    // Key points
+    // Points clés — 1.8.0 : plus d'horloges.
+    // La capture du 30/08/2026 sortait « Timeframe: D », « Chart Time:
+    // 11:47:55 UTC-4 », « User Time: 17:47 UTC+2 » comme points clés. Ce sont
+    // des lectures d'horloge, pas des enseignements ; elles restent dans le
+    // bloc de métadonnées ci-dessus, où elles ont leur place.
     const keyPoints: string[] = []
     if (symbol && price) keyPoints.push(`${symbol} @ ${price}`)
-    if (changePct) keyPoints.push(`Variation: ${changePct}`)
-    if (timeframe) keyPoints.push(`Timeframe: ${timeframe}`)
-    if (chartTime) keyPoints.push(`Chart Time: ${chartTime}`)
-    keyPoints.push(`User Time: ${systemTimeWithTz}`)
-    if (session) keyPoints.push(`Session: ${session}`)
+    else if (symbol) keyPoints.push(symbol)
+    if (ohlc) keyPoints.push(`O ${ohlc.o} · H ${ohlc.h} · B ${ohlc.l} · C ${ohlc.c}`)
+    if (changePct) keyPoints.push(`Variation : ${changePct}`)
+    if (timeframe) keyPoints.push(`Unité de temps : ${timeframe}`)
+    if (session) keyPoints.push(`Session : ${session}`)
     if (contractInfo) keyPoints.push(contractInfo)
-    if (indicators.length > 0) keyPoints.push(`Indicateurs: ${indicators.join(', ')}`)
+    if (indicators.length > 0) keyPoints.push(`Indicateurs : ${indicators.join(', ')}`)
 
     // Tags auto
     const tags = ['tradingview']
@@ -260,7 +288,7 @@ function extractTradingView(): SiteExtractResult {
       concepts: indicators.slice(0, 5),
       tags,
       siteName: 'TradingView',
-      extras: { symbol, price, changePct, timeframe, chartTime, systemTime: systemTimeWithTz, session, exchange, futuresContract, contractInfo, indicators }
+      extras: { symbol, price, ohlc, changePct, timeframe, chartTime, systemTime: systemTimeWithTz, session, exchange, futuresContract, contractInfo, indicators }
     }
   } catch (e) {
     return { success: false, error: String(e) }

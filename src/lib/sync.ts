@@ -753,3 +753,120 @@ export async function fetchSupportThread(): Promise<{
     return { threadId: null, messages: [] }
   }
 }
+
+// ── Capture intelligente IA (1.8.0) ──────────────────────────────────────────
+//
+// Deux temps, deux routes. Le SECRÉTAIRE trie ce que la page dit vraiment ;
+// l'ÉTUDE relit la note dans le cadre de l'académie et n'est demandée que par
+// un geste de l'élève.
+//
+// Règle du client : on essaie l'IA, et on RETOMBE sur les heuristiques dès
+// qu'on n'a pas un 200. Quota atteint, clé morte, réseau coupé : la capture
+// marche quand même, en moins bien. Le backend décide de tout, l'extension
+// n'a jamais à savoir qui a droit à quoi.
+
+export type NiveauIA = 'club' | 'premium' | 'libre' | 'aucun'
+
+export interface ModeleEtudeAffiche {
+  id: string
+  nom: string
+  detail: string
+  /** palier minimum qui le débloque */
+  requis: 'libre' | 'premium' | 'club'
+  debloque: boolean
+  /** ordre de grandeur d'études restantes dans le budget ; null si sans plafond */
+  etudesRestantes: number | null
+}
+
+export interface AccesCaptureIA {
+  niveau: NiveauIA
+  capture: boolean
+  etude: boolean
+  autorise: boolean
+  motif?: string
+  message?: string | null
+  /** part du quota consommée sur 30 jours glissants, 0 à 1 — pour la jauge */
+  part: number
+  /** compte maison : pas de jauge à afficher */
+  sansPlafond?: boolean
+  /** catalogue des modèles d'étude, avec ce que le palier débloque */
+  modeles?: ModeleEtudeAffiche[]
+  /** le modèle qui sera réellement employé, après arbitrage du serveur */
+  modeleActif?: string | null
+  modeleDefaut?: string
+}
+
+/** Ce que le compte a le droit de faire, où en est sa jauge, et quels modèles
+ *  son palier débloque. `prefere` n'est qu'une proposition : le serveur répond
+ *  avec le modèle qu'il emploiera réellement. */
+export async function fetchAccesCaptureIA(prefere?: string | null): Promise<{ acces?: AccesCaptureIA; error?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté' }
+  try {
+    const q = prefere ? `?modele=${encodeURIComponent(prefere)}` : ''
+    const res = await fetch(`${JOURNAL_API}/api/capture/acces${q}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return { error: `Vérification impossible (HTTP ${res.status})` }
+    return { acces: await res.json() as AccesCaptureIA }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+export interface SortieCaptureIA {
+  titre: string
+  resume: string
+  pointsCles: string[]
+  concepts: string[]
+  tags: string[]
+  /** secrétaire seulement : ce qui n'a pas pu être lu */
+  manquant?: string
+  /** étude seulement : la lecture dans le cadre */
+  pourToi?: string
+  famille?: string
+  avecImage?: boolean
+  budget?: { part: number; niveau: NiveauIA; etude: boolean }
+}
+
+export interface DemandeCaptureIA {
+  url: string
+  contenu: string
+  /** data URL du screenshot, ou URL publique si la note est déjà synchronisée */
+  image?: string | null
+  noteId?: string
+  /** modèle préféré pour l'étude — une PROPOSITION, le serveur tranche */
+  modele?: string | null
+}
+
+async function posterCapture(
+  chemin: string,
+  d: DemandeCaptureIA
+): Promise<{ sortie?: SortieCaptureIA; error?: string; statut?: number }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'Non connecté' }
+  try {
+    const res = await fetch(`${JOURNAL_API}${chemin}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(d),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return { error: typeof data.message === 'string' ? data.message : `HTTP ${res.status}`, statut: res.status }
+    }
+    return { sortie: data as SortieCaptureIA, statut: res.status }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erreur réseau' }
+  }
+}
+
+/** 1er temps — le secrétaire. Échec = l'appelant garde ses heuristiques. */
+export function capturerAvecIA(d: DemandeCaptureIA) {
+  return posterCapture('/api/capture', d)
+}
+
+/** 2e temps — l'étude. Déclenchée par le bouton, jamais automatiquement. */
+export function etudierNoteAvecIA(d: DemandeCaptureIA) {
+  return posterCapture('/api/capture/analyse', d)
+}

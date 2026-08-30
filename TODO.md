@@ -1,6 +1,110 @@
 # TODO — Le Carnet du Trader (extension)
 <!-- ontologie: id=ch-todo-extension; statut=actif; concerne=extension,mentorat-ia,carnet-premium,ou-anthropic -->
 
+## ✅ v1.8.0 — CAPTURE INTELLIGENTE IA, en deux temps (30/08/2026)
+
+Clôt le backlog « capture intelligente à retravailler » du 17/07 et l'orientation
+Brice du 27/08 (« remplacer par de la vraie IA, appel via le backend, l'extension
+ne décide jamais »). Zip généré : `D:\8_Developpement\le-carnet-du-trader-v1.8.0.zip`
+(39 fichiers, 23,9 Mo, manifest 1.8.0, clé dev retirée, 0 secret — le seul JWT du
+bundle est la clé anon Supabase, publique par construction).
+
+**Le découpage en deux temps** (idée de Brice, 30/08). La capture IA ne donne plus
+d'avis par défaut :
+
+1. **Secrétaire** — extrait et trie ce que la page dit vraiment. Aucun jugement,
+   aucun chiffre inventé, un champ `manquant` quand la lecture est partielle.
+   Tourne pour TOUS les paliers, sur Haiku 4.5. Automatique, avec repli silencieux
+   sur les heuristiques dès qu'on n'a pas un 200.
+2. **Étude** — bouton « Étudier la note », relit la note dans le cadre de
+   l'académie et écrit la lecture DANS la note. Opus 5. Réservée aux paliers
+   payants. Déclenchée à la main : la lecture n'est voulue qu'une fois sur cinq,
+   et elle vaut le plus au moment de la relecture, deux semaines après.
+
+Ne remplace PAS `analysis-providers.ts` (« L'avis Ao Knowledge ») : celui-là fait
+lire la note par l'IA PERSONNELLE de l'élève, dans un onglet, et la réponse reste
+là-bas. Les deux coexistent.
+
+**Mesuré au banc du 30/08** sur des pages réelles (SimpleFX de Brice, Ch11 du module
+journaling Skool, ses captures TradingView et YouTube), 15 appels, 0,21 € :
+- Coût par capture : Opus 2,90 ct · Sonnet 1,13 ct · Haiku 0,44 ct en mode
+  secrétaire. Haiku NE MET PAS le socle en cache (préfixe minimum > 2 000 jetons),
+  contrairement à Opus et Sonnet.
+- Haiku inventait sur deux pages sur deux en mode « donne ton avis » (une stat sur
+  les trades de l'élève tirée d'une page de COURS). En mode secrétaire, plus rien.
+  Le problème n'était pas le modèle, c'était le travail qu'on lui donnait.
+- Sur le TradingView de Brice, Opus a lu sur le JPEG l'outil de position (entrée
+  29 656,25 / stop 30 706 / cible 25 270, R:R 4,18), le dealing range et la grille
+  de retracement, puis relevé deux erreurs classiques de la doctrine : cible non
+  rattachée à une liquidité nommée, et liquidité possible derrière le stop.
+
+**Côté journal** (voir son TODO) : `/api/capture`, `/api/capture/analyse`,
+`/api/capture/acces`, brique budget en euros sur fenêtre glissante de 30 jours.
+
+**Sélecteur de modèle pour l'étude** (ajouté le 30/08 au soir, dans « Configurer
+son IA ») — les trois modèles sont listés ; ceux hors palier restent **visibles
+avec un cadenas** et l'étiquette du forfait qui les débloque, pour mettre en
+avant l'offre supérieure. Club : Opus + Sonnet + Haiku, défaut Opus. Premium :
+Sonnet + Haiku, défaut Sonnet, Opus cadenassé. Libre : tout cadenassé. La capture
+n'est pas concernée, elle reste sur Haiku pour tous.
+
+Ce qui empêche ce sélecteur d'être décoratif : **le nombre d'études restantes
+s'affiche en face de chaque modèle débloqué** (club à budget plein : 117 sur
+Opus, 333 sur Sonnet, 571 sur Haiku). L'écart de qualité entre modèles sur une
+étude est mince, l'écart de coût est d'un facteur cinq — descendre en gamme
+devient un arbitrage réel au lieu d'une punition. Le client PROPOSE
+(`settings.modeleEtude`), le SERVEUR DISPOSE : une préférence hors palier
+retombe sur le défaut du palier, vérifié.
+
+**Côté extension** :
+- `src/lib/capture-ia.ts` — raccord, repli, HTML→texte, payload envoyé au modèle.
+- `src/lib/sync.ts` — `fetchAccesCaptureIA`, `capturerAvecIA`, `etudierNoteAvecIA`.
+- **SimpleFX** (`strategies/simplefx.ts`) — NOUVEAU. 5e site le plus capturé
+  (11 captures en base) et aucune stratégie jusqu'ici : ça tombait sur le fallback
+  générique, qui exige un `<article>` qu'une webapp de trading n'a pas. Lecteur de
+  tableaux générique (vrais `<table>` ET grilles ARIA), compteurs d'onglets, état
+  du compte, période filtrée, et surtout « N lignes lues sur M annoncées » quand le
+  tableau déborde de la zone visible. Le lecteur resservira à Tradovate et TopStepX.
+- **YouTube** — la description était perdue : les sélecteurs visaient
+  `yt-formatted-string`, d'avant la refonte. Elle est maintenant lue à la source
+  dans `ytInitialPlayerResponse` (le texte d'un `<script>` est accessible depuis le
+  monde isolé, pas les variables globales), donc ENTIÈRE et non tronquée par le
+  « ...more », avec la durée et les chapitres ancrés en début de ligne.
+- **TradingView** — `Prix : —` était vide et les points clés se résumaient à
+  `Chart Time` et `User Time`. Prix et OHLC lus dans la légende (O/H/B/C en
+  français), horloges renvoyées dans les métadonnées, mention explicite que les
+  niveaux tracés sont sur la capture d'écran et pas dans la page.
+- Le titre n'est plus réinjecté dans le corps de la note (cause de la triple
+  répétition vue en 1.7.1), et le screenshot n'est plus pris deux fois en
+  fullscreen.
+
+**PRÉREQUIS — TOUS LEVÉS le 30/08/2026 au soir :**
+1. ✅ Migration `sites/Aoknowledgecom/supabase/migrations/20260830230000_ia_budget_capture.sql`
+   **APPLIQUÉE** (les 5 ordres passés, colonnes et index vérifiés en relecture).
+   Le fichier a été déplacé depuis `prisma/migrations-manual/` : le garde-fou de
+   `appliquer-migration.sh` n'accepte que le dossier canonique, et la base du
+   journal est bien ce projet Supabase (`aws-0-eu-west-3.pooler.supabase.com`).
+2. ✅ `ANTHROPIC_API_KEY_CARNET` confirmée dans Vercel `journal-d-etude-beta`.
+3. ⏳ Charger le zip 1.8.0 sur le Store. **Brice travaille sur Windows**, le Mac
+   ne sert qu'en déplacement : ne plus écrire « depuis son Mac » dans les notes.
+
+**VÉRIFIÉ BOUT EN BOUT le 30/08 contre la vraie base et la vraie clé** : palier
+résolu (club, via le grant manuel — le cockpit ne connaît pas brice.d@ comme
+client), budget lu (0 € sur 4 €), appel Haiku réel (5,3 s), ligne `AiUsage`
+écrite avec les colonnes de cache, `costMicros` et `niveau`, jauge qui bouge
+(0,00461 €). La chaîne est bouclée.
+
+Budgets par défaut, surchargeables sans redéployer (`IA_BUDGET_LIBRE`,
+`IA_BUDGET_PREMIUM`, `IA_BUDGET_CLUB`, `IA_PLAFOND_GLOBAL_LIBRE`) :
+libre 0,25 € · premium 1,40 € · club 4 € par 30 jours glissants, plus un plafond
+global de 50 € sur le niveau libre. À revoir sur les relevés réels après trois
+semaines : le quota est un pare-feu, pas un prix.
+
+**Reste ouvert** : les blocs `meta` (les métadonnées vivent encore dans le contenu
+plutôt que dans des blocs dédiés) ; le rapprochement positions clôturées ↔ trades
+documentés (« tu as clôturé 7 positions mardi, 2 sont documentées ») ; le masquage
+des données de compte avant envoi à l'API ; le mode session.
+
 ## Priorités (ordre validé par Brice le 10 juillet 2026)
 
 0. ~~**Pont Edgyx**~~ ❌ **ANNULÉ le 27/08/2026** (décision Brice) : Geoffrey n'a
