@@ -178,6 +178,10 @@ function AnalyzeNoteDialog({
   // la réponse reste dans son onglet, le mentor fait grossir le carnet.
   const [sendMode, setSendMode] = useState<'new' | 'thread' | 'mentor'>('new')
   const [mentorDisponible, setMentorDisponible] = useState(false)
+  // La seule chose du sélecteur de prompts qui garde un sens pour le mentor :
+  // dire ce qu'on veut qu'il regarde. Facultatif — sans consigne, il lit la
+  // note et réagit à ce qu'il y trouve.
+  const [consigneMentor, setConsigneMentor] = useState('')
 
   useEffect(() => {
     let vivant = true
@@ -194,7 +198,9 @@ function AnalyzeNoteDialog({
   const envoyerAuMentor = async (): Promise<boolean> => {
     try {
       const noteMentorat = await obtenirNoteMentorat()
-      const corps = await buildFullPrompt()
+      const noteSeule = await buildNoteSeule()
+      const consigne = consigneMentor.trim()
+      const corps = consigne ? `${consigne}\n\n---\n\n${noteSeule}` : noteSeule
       const titre = isMultiNote ? `${selectedNoteIds.length} notes` : (note?.title ?? 'une note')
       await joindreNoteAuMentor(noteMentorat.id, titre, corps)
       toast.success(`Ajoutée au fil du mentor : ${titre}`)
@@ -281,6 +287,24 @@ function AnalyzeNoteDialog({
   // (Première version : la doctrine remplaçait la note, en supposant qu'elle était déjà
   // dans la conversation. Mauvaise idée — l'élève perdait sa note sans le voir.)
   const isDoctrine = selectedPrompt === 'aok'
+
+  /**
+   * La note seule, sans prompt d'amorçage.
+   *
+   * Les quatre types d'analyse n'existent que pour l'injection : ils posent le
+   * rôle et le cadre à une IA extérieure qui ne sait rien d'Ao Knowledge. Le
+   * mentor, lui, EST déjà ce rôle — son cadre est dans son prompt système et il
+   * a le brief chiffré de l'élève. Lui envoyer « Je suis un trader formé chez
+   * Ao Knowledge, voici ton rôle » reviendrait à se présenter à quelqu'un qui a
+   * ton dossier ouvert devant lui.
+   */
+  const buildNoteSeule = async (): Promise<string> => {
+    if (isMultiNote) {
+      const selectedNotes = await storage.getNotesByIds(selectedNoteIds)
+      return buildMultiNoteText(selectedNotes)
+    }
+    return noteToPlainText(note)
+  }
 
   const buildFullPrompt = async (): Promise<string> => {
     const promptText = getPromptText()
@@ -579,8 +603,33 @@ function AnalyzeNoteDialog({
             </div>
           )}
 
+          {/* Destination mentor : pas de type d'analyse à choisir. Les quatre
+              prompts posent un rôle et un cadre à une IA extérieure ; le mentor
+              les a déjà. Reste la seule chose qui transfère : ce qu'on veut
+              qu'il regarde, et c'est facultatif. */}
+          {sendMode === 'mentor' && (
+            <div className="px-5">
+              <label htmlFor="consigne-mentor" className="block text-xs text-muted-foreground mb-2">
+                Ce que tu veux qu’il regarde <span className="text-muted-foreground/60">(facultatif)</span> :
+              </label>
+              <textarea
+                id="consigne-mentor"
+                value={consigneMentor}
+                onChange={e => setConsigneMentor(e.target.value)}
+                rows={2}
+                placeholder="Sans rien écrire, il lit la note et réagit à ce qu’il y trouve."
+                className="w-full text-xs px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/20 placeholder:text-muted-foreground resize-y"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+                Pas de type d’analyse ici : le mentor connaît déjà son rôle, le cadre de
+                la méthode et ton brief chiffré. Les quatre prompts servent à cadrer une
+                IA extérieure, qui elle ne sait rien de toi.
+              </p>
+            </div>
+          )}
+
           {/* Prompt options */}
-          <div className="px-5 space-y-2">
+          <div className={`px-5 space-y-2 ${sendMode === 'mentor' ? 'hidden' : ''}`}>
             <p className="text-xs text-muted-foreground mb-2">Choisissez un type d'analyse :</p>
 
             {PROMPT_OPTIONS.map(({ type, label, subtitle, icon: Icon }) => (
@@ -615,8 +664,8 @@ function AnalyzeNoteDialog({
             )}
           </div>
 
-          {/* Provider selector */}
-          <div className="px-5 mt-4">
+          {/* Provider selector — sans objet quand la note part chez le mentor */}
+          <div className={`px-5 mt-4 ${sendMode === 'mentor' ? 'hidden' : ''}`}>
             <div className="flex items-center gap-3">
               <label htmlFor="provider-select" className="text-xs text-muted-foreground whitespace-nowrap">
                 Provider :
@@ -700,8 +749,9 @@ function AnalyzeNoteDialog({
             </div>
           )}
 
-          {/* Image info callout — single note only */}
-          {hasImages && status === 'idle' && (
+          {/* Image info callout — single note only. Pas pour le mentor : aucun
+              PDF n'est généré, la note rejoint le fil telle quelle. */}
+          {hasImages && status === 'idle' && sendMode !== 'mentor' && (
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
               <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-purple-700 dark:text-purple-300">
