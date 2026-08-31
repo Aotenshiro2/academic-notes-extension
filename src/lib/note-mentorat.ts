@@ -127,6 +127,36 @@ export async function obtenirNoteMentorat(): Promise<AcademicNote> {
   return note
 }
 
+/** La note de mentorat SI elle existe. Ne la crée pas — sert aux cas où on
+ *  veut agir sur une note existante sans en fabriquer une au passage. */
+export async function trouverNoteMentorat(): Promise<AcademicNote | null> {
+  const memorise = await idMemorise()
+  if (memorise) {
+    const existante = await storage.getNote(memorise)
+    if (existante) return existante
+  }
+  const resumes = await storage.getNoteSummaries(1000)
+  const parTitre = resumes.find(n => n.title.trim().toLowerCase() === TITRE_NOTE_MENTORAT.toLowerCase())
+  return parTitre ? await storage.getNote(parTitre.id) : null
+}
+
+/**
+ * Retire l'épinglage quand le compte n'a plus le mentorat (déconnexion, fin
+ * d'abonnement).
+ *
+ * On ne SUPPRIME rien et on ne CACHE rien : cette note contient ce que l'élève
+ * a écrit lui-même, et faire disparaître ses propres mots parce qu'un
+ * abonnement s'arrête serait une faute. Mais l'épinglage, lui, est un privilège
+ * de la fonction active : sans mentorat, la note redescend simplement dans
+ * l'ordre chronologique au lieu de tenir la première place à vie.
+ *
+ * Le bouton « Demander au mentor » reste de toute façon refusé côté serveur.
+ */
+export async function desepinglerSiPlusDeMentorat(): Promise<void> {
+  const note = await trouverNoteMentorat()
+  if (note?.pinned) await storage.saveNote({ ...note, pinned: false })
+}
+
 /** Le fil, tel qu'on le renvoie au modèle et qu'on l'affiche. Les images et
  *  les blocs `meta` sont ignorés : ils n'ont rien à faire dans un dialogue. */
 export function lireConversation(note: AcademicNote): TourMentorat[] {

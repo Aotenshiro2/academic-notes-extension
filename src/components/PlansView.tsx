@@ -96,7 +96,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
       >
         <ArrowLeft size={16} />
       </button>
-      <BadgeCheck size={16} className="text-purple-500 flex-shrink-0" />
+      <BadgeCheck size={16} className="text-muted-foreground flex-shrink-0" />
       <h2 className="text-sm font-semibold text-foreground">Mon forfait</h2>
     </div>
   )
@@ -125,9 +125,9 @@ function PlansView({ onBack }: { onBack: () => void }) {
     return (
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
         {entete}
-        <div className="rounded-2xl border border-purple-500/25 bg-purple-500/[0.04] p-5">
-          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-purple-500/10 mb-3">
-            <Unlock size={20} className="text-purple-500" />
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-500/10 mb-3">
+            <Unlock size={20} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-sm font-semibold text-foreground mb-1">
             {parAdhesion ? 'Tout est déjà ouvert' : 'Carnet Premium est actif'}
@@ -140,7 +140,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
           <ul className="mt-4 space-y-2">
             {AVANTAGES.map(a => (
               <li key={a} className="flex items-start gap-2 text-xs text-foreground/85">
-                <Check size={14} className="mt-0.5 flex-shrink-0 text-purple-500" strokeWidth={2.6} />
+                <Check size={14} className="mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={2.6} />
                 {a}
               </li>
             ))}
@@ -158,7 +158,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
       {entete}
 
       {/* La carte, anneau compris. Un seul bloc, un seul accent. */}
-      <div className="rounded-2xl border border-transparent bg-card p-5 ring-2 ring-purple-500/30">
+      <div className="rounded-2xl border border-border bg-card p-5">
 
         {/* Bascule de période, reprise du modèle d'Efferd : c'est elle qui
             porte la remise, et elle est la première chose qu'on voit. */}
@@ -173,7 +173,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
             >
               {p === 'mois' ? 'Mensuel' : 'Annuel'}
               {p === 'an' && (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/12 text-emerald-600 dark:text-emerald-400">
                   −20 %
                 </span>
               )}
@@ -183,14 +183,14 @@ function PlansView({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-medium text-muted-foreground">Carnet Premium</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
             lancement
           </span>
         </div>
 
         {/* Le prix domine. Le cadenas ouvert à sa hauteur dit ce que ça fait. */}
         <div className="flex items-center gap-2.5 mb-1.5">
-          <Unlock size={26} className="text-purple-500 flex-shrink-0" strokeWidth={1.7} />
+          <Unlock size={26} className="text-muted-foreground flex-shrink-0" strokeWidth={1.7} />
           <span className="text-[42px] leading-none font-bold tracking-tight text-foreground">
             {offre.montant}
           </span>
@@ -206,7 +206,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
         <ul className="space-y-2.5 mb-5">
           {AVANTAGES.map(a => (
             <li key={a} className="flex items-start gap-2.5 text-[13px] text-foreground/90">
-              <Check size={15} className="mt-0.5 flex-shrink-0 text-purple-500" strokeWidth={2.6} />
+              <Check size={15} className="mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={2.6} />
               {a}
             </li>
           ))}
@@ -216,7 +216,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
           href={lienPaiement(offre.lien, email, userId)}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-foreground text-background hover:opacity-90 text-sm font-semibold transition-opacity"
         >
           <Unlock size={16} strokeWidth={2.2} />
           Débloquer

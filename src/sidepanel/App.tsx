@@ -36,7 +36,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
 import { fetchAccesCaptureIA } from '@/lib/sync'
-import { obtenirNoteMentorat } from '@/lib/note-mentorat'
+import { obtenirNoteMentorat, desepinglerSiPlusDeMentorat } from '@/lib/note-mentorat'
 import { t, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
@@ -164,7 +164,16 @@ function App() {
   // l'aura alors que le quota est épuisé promettrait quelque chose qu'on ne
   // tiendrait pas, et la capture retomberait sur les heuristiques.
   useEffect(() => {
-    if (isAuthed !== true) { setEtudeOuverte(false); setCaptureIaActive(false); return }
+    if (isAuthed !== true) {
+      setEtudeOuverte(false)
+      setCaptureIaActive(false)
+      // Déconnecté : la note « Mentorat AOK » n'est ni supprimée ni cachée —
+      // elle contient ce que l'élève a écrit — mais elle perd son épinglage et
+      // redescend dans l'ordre chronologique. Tenir la première place à vie
+      // pour une fonction fermée n'aurait aucun sens.
+      desepinglerSiPlusDeMentorat().then(() => loadData()).catch(() => { /* pas bloquant */ })
+      return
+    }
     let vivant = true
     fetchAccesCaptureIA(settings?.modeleEtude ?? null)
       .then(({ acces }) => {
@@ -180,6 +189,10 @@ function App() {
           obtenirNoteMentorat()
             .then(() => loadData())
             .catch(err => console.warn('[mentorat] note indisponible', err))
+        } else {
+          // Connecté mais sans mentorat (niveau libre, abonnement terminé) :
+          // même règle que la déconnexion, on désépingle sans rien effacer.
+          desepinglerSiPlusDeMentorat().then(() => loadData()).catch(() => { /* pas bloquant */ })
         }
       })
       .catch(() => { /* le serveur tranchera de toute façon */ })
