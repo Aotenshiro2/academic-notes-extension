@@ -151,10 +151,64 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     onNoteUpdate?.()
   }, [noteId, note, onNoteUpdate])
 
-  // Insertion d'un bloc texte APRÈS un bloc existant (annotation a posteriori,
-  // ex. du texte sous une image pendant la relecture)
+  // Insertion APRÈS un bloc existant (annotation a posteriori, ex. du texte ou
+  // une capture sous une image pendant la relecture).
+  //
+  // Le contenu collé peut mêler texte et images. On ne l'enregistre PAS en un
+  // seul bloc texte : une image dans un bloc texte échappe à la compression et
+  // se retrouve recopiée en base64 dans `note.content`, donc stockée deux fois
+  // et affichée deux fois (bug remonté par Franky le 31/08). On découpe donc en
+  // blocs typés, dans l'ordre où ils apparaissent — une légende écrite sous une
+  // image reste sous son image.
   const handleInsertAfter = useCallback(async (afterMessageId: string, html: string) => {
-    await storage.addMessageToNote(noteId, { type: 'text', content: html }, { afterMessageId })
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+
+    type Morceau = { type: 'text' | 'image'; contenu: string; alt?: string }
+    const morceaux: Morceau[] = []
+    let tampon = ''
+
+    const viderTampon = () => {
+      const div = document.createElement('div')
+      div.innerHTML = tampon
+      if (div.textContent?.trim()) morceaux.push({ type: 'text', contenu: tampon })
+      tampon = ''
+    }
+
+    const parcourir = (noeud: Node) => {
+      for (const enfant of Array.from(noeud.childNodes)) {
+        if (enfant.nodeType === Node.ELEMENT_NODE && (enfant as Element).tagName === 'IMG') {
+          const img = enfant as HTMLImageElement
+          viderTampon()
+          if (img.src) morceaux.push({ type: 'image', contenu: img.src, alt: img.alt || 'Image collée' })
+        } else if (enfant.nodeType === Node.ELEMENT_NODE && (enfant as Element).querySelector('img')) {
+          // Un conteneur qui porte une image : on descend dedans plutôt que de
+          // l'avaler en bloc, sinon l'image repart dans le texte.
+          parcourir(enfant)
+        } else {
+          tampon += enfant.nodeType === Node.TEXT_NODE
+            ? (enfant.textContent ?? '')
+            : (enfant as Element).outerHTML
+        }
+      }
+    }
+    parcourir(doc.body)
+    viderTampon()
+
+    if (morceaux.length === 0) return
+
+    // Chaque bloc s'insère après le précédent : l'ordre visuel est conservé.
+    let ancre = afterMessageId
+    for (const m of morceaux) {
+      const id = await storage.addMessageToNote(
+        noteId,
+        m.type === 'image'
+          ? { type: 'image', content: m.contenu, metadata: { alt: m.alt } }
+          : { type: 'text', content: m.contenu },
+        { afterMessageId: ancre }
+      )
+      if (id) ancre = id
+    }
+
     setRemoteUpdatePending(false)
     await loadNote()
     onNoteUpdate?.()
@@ -962,7 +1016,12 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
   }, [editing])
 
   const submit = useCallback(async () => {
-    if (!editorRef.current?.textContent?.trim()) {
+    // Une image collée seule n'a AUCUN textContent : tester le texte seul
+    // refermait le champ sans rien enregistrer (bug Franky, 31/08). On accepte
+    // dès qu'il y a du texte OU au moins une image.
+    const aDuTexte = Boolean(editorRef.current?.textContent?.trim())
+    const aUneImage = Boolean(editorRef.current?.querySelector('img'))
+    if (!aDuTexte && !aUneImage) {
       setEditing(false)
       return
     }
@@ -972,7 +1031,7 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
       setEditing(false)
     } catch (error) {
       console.error('[InsertPoint] Insertion impossible:', error)
-      toast.error('Impossible d\'insérer le texte')
+      toast.error('Impossible d\'insérer ici')
     } finally {
       setSaving(false)
     }
@@ -983,7 +1042,7 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
       <div
         className="group/ins relative -my-1 h-2.5 flex items-center cursor-pointer"
         onClick={() => setEditing(true)}
-        title="Insérer du texte ici"
+        title="Insérer du texte ou une capture ici"
       >
         {/* Révélation par opacité (jamais display : artefacts de peinture) */}
         <div className="w-full items-center gap-1 flex opacity-0 group-hover/ins:opacity-100 transition-opacity pointer-events-none">
@@ -1009,7 +1068,7 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
           if (e.key === 'Escape') setEditing(false)
         }}
         className="min-h-[24px] text-sm text-foreground/90 leading-relaxed focus:outline-none"
-        data-placeholder="Écris ton annotation…"
+        data-placeholder="Écris ton annotation, ou colle une capture…"
       />
       <div className="flex items-center gap-2 mt-1.5">
         <button
