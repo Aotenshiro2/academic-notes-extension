@@ -65,6 +65,16 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.2',
+    title: 'L\u2019\u00e9cran de forfait dit enfin la v\u00e9rit\u00e9',
+    items: [
+      '\u00ab Mon forfait \u00bb annon\u00e7ait encore le mode mentorat comme \u00ab bient\u00f4t \u00bb et \u00ab une option payante en pr\u00e9paration \u00bb. C\u2019\u00e9tait vrai fin ao\u00fbt ; \u00e7a ne l\u2019est plus. Le mentorat est l\u00e0, Carnet Premium existe, et l\u2019\u00e9cran te permet maintenant de le prendre.',
+      'Ce n\u2019est pas un tableau comparatif : une offre, un prix, un bouton. La question n\u2019est pas de savoir lequel tu prends, mais si tu passes.',
+      'L\u2019\u00e9cran s\u2019adapte \u00e0 ton acc\u00e8s. Si ton adh\u00e9sion Ao Knowledge ouvre d\u00e9j\u00e0 tout, on ne te vend rien : on te le dit. Si tu es d\u00e9j\u00e0 abonn\u00e9, on te remercie et on te dit o\u00f9 g\u00e9rer.',
+      'Ton email est pr\u00e9-rempli sur la page de paiement. Ce n\u2019est pas du confort : ton acc\u00e8s s\u2019ouvre sur l\u2019adresse du paiement, et payer avec une autre te laissait abonn\u00e9 mais bloqu\u00e9.',
+    ],
+  },
+  {
     version: '1.8.1',
     title: 'Le mentorat devient une vraie conversation',
     items: [
