@@ -1190,6 +1190,7 @@ function App() {
                   onCapturePage={handleCapturePage}
                   onSmartCapture={handleSmartCapture}
                   isCapturing={isCapturing}
+                  captureIaActive={captureIaActive}
                   lastNote={notes.length > 0
                     ? notes.reduce((latest, n) => n.timestamp > latest.timestamp ? n : latest)
                     : undefined

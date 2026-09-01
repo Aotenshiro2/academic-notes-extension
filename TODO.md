@@ -150,6 +150,46 @@ et a dit « il faudra revenir dessus ». À traiter avant de parler de 1.9 — s
 règle, posée dans la note elle-même : **pas de 1.9 tant que l'IA n'est pas
 alignée avec la vision**, les 1.8.x servent à ça.
 
+### La qualité des points clés (précisé par Brice le 01/09)
+
+**Le cadre.** Le carnet est un CAHIER DE COURS : ce qu'on y cherche est de
+l'information éducative. Résumé et points clés doivent se lire comme sur un
+article de blog — le texte, et sur le côté ce qu'il faut en retenir.
+
+**Un mauvais point clé est une étiquette** recopiée de la page (titre de card,
+intitulé, ligne de ticker). **Un bon point clé est ce que la page apprend**,
+écrit pour tenir tout seul à la relecture deux semaines plus tard.
+
+Attention à la tension avec la règle du secrétaire (aucun avis, aucune
+invention — c'est elle qui a tué les hallucinations au banc du 30/08).
+« Apprendre quelque chose » ne veut pas dire interpréter : ça veut dire
+**extraire du sens au lieu de recopier des libellés**. Le concept enseigné
+plutôt que le titre du chapitre ; la relation entre deux niveaux plutôt que les
+deux nombres côte à côte.
+
+- [ ] **Demander à Brice ses exemples** de points clés « tels qu'il les aurait
+      notés », sur des pages réelles. Il l'a proposé lui-même : sans ça il n'y a
+      pas de base pour régler la consigne. Même dictés en vrac.
+
+- [ ] **La famille « maison » doit lire le journal, pas le gratter.** Correction
+      de Brice, et j'avais tort dans l'autre sens : j'avais proposé qu'un canvas
+      de 111 notes « n'a rien à enseigner et devrait le dire ». Faux. Le canvas
+      EST du contenu, et surtout **c'est NOTRE contenu** : le carnet est connecté
+      au journal, donc rien n'empêche d'aller chercher la vraie note derrière
+      chaque carte affichée, de la lire, et d'en tirer de vrais points clés — ou
+      de restituer **les liens entre les éléments** que l'élève a reliés sur le
+      canvas. Un canvas VIDE serait une autre histoire, mais ce n'est pas le cas.
+
+      **Faisable tel quel, vérifié le 01/09** : dans `NoteMapCanvas.tsx` (~l.940)
+      le nœud React Flow porte `id: note.id`, et React Flow expose cet id en
+      `data-id` sur `.react-flow__node`. Mécanisme :
+      1. la stratégie « maison » de l'extension relève les `data-id` visibles ;
+      2. elle les envoie à `/api/capture`, qui tourne déjà sous l'identité de
+         l'élève ;
+      3. le serveur résout ces ids en notes DE CE COMPTE (jamais d'un autre) et
+         donne leur contenu au modèle au lieu du DOM.
+      Les arêtes du canvas se relèvent de la même façon pour les liens.
+
 - [ ] **La capture intelligente n'est pas satisfaisante.** Verdict de Brice le
       01/09 après usage réel, sans détail à ce stade (« je reviendrai dessus
       plus tard »). Ne pas deviner : lui demander sur quelles pages et sur quoi

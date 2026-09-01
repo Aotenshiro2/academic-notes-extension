@@ -10,9 +10,13 @@ interface EmptyNoteViewProps {
   isCapturing?: boolean
   lastNote?: NoteSummary
   onSelectNote?: (id: string) => void
+  /** Même signal que dans le menu ＋ : l'anneau arc-en-ciel dit que la capture
+   *  passe par l'IA. Il n'était posé que sur le ＋, alors que c'est le MÊME
+   *  geste depuis l'accueil (remonté par Brice le 01/09). */
+  captureIaActive?: boolean
 }
 
-function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, lastNote, onSelectNote }: EmptyNoteViewProps) {
+function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, lastNote, onSelectNote, captureIaActive = false }: EmptyNoteViewProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-12">
       {/* Salutation */}
@@ -34,14 +38,16 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
         {onSmartCapture && (
           <button
             onClick={onSmartCapture}
-            className="w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-purple-200 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
+            className={`w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-border hover:bg-muted/50 transition-colors ${captureIaActive ? 'aura-ia' : ''}`}
           >
-            <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+              <Sparkles size={20} className="text-foreground" />
             </div>
             <div>
               <div className="font-medium text-foreground">{t('capture.intelligente')}</div>
-              <div className="text-sm text-muted-foreground">Résumé + points clés de la page</div>
+              <div className="text-sm text-muted-foreground">
+                {captureIaActive ? t('capture.intelligenteSousIA') : t('capture.intelligenteSous')}
+              </div>
             </div>
           </button>
         )}
