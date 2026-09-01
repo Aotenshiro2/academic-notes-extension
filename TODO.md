@@ -143,6 +143,32 @@ plutôt que dans des blocs dédiés) ; le rapprochement positions clôturées �
 documentés (« tu as clôturé 7 positions mardi, 2 sont documentées ») ; le masquage
 des données de compte avant envoi à l'API ; le mode session.
 
+## Deux fils rouverts par Brice le 01/09/2026 (relecture de la release note)
+
+Les deux sont sortis de la relecture, pas d'un bug : il a lu ce qu'on annonçait
+et a dit « il faudra revenir dessus ». À traiter avant de parler de 1.9 — sa
+règle, posée dans la note elle-même : **pas de 1.9 tant que l'IA n'est pas
+alignée avec la vision**, les 1.8.x servent à ça.
+
+- [ ] **La capture intelligente n'est pas satisfaisante.** Verdict de Brice le
+      01/09 après usage réel, sans détail à ce stade (« je reviendrai dessus
+      plus tard »). Ne pas deviner : lui demander sur quelles pages et sur quoi
+      précisément avant de toucher aux prompts. Piste déjà visible dans ses
+      captures d'écran du jour : sur SimpleFX, le résumé décrit la page (« deux
+      graphiques US100 en 1h et 15m ») au lieu de lire la situation du compte,
+      et les points clés remontent surtout du contenu déjà présent dans la note
+      plutôt que de la page captée.
+
+- [ ] **Cadrer le mentorat sur un dossier ou un sous-dossier.** Idée et
+      justification de Brice : les élèves ont des usages très différents dans la
+      même extension, des dossiers pour le trading et d'autres pour du perso.
+      Aujourd'hui `buildMentoratBrief` balaie tout le compte sur N jours ; il
+      faut pouvoir dire au mentor « ne regarde que ce dossier-là ». Annoncé
+      publiquement comme une réflexion en cours dans la release note 1.8.3,
+      donc attendu, mais sans date promise.
+      Touche : `journal-d-etude/src/lib/mentorat-brief.ts` (filtre par dossier),
+      la route `/api/mentorat/chat`, et un sélecteur côté `MentoratView`.
+
 ## Priorités (ordre validé par Brice le 10 juillet 2026)
 
 0. ~~**Pont Edgyx**~~ ❌ **ANNULÉ le 27/08/2026** (décision Brice) : Geoffrey n'a
