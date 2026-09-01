@@ -1307,7 +1307,7 @@ function App() {
               </button>
               <button
                 onClick={() => { setShowMentorat(!showMentorat); setShowSupport(false); setShowAccount(false); setShowSettings(false) }}
-                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showMentorat ? 'text-purple-500 bg-muted' : 'text-muted-foreground'}`}
+                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showMentorat ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
                 title="Mode mentorat"
                 aria-label="Mode mentorat"
               >

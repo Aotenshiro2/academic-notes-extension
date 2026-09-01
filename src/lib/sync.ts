@@ -600,11 +600,30 @@ export interface MentoratBriefData {
  * Calculé côté backend depuis la base — le condensé qu'un prompt copié ne
  * peut pas produire.
  */
+/**
+ * Le cadrage par dossiers du mentorat, lu au moment de l'appel plutot que
+ * passe de main en main : c'est une preference, pas un argument, et un seul
+ * ecran la choisit. Meme logique que `getLangue()` juste au-dessus.
+ *
+ * Lecture directe du storage : importer `storage` ici creerait un cycle.
+ */
+async function cadrageMentorat(): Promise<string[]> {
+  try {
+    const { settings } = await chrome.storage.local.get('settings')
+    const liste = settings?.mentoratDossiers
+    return Array.isArray(liste) ? liste.filter((d: unknown): d is string => typeof d === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratBriefData; error?: string }> {
   const token = await getBearerToken()
   if (!token) return { error: 'Non connecté — connecte-toi dans le compte.' }
   try {
-    const res = await fetch(`${JOURNAL_API}/api/mentorat/brief?days=${days}`, {
+    const dossiers = await cadrageMentorat()
+    const cadre = dossiers.length ? `&dossiers=${encodeURIComponent(dossiers.join(','))}` : ''
+    const res = await fetch(`${JOURNAL_API}/api/mentorat/brief?days=${days}${cadre}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
     if (!res.ok) return { error: `Brief indisponible (HTTP ${res.status})` }
@@ -666,7 +685,7 @@ export async function generateMentoratPlan(days = 90): Promise<{ plan?: string; 
     const res = await fetch(`${JOURNAL_API}/api/mentorat/plan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ days }),
+      body: JSON.stringify({ days, dossiers: await cadrageMentorat() }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return { error: data.error ?? `Plan indisponible (HTTP ${res.status})` }
@@ -897,7 +916,7 @@ export async function demanderAuMentor(
     const res = await fetch(`${JOURNAL_API}/api/mentorat/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ messages, days, langue: getLangue() }),
+      body: JSON.stringify({ messages, days, langue: getLangue(), dossiers: await cadrageMentorat() }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {

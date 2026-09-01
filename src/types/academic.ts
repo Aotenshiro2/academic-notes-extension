@@ -283,6 +283,14 @@ export interface Settings {
    *  droit : le serveur la valide contre le palier du compte et retombe sur
    *  le défaut du palier si elle ne tient pas. Absent = défaut du palier. */
   modeleEtude?: string
+  /** Cadrage du mode mentorat (01/09/2026) : les dossiers que le mentor a le
+   *  droit de lire. Vide = tout le carnet. Un carnet melange le trading et le
+   *  perso ; l'eleve choisit ce qu'il expose. Cocher un dossier racine emporte
+   *  ses sous-dossiers, c'est le serveur qui les resout. */
+  mentoratDossiers?: string[]
+  /** Le cadrage a-t-il deja ete propose ? Sans ce drapeau on ne distinguerait
+   *  pas « il a choisi tout le carnet » de « on ne lui a jamais demande ». */
+  mentoratCadrageFait?: boolean
 }
 
 // Messages pour communication entre composants

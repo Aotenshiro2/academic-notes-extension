@@ -65,6 +65,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.4',
+    title: 'Tu choisis ce que le mentor a le droit de lire',
+    items: [
+      'Nouveau : au premier passage dans le mode mentorat, on te demande quels dossiers il peut regarder. Ton carnet ne sert probablement pas qu’au trading, et le mentor n’a pas à lire tes notes perso pour parler de tes trades.',
+      'Si tu ne coches rien, il lit tout : c’est le cas par défaut, tu n’as aucun geste à faire. Cocher un dossier prend aussi ses sous-dossiers.',
+      'Le cadrage vaut pour tout ce qu’il voit — le brief chiffré, les jugements A/B/C, ton retard de relecture et le plan d’évolution. Il ne te reprochera pas un retard sur des notes que tu lui as demandé d’ignorer.',
+      'L’icône d’arborescence en haut à droite de l’écran mentorat rouvre le choix quand tu veux.',
+      'L’écran mentorat perd son violet : il chargeait la lecture. Le signal « ça part vers l’IA » reste porté par l’anneau du bouton « Demander au mentor ».',
+    ],
+  },
+  {
     version: '1.8.3',
     title: 'Coller une capture entre deux blocs',
     items: [

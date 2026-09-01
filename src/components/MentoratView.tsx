@@ -6,7 +6,7 @@
 // Anthropic côté Vercel) : phase de dogfooding.
 import { toast } from '@/lib/toast'
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Unlock, LifeBuoy, User, ArrowUp } from 'lucide-react'
+import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Unlock, LifeBuoy, User, ArrowUp, FolderTree, Check, Square, CheckSquare } from 'lucide-react'
 import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, demanderAuMentor, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
 import {
   obtenirNoteMentorat, lireConversation, enAttenteDeReponse,
@@ -15,6 +15,7 @@ import {
 } from '@/lib/note-mentorat'
 import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
+import type { NoteFolder } from '@/types/academic'
 import { OFFRES } from '@/lib/offres'
 
 const PERIODS = [
@@ -77,10 +78,78 @@ interface MentoratViewProps {
 // re-vérifie de toute façon sur chaque route (l'extension ne décide jamais).
 type GateState = 'checking' | 'anon' | 'denied' | 'gate-error' | 'ok'
 
+/** Une ligne du cadrage. Définie HORS du corps de MentoratView : un composant
+ *  redéfini à chaque rendu est un type neuf à chaque fois, et React remonterait
+ *  la liste entière à chaque clic. */
+function CaseDossier({ dossier, coche, onToggle, decale }: {
+  dossier: NoteFolder
+  coche: boolean
+  onToggle: (f: NoteFolder) => void
+  decale?: boolean
+}) {
+  return (
+    <button
+      onClick={() => onToggle(dossier)}
+      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-xs transition-colors hover:bg-muted ${
+        decale ? 'ml-4' : ''
+      } ${coche ? 'text-foreground' : 'text-muted-foreground'}`}
+    >
+      {coche
+        ? <CheckSquare size={14} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+        : <Square size={14} className="flex-shrink-0" />}
+      <span className="truncate">{dossier.name}</span>
+    </button>
+  )
+}
+
 function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: MentoratViewProps) {
 
   const [gate, setGate] = useState<GateState>('checking')
   const [days, setDays] = useState(90)
+
+  // ── Cadrage par dossiers (01/09/2026, idée de Brice) ─────────────────────
+  // Un carnet mélange le trading et le perso. Avant de lâcher le mentor sur
+  // tout, on demande ce qu'il a le droit de lire. RIEN DE COCHÉ = TOUT : le
+  // cas par défaut ne demande donc aucun geste, et le cadrage reste un confort
+  // plutôt qu'un péage. Cocher un dossier racine emporte ses sous-dossiers.
+  const [dossiers, setDossiers] = useState<NoteFolder[]>([])
+  const [coches, setCoches] = useState<string[]>([])
+  const [cadrageOuvert, setCadrageOuvert] = useState(false)
+  // Incrémenté à chaque validation : force le brief à se recalculer.
+  const [versionCadrage, setVersionCadrage] = useState(0)
+
+  // Au premier passage dans le mode, on propose le cadrage. Ensuite il ne
+  // revient plus tout seul : il se rouvre par le bouton de l'en-tête.
+  useEffect(() => {
+    if (gate !== 'ok') return
+    let vivant = true
+    void (async () => {
+      const [liste, settings] = await Promise.all([storage.getFolders(), storage.getSettings()])
+      if (!vivant) return
+      setDossiers(liste)
+      setCoches(settings.mentoratDossiers ?? [])
+      // Sans dossier, il n'y a rien à cadrer : on ne montre pas un écran vide.
+      if (!settings.mentoratCadrageFait && liste.length > 0) setCadrageOuvert(true)
+    })()
+    return () => { vivant = false }
+  }, [gate])
+
+  const basculerDossier = useCallback((f: NoteFolder) => {
+    setCoches(actuels => {
+      const dedans = actuels.includes(f.id)
+      const enfants = dossiers.filter(d => d.parentId === f.id).map(d => d.id)
+      // Un parent emporte ses enfants dans les deux sens : devoir les décocher
+      // un par un après avoir décoché le parent serait absurde.
+      if (dedans) return actuels.filter(id => id !== f.id && !enfants.includes(id))
+      return Array.from(new Set([...actuels, f.id, ...enfants]))
+    })
+  }, [dossiers])
+
+  const validerCadrage = useCallback(async () => {
+    await storage.saveSettings({ mentoratDossiers: coches, mentoratCadrageFait: true })
+    setCadrageOuvert(false)
+    setVersionCadrage(v => v + 1)
+  }, [coches])
 
   // ── Le fil avec le mentor (1.8.1) ────────────────────────────────────────
   // Il vit dans la note epinglee « Mentorat AOK » : c'est elle la source de
@@ -185,7 +254,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
     setLoading(false)
   }, [])
 
-  useEffect(() => { if (gate === 'ok') load(days) }, [gate, days, load])
+  useEffect(() => { if (gate === 'ok') load(days) }, [gate, days, load, versionCadrage])
 
   const copyBrief = async () => {
     if (!brief) return
@@ -229,7 +298,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
         >
           <ArrowLeft size={16} />
         </button>
-        <GraduationCap size={16} className="text-purple-500 flex-shrink-0" />
+        <GraduationCap size={16} className="text-muted-foreground flex-shrink-0" />
         <h2 className="flex-1 text-sm font-semibold text-foreground">Mode mentorat</h2>
         {gate === 'ok' && (
           <>
@@ -246,6 +315,18 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setCadrageOuvert(true)}
+              className={`p-1.5 rounded-md transition-colors hover:bg-muted ${
+                coches.length ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={coches.length
+                ? `Le mentor ne lit que ${coches.length} dossier${coches.length > 1 ? 's' : ''}`
+                : 'Le mentor lit tout le carnet'}
+              aria-label="Choisir les dossiers que le mentor peut lire"
+            >
+              <FolderTree size={14} />
+            </button>
             <button
               onClick={() => load(days)}
               disabled={loading}
@@ -358,7 +439,55 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
         </div>
       )}
 
-      {gate === 'ok' && (<>
+      {gate === 'ok' && cadrageOuvert && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Que peut lire le mentor ?</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Tu n'utilises sans doute pas ton carnet que pour le trading. Coche les dossiers
+              que le mentor a le droit de regarder. Si tu ne coches rien, il lit tout.
+            </p>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto scrollbar-thin -mx-1 px-1 space-y-0.5">
+            {dossiers.filter(d => !d.parentId).map(racine => (
+              <div key={racine.id}>
+                <CaseDossier dossier={racine} coche={coches.includes(racine.id)} onToggle={basculerDossier} />
+                {dossiers.filter(d => d.parentId === racine.id).map(enfant => (
+                  <CaseDossier key={enfant.id} dossier={enfant} coche={coches.includes(enfant.id)} onToggle={basculerDossier} decale />
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => void validerCadrage()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Check size={13} strokeWidth={2.4} />
+              {coches.length === 0
+                ? 'Lire tout le carnet'
+                : `Ne lire que ${coches.length} dossier${coches.length > 1 ? 's' : ''}`}
+            </button>
+            {coches.length > 0 && (
+              <button
+                onClick={() => setCoches([])}
+                className="px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                Tout décocher
+              </button>
+            )}
+          </div>
+
+          <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+            Cocher un dossier prend aussi ses sous-dossiers. Tu peux revenir sur ce choix
+            à tout moment avec l'icône en haut à droite.
+          </p>
+        </div>
+      )}
+
+      {gate === 'ok' && !cadrageOuvert && (<>
       <p className="text-xs text-muted-foreground leading-relaxed">
         Ton brief : le condensé chiffré de tes {days} derniers jours, calculé depuis tes
         notes, jugements et trades. C'est la matière du futur plan d'évolution.
@@ -441,14 +570,17 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
             </div>
           )}
 
-          {/* Plan d'évolution : l'IA propose, Brice valide avant diffusion */}
-          <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg space-y-2">
+          {/* Plan d'évolution : l'IA propose, Brice valide avant diffusion.
+              Palette neutralisée le 01/09 : le violet servait d'accent « IA »,
+              mais il chargeait l'écran. Le signal IA reste porté par l'anneau
+              `aura-ia` du bouton, qui le dit sans repeindre tout le panneau. */}
+          <div className="p-3 bg-muted/40 border border-border rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Plan d'évolution</p>
               <button
                 onClick={generatePlan}
                 disabled={planLoading}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 rounded-md transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 text-[11px] text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
               >
                 {planLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                 {lastPlan ? 'Regénérer' : 'Générer une proposition'}
@@ -569,7 +701,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               >
                 {envoiEnCours
                   ? <><Loader2 size={12} className="animate-spin" /> Le mentor réfléchit…</>
-                  : <><Sparkles size={12} className="text-purple-500" /> Demander au mentor</>}
+                  : <><Sparkles size={12} /> Demander au mentor</>}
               </button>
 
               {!envoiEnCours && enAttente.length > 0 && (
