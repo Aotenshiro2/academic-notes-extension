@@ -20,44 +20,9 @@ import React, { useEffect, useState } from 'react'
 import { ArrowLeft, BadgeCheck, Check, Loader2, Unlock, ShieldCheck } from 'lucide-react'
 import { fetchAccesCaptureIA, type NiveauIA } from '@/lib/sync'
 import { getSession } from '@/lib/auth'
-
-// Produit Carnet Premium, compte Stripe AO KNOWLEDGE (acct_1I6dxMEAT4qWdUNV) —
-// PAS celui de Mélanie, qui porte le Live Club. Vérifié le 31/08/2026.
-//   mensuel : price_1U9QKMEAT4qWdUNVv0OSIusl · 5,99 €/mois
-//   annuel  : price_1UAR2CEAT4qWdUNVgqnFaTd8 · 57,50 €/an (-20%)
-const OFFRES = {
-  mois: {
-    lien: 'https://buy.stripe.com/fZucN51ma7Iz0vP2wp7ok00',
-    montant: '5,99 €',
-    unite: '/ mois',
-    barre: null as string | null,
-    note: 'Sans engagement, résiliable à tout moment.',
-  },
-  an: {
-    lien: 'https://buy.stripe.com/7sY00jaWK6Ev5Q96MF7ok01',
-    montant: '4,79 €',
-    unite: '/ mois',
-    barre: '5,99 €',
-    note: '57,50 € facturés une fois par an. Tu économises 14,38 €.',
-  },
-} as const
-
-type Periode = keyof typeof OFFRES
-
-/**
- * Le lien de paiement, avec l'email du compte pré-rempli.
- *
- * Ce n'est pas du confort : la reconnaissance de l'abonnement se fait PAR
- * EMAIL côté serveur. Payer avec une autre adresse que celle du compte AOK
- * était le premier moyen de se retrouver avec un abonnement actif et un accès
- * fermé. Pré-remplir supprime la faute avant qu'elle arrive.
- */
-function lienPaiement(base: string, email: string | null, userId: string | null): string {
-  const url = new URL(base)
-  if (email) url.searchParams.set('prefilled_email', email)
-  if (userId) url.searchParams.set('client_reference_id', userId)
-  return url.toString()
-}
+// L'offre et le lien pré-rempli vivent dans lib/offres : la carte d'upsell du
+// mentorat lit la même source, sinon les deux prix divergent (c'était le cas).
+import { OFFRES, lienPaiement, type Periode } from '@/lib/offres'
 
 const AVANTAGES = [
   'La capture lue par l’IA',

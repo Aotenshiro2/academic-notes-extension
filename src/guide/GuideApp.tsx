@@ -70,6 +70,7 @@ const CHANGELOG = [
     items: [
       'Correction : entre deux blocs, le ＋ acceptait le texte mais perdait les images. Une capture collée seule ne restait ni dans la note ni dans le journal, et quand elle passait, elle s’affichait en double et alourdissait la note pour rien. Elle s’enregistre maintenant comme une vraie image.',
       'Le champ d’insertion accepte le mélange : écris ta légende, colle ta capture, l’ordre est conservé.',
+      'La carte Carnet Premium du mode mentorat avait gardé l’ancienne présentation et son propre bouton de paiement : elle ignorait l’offre annuelle et n’ouvrait pas le paiement avec ton email. Elle reprend la présentation de « Mon forfait » et t’y envoie.',
     ],
   },
   {

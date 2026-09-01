@@ -1017,6 +1017,7 @@ function App() {
               onBack={() => setShowMentorat(false)}
               onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
               onOpenSupport={() => { closeAllViews(); setShowSupport(true) }}
+              onOpenPlans={() => { closeAllViews(); setShowPlans(true) }}
             />
           ) : showAiConfig ? (
             <AiConfigView

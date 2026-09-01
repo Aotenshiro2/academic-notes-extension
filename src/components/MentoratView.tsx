@@ -6,7 +6,7 @@
 // Anthropic côté Vercel) : phase de dogfooding.
 import { toast } from '@/lib/toast'
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Lock, LifeBuoy, User, ArrowUp } from 'lucide-react'
+import { ArrowLeft, GraduationCap, RefreshCw, Copy, Loader2, AlertCircle, Sparkles, Unlock, LifeBuoy, User, ArrowUp } from 'lucide-react'
 import { fetchMentoratBrief, fetchLastMentoratPlan, generateMentoratPlan, fetchMentoratAccess, demanderAuMentor, type MentoratBriefData, type MentoratPlanData } from '@/lib/sync'
 import {
   obtenirNoteMentorat, lireConversation, enAttenteDeReponse,
@@ -15,10 +15,7 @@ import {
 } from '@/lib/note-mentorat'
 import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
-
-// Lien de paiement Stripe du Carnet Premium (5,99 €/mois, prix de lancement).
-// Produit prod_V9jniZCCbIJsmV sur le Stripe aoknowledge, créé le 28/08/2026.
-const PREMIUM_PAYMENT_LINK = 'https://buy.stripe.com/fZucN51ma7Iz0vP2wp7ok00'
+import { OFFRES } from '@/lib/offres'
 
 const PERIODS = [
   { days: 30, label: '30 j' },
@@ -68,6 +65,10 @@ interface MentoratViewProps {
   onBack: () => void
   onOpenAccount: () => void
   onOpenSupport: () => void
+  /** Ouvre « Mon forfait » : le seul écran qui vend, avec l'offre annuelle et
+   *  l'email pré-rempli. La carte d'upsell d'ici s'y branche au lieu de
+   *  refaire un mini-tunnel de paiement dans son coin. */
+  onOpenPlans: () => void
 }
 
 // Portail d'entrée (décision Brice 28/08) : le mode mentorat est réservé aux
@@ -76,7 +77,7 @@ interface MentoratViewProps {
 // re-vérifie de toute façon sur chaque route (l'extension ne décide jamais).
 type GateState = 'checking' | 'anon' | 'denied' | 'gate-error' | 'ok'
 
-function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProps) {
+function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: MentoratViewProps) {
 
   const [gate, setGate] = useState<GateState>('checking')
   const [days, setDays] = useState(90)
@@ -285,33 +286,45 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport }: MentoratViewProp
       {gate === 'denied' && (
         <div className="space-y-3">
           {/* Ce qu'on vend ICI : le mode boosté de l'extension (recadrage
-              Brice 28/08 — pas le Live Club, lui est une piste parmi d'autres) */}
-          <div className="p-4 border border-purple-500/30 bg-purple-500/5 rounded-xl space-y-2.5">
-            <div className="flex items-center gap-2">
-              <GraduationCap size={15} className="text-purple-500 flex-shrink-0" />
-              <p className="text-sm font-semibold text-foreground">Carnet Premium</p>
-              <span className="ml-auto text-sm font-semibold text-foreground">5,99 €<span className="text-[10px] font-normal text-muted-foreground">/mois</span></span>
+              Brice 28/08 — pas le Live Club, lui est une piste parmi d'autres).
+              Refaite le 31/08 : elle portait encore la palette violette d'avant
+              « Mon forfait », un prix mensuel écrit en dur, et un bouton qui
+              partait direct sur Stripe SANS l'email pré-rempli. Elle ne vend
+              plus toute seule — elle amorce, et l'écran de vente conclut. */}
+          <div className="p-4 border border-border bg-card rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Carnet Premium</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+                lancement
+              </span>
             </div>
+
+            {/* Le prix domine, le cadenas ouvert dit ce que ça fait. Même
+                grammaire que « Mon forfait », en plus compact. */}
+            <div className="flex items-center gap-2.5">
+              <Unlock size={24} className="text-muted-foreground flex-shrink-0" strokeWidth={1.7} />
+              <span className="text-[34px] leading-none font-bold tracking-tight text-foreground">
+                {OFFRES.an.montant}
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-[11px] text-muted-foreground">{OFFRES.an.unite}</span>
+                <span className="text-[11px] text-muted-foreground/60 line-through">{OFFRES.mois.montant}</span>
+              </span>
+            </div>
+
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Le mode boosté de ton carnet : ton suivi de progression chiffré, et un
-              plan d'évolution rédigé par l'IA à partir de TES trades puis validé par
-              un mentor humain. Le carnet gratuit reste entier, Premium s'ajoute par-dessus.
+              Le mode boosté de ton carnet : ton suivi de progression chiffré, un plan
+              d'évolution rédigé à partir de TES trades, et un mentor à qui tu peux
+              répondre. Le carnet gratuit reste entier, Premium s'ajoute par-dessus.
             </p>
-            <p className="text-[10px] text-muted-foreground/70">Prix de lancement.</p>
-            {PREMIUM_PAYMENT_LINK ? (
-              <button
-                onClick={() => chrome.tabs.create({ url: PREMIUM_PAYMENT_LINK })}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Sparkles size={13} />
-                Passer en Premium
-              </button>
-            ) : (
-              <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-dashed border-border text-muted-foreground">
-                <Lock size={12} />
-                Ouverture imminente
-              </div>
-            )}
+
+            <button
+              onClick={onOpenPlans}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-foreground text-background hover:opacity-90 text-sm font-semibold transition-opacity"
+            >
+              <Unlock size={15} strokeWidth={2.2} />
+              Débloquer
+            </button>
           </div>
 
           {/* Les autres portes : déjà incluses dans ces offres */}
