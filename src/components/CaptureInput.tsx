@@ -3,7 +3,8 @@ import { Plus, ArrowUp, ImageIcon, Camera, Monitor, Sparkles, Loader2, Crosshair
 import { compressImage, COMPRESSION_PRESETS, estimateImageSize, formatFileSize, prepareImageForStorage } from '@/lib/image-utils'
 import { startRecording, transcribe, micPermissionState, openMicPermissionPage, type Recorder, type DictationProgress } from '@/lib/dictation'
 import { toast } from '@/lib/toast'
-import { t } from '@/lib/i18n'
+import { t, getLangueAnalyse, setLangueAnalyse, subscribeLangueAnalyse,
+  langueAnalyseSuivante, libelleLangueAnalyse, type LangueAnalyse } from '@/lib/i18n'
 
 export interface CaptureInputHandle {
   focus: () => void
@@ -56,6 +57,12 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   const menuRef = useRef<HTMLDivElement>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // Langue de la LECTURE IA. Elle ne suit pas l'interface : on veut pouvoir
+  // garder l'app en français et lire une page anglaise en anglais.
+  const [langueLecture, setLangueLectureLocale] = useState<LangueAnalyse>(getLangueAnalyse)
+  useEffect(() => subscribeLangueAnalyse(setLangueLectureLocale), [])
+  const setLangueLecture = (v: LangueAnalyse) => { setLangueAnalyse(v); setLangueLectureLocale(v) }
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
   const [isCapturingExternal, setIsCapturingExternal] = useState(false)
   // Dictée vocale (Whisper local). Règle anti-perte (crainte Brice 28/08,
@@ -668,22 +675,40 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                     // réellement droit à la capture IA. Sinon le bouton reste
                     // ce qu'il a toujours été : la capture par heuristiques,
                     // qui marche et qui ne promet rien qu'elle ne tient pas.
-                    <button
-                      onClick={() => { onSmartCapture(); setIsMenuOpen(false) }}
-                      disabled={isSmartCapturing}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50 ${captureIaActive ? 'aura-ia' : ''}`}
-                    >
-                      {isSmartCapturing
-                        ? <Loader2 size={18} className="text-purple-500 flex-shrink-0 animate-spin" />
-                        : <Sparkles size={18} className="text-purple-500 flex-shrink-0" />
-                      }
-                      <div className="text-left">
-                        <div className="font-medium">{isSmartCapturing ? t('capture.enCours') : t('capture.intelligente')}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {captureIaActive ? t('capture.intelligenteSousIA') : t('capture.intelligenteSous')}
+                    <div className={`w-full flex items-center rounded-lg hover:bg-muted transition-colors ${captureIaActive ? 'aura-ia' : ''}`}>
+                      <button
+                        onClick={() => { onSmartCapture(); setIsMenuOpen(false) }}
+                        disabled={isSmartCapturing}
+                        className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground disabled:opacity-50"
+                      >
+                        {isSmartCapturing
+                          ? <Loader2 size={18} className="flex-shrink-0 animate-spin" />
+                          : <Sparkles size={18} className="flex-shrink-0" />
+                        }
+                        <div className="text-left min-w-0">
+                          <div className="font-medium">{isSmartCapturing ? t('capture.enCours') : t('capture.intelligente')}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {captureIaActive ? t('capture.intelligenteSousIA') : t('capture.intelligenteSous')}
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+
+                      {/* La langue de la LECTURE, pas celle de l'app. « Page »
+                          = la langue dans laquelle la page est écrite, et
+                          c'est le défaut : on ne traduit pas sans qu'on le
+                          demande, les bons mots se perdent au passage. */}
+                      {captureIaActive && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setLangueLecture(langueAnalyseSuivante()) }}
+                          className="flex-shrink-0 mr-2 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 border border-border/60 transition-colors"
+                          title={langueLecture === 'contenu'
+                            ? 'Lecture rendue dans la langue de la page — clique pour imposer une langue'
+                            : `Lecture rendue en ${libelleLangueAnalyse(langueLecture)} — clique pour changer`}
+                        >
+                          {libelleLangueAnalyse(langueLecture)}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

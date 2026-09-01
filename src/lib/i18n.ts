@@ -214,6 +214,61 @@ export function subscribeLangue(cb: (langue: Langue) => void): () => void {
   return () => window.removeEventListener(EVT, handler)
 }
 
+// ── Langue des lectures IA ───────────────────────────────────────────────────
+// Distincte de la langue de l'INTERFACE, et c'est tout l'intérêt : Brice veut
+// son app en français et ses notes dans la langue de la page (01/09/2026).
+//
+// Faire suivre l'interface était le mauvais réglage — un cours anglais revenait
+// en français sans que personne l'ait demandé, et « parfois l'adaptation vers
+// le français perd du sens ». Le vocabulaire d'origine fait partie de ce qu'on
+// vient chercher.
+//
+// `'contenu'` est donc le défaut : la page décide, il n'y a rien à régler dans
+// le cas courant. Le choix explicite ne sert qu'au cas inverse — vouloir une
+// lecture française d'une page anglaise — et il se pose sur le geste de
+// capture, pas dans un réglage global qui s'appliquerait à tout.
+
+/** `'contenu'` = la langue de la page. Sinon, une langue imposée. */
+export type LangueAnalyse = 'contenu' | Langue
+
+const CLE_ANALYSE = 'carnet-langue-analyse'
+const EVT_ANALYSE = 'carnet-langue-analyse-change'
+
+function estLangueAnalyse(v: unknown): v is LangueAnalyse {
+  return v === 'contenu' || estLangue(v)
+}
+
+export function getLangueAnalyse(): LangueAnalyse {
+  try {
+    const v = localStorage.getItem(CLE_ANALYSE)
+    if (estLangueAnalyse(v)) return v
+  } catch { /* stockage indisponible */ }
+  return 'contenu'
+}
+
+export function setLangueAnalyse(v: LangueAnalyse): void {
+  try { localStorage.setItem(CLE_ANALYSE, v) } catch { /* best-effort */ }
+  window.dispatchEvent(new Event(EVT_ANALYSE))
+}
+
+/** Le cycle du sélecteur : la page, puis chaque langue disponible. */
+export function langueAnalyseSuivante(actuelle: LangueAnalyse = getLangueAnalyse()): LangueAnalyse {
+  const cycle: LangueAnalyse[] = ['contenu', ...LANGUES.map(l => l.code)]
+  const i = cycle.indexOf(actuelle)
+  return cycle[(i + 1) % cycle.length]
+}
+
+/** L'étiquette courte affichée sur le sélecteur. */
+export function libelleLangueAnalyse(v: LangueAnalyse = getLangueAnalyse()): string {
+  return v === 'contenu' ? 'Page' : v.toUpperCase()
+}
+
+export function subscribeLangueAnalyse(cb: (v: LangueAnalyse) => void): () => void {
+  const handler = () => cb(getLangueAnalyse())
+  window.addEventListener(EVT_ANALYSE, handler)
+  return () => window.removeEventListener(EVT_ANALYSE, handler)
+}
+
 // ── Traduction ───────────────────────────────────────────────────────────────
 
 /**
