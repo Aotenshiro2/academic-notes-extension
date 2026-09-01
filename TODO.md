@@ -167,9 +167,46 @@ invention — c'est elle qui a tué les hallucinations au banc du 30/08).
 plutôt que le titre du chapitre ; la relation entre deux niveaux plutôt que les
 deux nombres côte à côte.
 
-- [ ] **Demander à Brice ses exemples** de points clés « tels qu'il les aurait
-      notés », sur des pages réelles. Il l'a proposé lui-même : sans ça il n'y a
-      pas de base pour régler la consigne. Même dictés en vrac.
+**L'exemple de référence, donné par Brice le 01/09.** Page :
+`community.thefutur.com`, leçon « Icons and Silhouettes » (cours de style, pas
+de trading — c'est justement ce qui rend l'exemple propre, rien ne peut être
+sauvé par le vocabulaire métier).
+
+Ce que la capture a produit (4 entrées) :
+1. « La silhouette est la fondation du style avant les couleurs et les motifs :
+   fitted ou oversized, cropped ou long, straight ou wide, high ou low rise »
+2. « Observer les style icons sur quatre axes : silhouette de base, utilisation
+   des couleurs, accessoires récurrents, éléments qui mettent en valeur… »
+3. « Identifier les zones du corps que tu veux mettre en avant et celles que tu
+   préfères ne pas exposer pour construire ta Silhouette Strategy »
+4. « Écrire une Silhouette Strategy en une ou deux phrases qui devient le filtre
+   pour chaque décision d'achat »
+
+Ce que BRICE aurait noté (6 entrées, en anglais « pour aller plus vite ») :
+- Style and body = 1
+- Fashion is designing around proportion to create silhouette
+- If you want to copy you can't go for a silhouette that's not matching yours
+- Learn how clothes behave on your frame
+- Great Style is about designing a default silhouette that amplifies the part of
+  your body attracting compliment and softens what you don't want to lead with
+- Think shape before any other things
+
+**Ce que l'écart dit, précisément :**
+1. **Trois des quatre entrées de la machine décrivent les EXERCICES**, pas la
+   leçon. Brice n'en garde aucune. C'était notre faute directe : la consigne
+   « où regarder » de la famille `cours` demandait explicitement de retenir
+   « les exercices proposés ». Corrigé.
+2. La machine résume le PLAN de la page (voici le concept, voici les 4 axes,
+   voici le livrable). Brice suit l'ARGUMENT du texte, dans son ordre.
+3. Ses entrées sont des AFFIRMATIONS, courtes, une idée chacune. Celles de la
+   machine sont des procédures avec deux-points et énumération.
+4. Il garde la formule de l'auteur quand elle porte (« amplifies… softens »)
+   au lieu de la reformuler en tiède (« mettre en avant / ne pas exposer »).
+5. Il en met SIX là où la machine en met quatre : il ne compresse pas plus, il
+   choisit autre chose.
+
+Ses entrées se relisent comme des cartes de révision. Celles de la machine se
+lisaient comme un sommaire.
 
 - [ ] **La famille « maison » doit lire le journal, pas le gratter.** Correction
       de Brice, et j'avais tort dans l'autre sens : j'avais proposé qu'un canvas
