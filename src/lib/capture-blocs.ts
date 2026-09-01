@@ -90,9 +90,12 @@ export async function poserBlocsDeCapture(
   // 2. Ce qu'il y a à retenir, avant le développé.
   if (enrichi.keyPoints.length > 0) {
     const items = enrichi.keyPoints.map(p => `<li>${echapper(p)}</li>`).join('')
+    // Pas de titre dans le HTML : c'est le rendu qui le pose, via `bloc`.
+    // L'écrire ici l'afficherait deux fois.
     await storage.addMessageToNote(noteId, {
       type: 'text',
-      content: `<p><strong>Points clés</strong></p><ul>${items}</ul>`,
+      content: `<ul>${items}</ul>`,
+      metadata: { bloc: 'points-cles' },
     })
   }
 
@@ -100,7 +103,8 @@ export async function poserBlocsDeCapture(
   if (enrichi.summary) {
     await storage.addMessageToNote(noteId, {
       type: 'text',
-      content: `<p><em>${echapper(enrichi.summary)}</em></p>`,
+      content: `<p>${echapper(enrichi.summary)}</p>`,
+      metadata: { bloc: 'resume' },
     })
   }
 

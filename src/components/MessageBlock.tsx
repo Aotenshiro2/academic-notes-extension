@@ -213,6 +213,9 @@ function MessageBlock({
 
   // Render meta message — métadonnée de capture (date, titre, URL) : ligne
   // discrète, pas de tags, pas d'édition ; suppression possible
+  // Rôle du bloc dans une capture : décide du titre et de l'accent.
+  const roleBloc = message.metadata?.bloc
+
   if (message.type === 'meta') {
     return (
       <div className="group relative flex items-start gap-1.5">
@@ -376,10 +379,23 @@ function MessageBlock({
         </div>
       )}
 
-      {/* Content */}
+      {/* Contenu. Un bloc de capture (points clés, résumé) porte son titre et
+          son accent : passés de carte à bloc, ils se noyaient dans le fil
+          (retour Brice, 01/09). Même palette que les anciennes cartes. */}
       <div
-        className={isLongText && !isEditing ? 'border-l-2 border-border/40 pl-3 overflow-hidden' : ''}
+        className={[
+          isLongText && !isEditing ? 'border-l-2 border-border/40 pl-3 overflow-hidden' : '',
+          roleBloc === 'points-cles' ? 'p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg' : '',
+          roleBloc === 'resume' ? 'p-3 bg-primary/5 border border-primary/20 rounded-lg' : '',
+        ].filter(Boolean).join(' ')}
       >
+        {roleBloc && (
+          <h3 className={`text-sm font-semibold mb-2 ${
+            roleBloc === 'points-cles' ? 'text-amber-600 dark:text-amber-400' : 'text-primary'
+          }`}>
+            {roleBloc === 'points-cles' ? 'Points clés' : 'Résumé'}
+          </h3>
+        )}
         <div
           ref={contentRef}
           contentEditable={isEditing}
@@ -389,6 +405,7 @@ function MessageBlock({
           onKeyDown={isEditing ? handleKeyDown : undefined}
           className={`
             prose prose-sm max-w-none text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
             [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:hover:opacity-80
             [&_*]:max-w-full
             ${isEditing

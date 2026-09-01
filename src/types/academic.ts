@@ -15,6 +15,10 @@ export interface NoteMessage {
     sourceTitle?: string
     dimensions?: { width: number; height: number }
     alt?: string
+    /** Rôle du bloc dans une capture intelligente (01/09/2026). Il reste un
+     *  bloc `text` — donc modifiable, exportable, synchronisé — mais il est
+     *  rendu avec son titre et son accent, comme les anciennes cartes. */
+    bloc?: 'points-cles' | 'resume'
   }
 }
 

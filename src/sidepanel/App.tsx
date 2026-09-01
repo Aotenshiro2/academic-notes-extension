@@ -14,7 +14,8 @@ import {
   Clock,
   BadgeCheck,
   UserPlus,
-  Compass
+  Compass,
+  Globe
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import MentoratView from '@/components/MentoratView'
@@ -1195,9 +1196,11 @@ function App() {
                 title={`${t('sync.langue')} : ${infoLangue(langue).nom} — ${infoLangue(langueSuivante(langue)).nom}`}
                 aria-label={`${t('sync.langue')} : ${infoLangue(langue).nom}`}
               >
-                <span className="text-[11px] leading-none flex-shrink-0" aria-hidden="true">
-                  {infoLangue(langue).drapeau}
-                </span>
+                {/* Plus de drapeau emoji : les indicateurs régionaux (🇫🇷) n'ont
+                    pas de police sur Windows et retombent sur leurs deux
+                    lettres. Brice voyait donc « FR FR ». Un globe est lisible
+                    partout, et le code dit déjà le pays. */}
+                <Globe size={11} className="flex-shrink-0" aria-hidden="true" />
                 {langue.toUpperCase()}
               </button>
               <span className="text-muted-foreground/30">|</span>
