@@ -159,7 +159,7 @@ alignée avec la vision**, les 1.8.x servent à ça.
       et les points clés remontent surtout du contenu déjà présent dans la note
       plutôt que de la page captée.
 
-- [ ] **La superposition au survol entre deux blocs.** Le correctif 1.8.3 a
+- [x] **La superposition au survol entre deux blocs.** ✅ **FAIT en 1.8.4** — confirme par Brice le 01/09 : disparait au depart du curseur, image intacte au rechargement. Le glyphe translucide devient une pastille pleine (bg-background) et les traits passent en h-px. Diagnostic conserve ci-dessous. Le correctif 1.8.3 a
       réglé la PERTE (une capture collée dans le ＋ ne s'enregistrait pas) mais
       pas l'affichage : Brice la revoit le 01/09. Repro donné par lui — ajouter
       une capture par la zone de texte du ＋, puis passer le curseur entre deux

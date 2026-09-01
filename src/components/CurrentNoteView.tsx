@@ -1040,15 +1040,24 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
   if (!editing) {
     return (
       <div
-        className="group/ins relative -my-1 h-2.5 flex items-center cursor-pointer"
+        className="group/ins relative z-10 -my-1 h-2.5 flex items-center cursor-pointer"
         onClick={() => setEditing(true)}
         title="Insérer du texte ou une capture ici"
       >
-        {/* Révélation par opacité (jamais display : artefacts de peinture) */}
+        {/* Révélation par opacité (jamais display : artefacts de peinture).
+            Le ＋ est OPAQUE depuis le 01/09 : la bande fait 10 px pour un
+            contenu plus haut et porte `-my-1`, elle déborde donc forcément sur
+            les blocs voisins. Au-dessus du texte ça ne se voyait pas ; au-dessus
+            d'une IMAGE, un glyphe translucide se mélangeait aux pixels et se
+            lisait comme une superposition (remonté par Brice). Une pastille
+            pleine se lit comme un bouton posé dessus, ce qu'elle est. Les
+            traits restent d'un pixel : ils ne cachent rien de l'image. */}
         <div className="w-full items-center gap-1 flex opacity-0 group-hover/ins:opacity-100 transition-opacity pointer-events-none">
-          <span className="flex-1 border-t border-primary/30" />
-          <Plus size={12} className="text-primary/60 flex-shrink-0" />
-          <span className="flex-1 border-t border-primary/30" />
+          <span className="flex-1 h-px bg-primary/30" />
+          <span className="flex items-center justify-center w-4 h-4 rounded-full bg-background border border-primary/30 flex-shrink-0">
+            <Plus size={10} className="text-primary/70" />
+          </span>
+          <span className="flex-1 h-px bg-primary/30" />
         </div>
       </div>
     )

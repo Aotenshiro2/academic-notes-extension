@@ -73,6 +73,7 @@ const CHANGELOG = [
       'Le cadrage vaut pour tout ce qu’il voit — le brief chiffré, les jugements A/B/C, ton retard de relecture et le plan d’évolution. Il ne te reprochera pas un retard sur des notes que tu lui as demandé d’ignorer.',
       'L’icône d’arborescence en haut à droite de l’écran mentorat rouvre le choix quand tu veux.',
       'L’écran mentorat perd son violet : il chargeait la lecture. Le signal « ça part vers l’IA » reste porté par l’anneau du bouton « Demander au mentor ».',
+      'Correction : au survol entre deux blocs, le ＋ d’insertion se mélangeait à l’image du dessus et donnait l’impression d’une image en double. C’était de l’affichage seulement, rien n’était abîmé. Il devient une pastille pleine, lisible par-dessus n’importe quelle capture.',
     ],
   },
   {
