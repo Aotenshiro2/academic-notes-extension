@@ -65,6 +65,14 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.3',
+    title: 'Coller une capture entre deux blocs',
+    items: [
+      'Correction : entre deux blocs, le ＋ acceptait le texte mais perdait les images. Une capture collée seule ne restait ni dans la note ni dans le journal, et quand elle passait, elle s’affichait en double et alourdissait la note pour rien. Elle s’enregistre maintenant comme une vraie image.',
+      'Le champ d’insertion accepte le mélange : écris ta légende, colle ta capture, l’ordre est conservé.',
+    ],
+  },
+  {
     version: '1.8.2',
     title: 'L\u2019\u00e9cran de forfait dit enfin la v\u00e9rit\u00e9',
     items: [
@@ -132,6 +140,17 @@ const CHANGELOG = [
       'Lecture plus dense : les blocs sans tag ne réservent plus une ligne vide sous chaque message — la date, « + tag » et la corbeille apparaissent en surimpression au survol. Le texte se lit comme un document, plus comme un chat.',
       'Nouveau : insérer du texte entre deux blocs — survole l\'espace entre deux blocs, un ＋ apparaît, clique et écris. Idéal pour annoter un screenshot après coup pendant la relecture.',
       'Nouveau : les sous-dossiers — survole un dossier dans l\'historique et clique l\'icône dossier+ pour créer un dossier dedans (un niveau de profondeur). Le glisser-déposer de notes fonctionne aussi sur les sous-dossiers, et l\'arborescence suit dans le Journal d\'Études.',
+    ],
+  },
+  {
+    version: '1.6.9 → 1.6.11',
+    title: 'Solidité (le travail d’août)',
+    items: [
+      'L’application ne part plus en page blanche quand un écran plante : l’erreur est affichée proprement et le reste du carnet continue de fonctionner.',
+      'La santé du stockage local est surveillée, et les images des notes sont gérées à part au lieu d’être recopiées avec le texte.',
+      'Le service worker et la synchronisation ont été durcis : moins de notes qui restent en attente sans raison.',
+      'Amélioration : les blocs de texte riche collés depuis une page web gardent leur mise en forme au lieu d’arriver à plat.',
+      'Correction : les infos d’un warmup ne se perdent plus en passant d’un champ à l’autre.',
     ],
   },
   {
