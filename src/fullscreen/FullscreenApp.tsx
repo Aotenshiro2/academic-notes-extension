@@ -39,6 +39,7 @@ import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
+import { poserBlocsDeCapture } from '@/lib/capture-blocs'
 import { stateSync } from '@/lib/state-sync'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
@@ -316,19 +317,10 @@ function FullscreenApp() {
 
       const newNoteId = Date.now().toString()
       const titreNote = enrichi.pageTitle || result.pageTitle || 'Capture'
-      let noteContent = ''
-      if (screenshotDataUrl) {
-        noteContent += `<p><img src="${screenshotDataUrl}" alt="Capture de la page" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
-      }
-      if (enrichi.manquant) {
-        noteContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
-      }
-      noteContent += '<p></p><p><em>Mes notes:</em></p><p></p>'
-
       const newNote: AcademicNote = {
         id: newNoteId,
         title: titreNote.slice(0, 80) + (titreNote.length > 80 ? '...' : ''),
-        content: noteContent,
+        content: '',
         summary: enrichi.summary,
         keyPoints: enrichi.keyPoints,
         url: result.url,
@@ -350,6 +342,8 @@ function FullscreenApp() {
       }
 
       await storage.saveNote(newNote)
+      // Même séquence que partout ailleurs : image, points clés, résumé, texte.
+      await poserBlocsDeCapture(newNoteId, enrichi, result, screenshotDataUrl || null, { premiere: true })
       setCurrentNoteId(newNoteId)
       setEditorContent('')
       await loadData()
@@ -390,46 +384,17 @@ function FullscreenApp() {
 
       const enrichi = await enrichirCapture(result, apercu || null)
 
-      // Construire le contenu texte (résumé + points clés)
-      let textContent = `<hr><p><strong>--- Capture : ${enrichi.pageTitle || result.pageTitle} ---</strong></p>`
-      if (enrichi.summary) {
-        textContent += `<p><strong>Résumé :</strong> ${enrichi.summary}</p>`
-      }
-      if (enrichi.keyPoints.length > 0) {
-        textContent += '<p><strong>Points clés :</strong></p><ul>'
-        enrichi.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
-        textContent += '</ul>'
-      }
-      if (enrichi.manquant) {
-        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
-      }
+      await poserBlocsDeCapture(currentNoteId, enrichi, result, apercu || null, { premiere: false })
 
-      // Ajouter comme message (met à jour messages[] ET content)
-      await storage.addMessageToNote(currentNoteId, {
-        type: 'text',
-        content: textContent
-      })
-
-      // Images extraites par la stratégie (ex: post Skool)
-      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
-      if (extractedImages?.length) {
-        for (const img of extractedImages) {
-          await storage.addMessageToNote(currentNoteId, {
-            type: 'image',
-            content: img.src,
-            metadata: { alt: img.alt, sourceUrl: result.url }
-          })
-        }
-      }
-
-      // Le screenshot, déjà pris plus haut pour la passe secrétaire, rejoint
-      // la note comme bloc image. Une seule prise : deux basculements d'onglet
-      // pour la même capture se voyaient à l'écran.
-      if (apercu) {
-        await storage.addMessageToNote(currentNoteId, {
-          type: 'image',
-          content: apercu,
-          metadata: { alt: 'Capture de la page' }
+      // Le résumé et les points clés de la note suivent la dernière capture :
+      // ils alimentent l'aperçu de la liste et du journal.
+      const noteAvant = await storage.getNote(currentNoteId)
+      if (noteAvant) {
+        await storage.saveNote({
+          ...noteAvant,
+          summary: enrichi.summary || noteAvant.summary,
+          keyPoints: enrichi.keyPoints.length ? enrichi.keyPoints : noteAvant.keyPoints,
+          concepts: Array.from(new Set([...(noteAvant.concepts ?? []), ...enrichi.concepts])),
         })
       }
 

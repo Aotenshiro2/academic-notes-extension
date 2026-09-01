@@ -35,6 +35,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
+import { poserBlocsDeCapture } from '@/lib/capture-blocs'
 import { fetchAccesCaptureIA } from '@/lib/sync'
 import { obtenirNoteMentorat, desepinglerSiPlusDeMentorat } from '@/lib/note-mentorat'
 import { t, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
@@ -683,48 +684,10 @@ function App() {
 
       await storage.saveNote(newNote)
 
-      // 1. Screenshot en premier (image message)
-      if (screenshotDataUrl) {
-        await storage.addMessageToNote(newNoteId, {
-          type: 'image',
-          content: screenshotDataUrl,
-          metadata: { alt: 'Capture de la page' }
-        })
-      }
-
-      // 2. Contenu structuré (text message)
-      // Le titre n'est PAS repris ici : la note l'affiche déjà en tête, et le
-      // redonner était la cause de la triple répétition vue en 1.7.1.
-      let textContent = ''
-      if (enrichi.summary) {
-        textContent += `<p><em>${enrichi.summary}</em></p>`
-      }
-      if (enrichi.keyPoints.length > 0) {
-        textContent += '<p><strong>Points clés :</strong></p><ul>'
-        enrichi.keyPoints.forEach((p: string) => { textContent += `<li>${p}</li>` })
-        textContent += '</ul>'
-      }
-      if (enrichi.manquant) {
-        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
-      }
-      if (result.content) {
-        textContent += `<hr>${result.content}`
-      }
-      if (textContent.trim()) {
-        await storage.addMessageToNote(newNoteId, { type: 'text', content: textContent })
-      }
-
-      // 3. Images extraites par la stratégie (ex: post Skool)
-      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
-      if (extractedImages?.length) {
-        for (const img of extractedImages) {
-          await storage.addMessageToNote(newNoteId, {
-            type: 'image',
-            content: img.src,
-            metadata: { alt: img.alt, sourceUrl: result.url }
-          })
-        }
-      }
+      // Les blocs sont posés par `poserBlocsDeCapture`, la MÊME fonction que
+      // pour une capture dans une note déjà ouverte : c'est ce qui garantit
+      // que la deuxième capture ressemble à la première.
+      await poserBlocsDeCapture(newNoteId, enrichi, result, screenshotDataUrl || null, { premiere: true })
 
       setCurrentNoteId(newNoteId)
       setEditorContent('')
@@ -760,52 +723,22 @@ function App() {
 
       const enrichi = await enrichirCapture(result, screenshotDataUrl || null)
 
-      // Construire le contenu texte (résumé + points clés)
-      let textContent = `<hr><p><strong>--- Capture : ${enrichi.pageTitle || result.pageTitle} ---</strong></p>`
-      if (enrichi.summary) {
-        textContent += `<p><strong>Résumé :</strong> ${enrichi.summary}</p>`
-      }
-      if (enrichi.keyPoints.length > 0) {
-        textContent += '<p><strong>Points clés :</strong></p><ul>'
-        enrichi.keyPoints.forEach((p: string) => textContent += `<li>${p}</li>`)
-        textContent += '</ul>'
-      }
-      if (enrichi.manquant) {
-        textContent += `<p><em>Non capturé : ${enrichi.manquant}</em></p>`
-      }
-      if (result.content) {
-        textContent += `<hr>${result.content}`
-      }
+      // La MÊME séquence que pour une note vide : image, points clés, résumé,
+      // texte. C'est tout l'intérêt d'avoir sorti la fonction — la deuxième
+      // capture ne peut plus diverger de la première.
+      await poserBlocsDeCapture(currentNoteId, enrichi, result, screenshotDataUrl || null, { premiere: false })
 
-      // Ajouter comme message (met à jour messages[] ET content)
-      await storage.addMessageToNote(currentNoteId, {
-        type: 'text',
-        content: textContent
-      })
-
-      // Images extraites par la stratégie (ex: post Skool)
-      const extractedImages = result.extras?.images as { src: string; alt: string }[] | undefined
-      if (extractedImages?.length) {
-        for (const img of extractedImages) {
-          await storage.addMessageToNote(currentNoteId, {
-            type: 'image',
-            content: img.src,
-            metadata: { alt: img.alt, sourceUrl: result.url }
-          })
-        }
-      }
-
-      // Le screenshot, déjà pris plus haut, rejoint la note comme bloc image
-      try {
-        if (screenshotDataUrl) {
-          await storage.addMessageToNote(currentNoteId, {
-            type: 'image',
-            content: screenshotDataUrl,
-            metadata: { alt: 'Capture de la page' }
-          })
-        }
-      } catch (e) {
-        console.warn('Screenshot capture failed:', e)
+      // Le résumé et les points clés de la note suivent la DERNIÈRE capture :
+      // ce sont eux qui alimentent l'aperçu dans la liste et dans le journal,
+      // et « Approfondir » ne dépend plus d'eux pour exister.
+      const noteAvant = await storage.getNote(currentNoteId)
+      if (noteAvant) {
+        await storage.saveNote({
+          ...noteAvant,
+          summary: enrichi.summary || noteAvant.summary,
+          keyPoints: enrichi.keyPoints.length ? enrichi.keyPoints : noteAvant.keyPoints,
+          concepts: Array.from(new Set([...(noteAvant.concepts ?? []), ...enrichi.concepts])),
+        })
       }
 
       await loadData()

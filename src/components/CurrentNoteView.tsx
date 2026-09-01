@@ -619,57 +619,38 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} onDelete={handleDeleteLegacyWarmup} />
       )}
 
-      {/* Résumé, et juste dessous l'approfondissement (1.8.0).
-          Le 2e temps de la capture vit ICI et pas dans une barre d'outils : le
-          moment où on a envie d'aller plus loin, c'est en relisant le résumé,
-          pas en cherchant une icône en haut de l'écran. Et comme on peut y
-          revenir des semaines après, le bouton reste disponible tant que la
-          note existe. */}
-      {note.summary && (
-        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <h3 className="text-sm font-semibold text-primary mb-2">{t('note.resume')}</h3>
-          <p className="text-sm text-foreground/90">{note.summary}</p>
+      {/* « Approfondir cette note » (1.8.0, redécoupé le 01/09).
+          Il vivait DANS la carte Résumé, donc il n'existait que si la note
+          avait démarré par une capture intelligente — une note écrite à la
+          main, ou une note où la capture est arrivée en cours de route, n'y
+          avait pas droit. Il devient une action de NOTE, toujours là.
 
-          {onEtudier && (
-            <button
-              onClick={() => { if (!etudeEnCours) onEtudier() }}
-              disabled={etudeEnCours}
-              className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                etudeEnCours
-                  ? 'bg-muted text-muted-foreground cursor-wait'
-                  : etudeOuverte
-                    ? 'aura-ia bg-background text-foreground hover:bg-muted'
-                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-              }`}
-              title={
-                etudeOuverte
-                  ? t('note.approfondirAide')
-                  : t('note.approfondirRefus')
-              }
-            >
-              {etudeEnCours
-                ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> {t('note.approfondirEnCours')}</>
-                : etudeOuverte
-                  ? <><Sparkles size={13} className="text-purple-500 flex-shrink-0" /> {t('note.approfondir')}</>
-                  : <><Lock size={13} className="flex-shrink-0" /> {t('note.approfondirVerrouille')}</>}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Points clés - EN HAUT avant le contenu */}
-      {note.keyPoints && note.keyPoints.length > 0 && (
-        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-          <h3 className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2">Points clés</h3>
-          <ul className="space-y-1.5">
-            {note.keyPoints.map((point, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-foreground/90">
-                <span className="text-amber-500 mt-0.5 flex-shrink-0">•</span>
-                <span>{point}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          Les cartes Résumé et Points clés ont disparu d'ici : la capture les
+          écrit maintenant comme blocs dans le fil, à leur place chronologique
+          et modifiables. Les garder en tête aurait fait le doublon que Brice a
+          vu (« deux résumés l'un après l'autre »). Les champs `note.summary`
+          et `note.keyPoints` continuent d'exister — ils alimentent l'aperçu de
+          la liste et du journal — ils ne sont simplement plus affichés deux
+          fois. */}
+      {onEtudier && (
+        <button
+          onClick={() => { if (!etudeEnCours) onEtudier() }}
+          disabled={etudeEnCours}
+          className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+            etudeEnCours
+              ? 'bg-muted text-muted-foreground cursor-wait'
+              : etudeOuverte
+                ? 'aura-ia bg-background text-foreground hover:bg-muted'
+                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+          }`}
+          title={etudeOuverte ? t('note.approfondirAide') : t('note.approfondirRefus')}
+        >
+          {etudeEnCours
+            ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> {t('note.approfondirEnCours')}</>
+            : etudeOuverte
+              ? <><Sparkles size={13} className="flex-shrink-0" /> {t('note.approfondir')}</>
+              : <><Lock size={13} className="flex-shrink-0" /> {t('note.approfondirVerrouille')}</>}
+        </button>
       )}
 
       {/* Contenu de la note — blocs messages, segmentés par trade, warmups ancrés dans le fil */}
