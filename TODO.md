@@ -159,7 +159,28 @@ alignée avec la vision**, les 1.8.x servent à ça.
       et les points clés remontent surtout du contenu déjà présent dans la note
       plutôt que de la page captée.
 
-- [ ] **Cadrer le mentorat sur un dossier ou un sous-dossier.** Idée et
+- [ ] **La superposition au survol entre deux blocs.** Le correctif 1.8.3 a
+      réglé la PERTE (une capture collée dans le ＋ ne s'enregistrait pas) mais
+      pas l'affichage : Brice la revoit le 01/09. Repro donné par lui — ajouter
+      une capture par la zone de texte du ＋, puis passer le curseur entre deux
+      blocs. Écarté : ce n'est PAS un stockage en double, `note.content` n'est
+      rendu que s'il n'y a aucun bloc (`CurrentNoteView` ~l.844). Candidat :
+      dans `InsertPoint`, la bande de survol fait `h-2.5` (10 px) avec `-my-1`
+      et contient un `＋` de 12 px plus deux traits — le contenu déborde et se
+      peint sur les blocs voisins. Invisible au-dessus du texte, très visible
+      au-dessus d'une image. **Reste à confirmer** : est-ce que ça disparaît
+      quand le curseur s'éloigne ? Si oui c'est bien ça.
+
+- [x] **Cadrer le mentorat sur un dossier ou un sous-dossier.** ✅ **FAIT en
+      1.8.4 (01/09/2026)**, forme retenue par Brice : des cases à cocher à
+      l'initialisation du mode, rien de coché = tout le carnet. Côté journal,
+      `buildMentoratBrief(userId, days, dossiers?)` filtre les notes (donc les
+      trades et warmups, qui vivent en JSONB dessus) et re-filtre en mémoire
+      les annotations et le retard de relecture (`noteId` est nullable, un
+      filtre SQL perdrait les jugements de trade). Les trois routes mentorat
+      lisent le cadrage. **Sans effet tant que le journal n'est pas déployé.**
+      Ancienne formulation du fil, conservée pour mémoire :
+      **Cadrer le mentorat sur un dossier ou un sous-dossier.** Idée et
       justification de Brice : les élèves ont des usages très différents dans la
       même extension, des dossiers pour le trading et d'autres pour du perso.
       Aujourd'hui `buildMentoratBrief` balaie tout le compte sur N jours ; il
