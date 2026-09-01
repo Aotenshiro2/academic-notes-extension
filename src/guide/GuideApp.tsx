@@ -66,8 +66,16 @@ const TIPS = [
 const CHANGELOG = [
   {
     version: '1.8.4',
-    title: 'Tu choisis ce que le mentor a le droit de lire',
+    title: 'La capture range mieux, et le mentor ne lit que ce que tu veux',
     items: [
+      'La capture intelligente pose toujours la même chose, dans le même ordre : la capture d’écran, les points clés, le résumé, puis le texte de la page. Quatre captures dans une note donnent quatre fois cette suite, séparées par ce que tu as écrit entre-temps. Avant, une capture ajoutée à une note déjà ouverte se comportait autrement : le texte passait devant l’image et aucun nouveau point clé n’apparaissait.',
+      'Les points clés et le résumé sont maintenant des blocs de la note, avec leur titre et leur couleur. Tu peux donc les corriger, comme n’importe quel bloc. Ils ne sont plus recopiés une seconde fois dans le texte : tu voyais deux résumés l’un sous l’autre.',
+      '« Approfondir cette note » ne dépend plus d’avoir commencé par une capture intelligente. Une note écrite à la main y a droit aussi.',
+      'Correction : les listes n’avaient jamais de puces, nulle part dans la note. Elles en ont.',
+      'Nouveau : la lecture suit la langue de la PAGE et non celle de l’application. Un cours en anglais te revient en anglais, avec ses mots d’origine — traduire fait perdre le sens des termes. Une pastille à droite de « Capture intelligente » permet d’imposer une langue quand tu la veux autrement.',
+      'Le liseré arc-en-ciel s’affiche aussi sur le bouton de l’écran d’accueil. Il n’était que dans le menu ＋ alors que c’est le même geste.',
+      'Le sélecteur de langue affiche un globe au lieu d’un drapeau : Windows n’a pas de police pour les drapeaux et affichait « FR FR ».',
+      'Les points clés apprennent quelque chose au lieu de recopier des intitulés, et le résumé dit ce que la page raconte au lieu de la décrire. Le sujet général d’une page devient une étiquette de note, pas un concept.',
       'Nouveau : au premier passage dans le mode mentorat, on te demande quels dossiers il peut regarder. Ton carnet ne sert probablement pas qu’au trading, et le mentor n’a pas à lire tes notes perso pour parler de tes trades.',
       'Si tu ne coches rien, il lit tout : c’est le cas par défaut, tu n’as aucun geste à faire. Cocher un dossier prend aussi ses sous-dossiers.',
       'Le cadrage vaut pour tout ce qu’il voit — le brief chiffré, les jugements A/B/C, ton retard de relecture et le plan d’évolution. Il ne te reprochera pas un retard sur des notes que tu lui as demandé d’ignorer.',

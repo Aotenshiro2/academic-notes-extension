@@ -227,6 +227,28 @@ lisaient comme un sommaire.
          donne leur contenu au modèle au lieu du DOM.
       Les arêtes du canvas se relèvent de la même façon pour les liens.
 
+- [ ] **Une table d'alias pour les concepts.** Sorti de l'échange du 01/09 sur
+      la qualité des concepts. Deux besoins que la même chaîne ne peut pas
+      servir : l'index veut le terme STABLE (donc jamais traduit, sinon
+      `capsule wardrobe` et `garde-robe capsule` font deux fiches qui ne se
+      rencontrent jamais), la recherche veut le mot de CELUI QUI CHERCHE. Brice
+      s'en est aperçu tout seul en parlant : « il y a de fortes chances que je
+      tape styling. Bon, en fait, non, je l'écrirai en français, mode ». Aucun
+      prompt ne règle ça — il faut rabattre les variantes (traductions,
+      pluriels, `order block` / `orderblock`) sur une fiche. Chantier
+      d'indexation côté journal, pas de capture.
+
+- [ ] **Si les captures alimentent un jour `ConceptFiche`, poser la cloison
+      D'ABORD.** État au 01/09 confirmé par Brice : la fiche n'est alimentée
+      que par la taxonomie, donc rien n'est pollué pour l'instant. Mais
+      `ConceptFiche.nomNormalise` est `@unique` et la fiche est PARTAGÉE entre
+      tous les membres (« une fiche vaut pour tous ceux qui emploient le mot »,
+      schéma l.142). Donc si les captures y écrivent : peuvent remonter les
+      signaux agrégés (le concept est employé, sa fréquence, la friction
+      observée) ; ne doit JAMAIS remonter le contenu d'une note — extrait,
+      bloc, image. Sinon un membre ouvre une fiche et lit la note d'un autre.
+      Inquiétude de Brice, fondée, et qui se règle à la conception.
+
 - [ ] **La capture intelligente n'est pas satisfaisante.** Verdict de Brice le
       01/09 après usage réel, sans détail à ce stade (« je reviendrai dessus
       plus tard »). Ne pas deviner : lui demander sur quelles pages et sur quoi
