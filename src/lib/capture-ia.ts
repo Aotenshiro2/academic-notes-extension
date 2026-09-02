@@ -19,6 +19,8 @@ export interface CaptureHeuristique {
   keyPoints?: string[]
   concepts?: string[]
   tags?: string[]
+  /** Champs libres posés par la stratégie du site (ex. journalNoteIds) */
+  extras?: Record<string, unknown>
 }
 
 export interface CaptureEnrichie {
@@ -96,11 +98,22 @@ export async function enrichirCapture(
   const contenu = payload(h)
   if (!h.url || (contenu.length < 40 && !screenshot)) return repli(h)
 
+  // Canvas du journal : les ids des vraies notes partent avec la demande,
+  // le serveur les résout en contenu réel (famille maison qui LIT le journal)
+  const journalNoteIds = Array.isArray(h.extras?.journalNoteIds)
+    ? (h.extras!.journalNoteIds as string[])
+    : undefined
+  const journalLiens = Array.isArray(h.extras?.journalLiens)
+    ? (h.extras!.journalLiens as [string, string][])
+    : undefined
+
   const { sortie, error } = await capturerAvecIA({
     url: h.url,
     contenu,
     image: screenshot ?? null,
     langue: getLangueAnalyse(),
+    journalNoteIds,
+    journalLiens,
   })
   if (!sortie) {
     if (error) console.info('[capture IA] repli sur les heuristiques :', error)

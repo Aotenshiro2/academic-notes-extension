@@ -859,6 +859,11 @@ export interface DemandeCaptureIA {
   modele?: string | null
   /** langue d'usage : la sortie du modèle la suit */
   langue?: string | null
+  /** Canvas du journal : ids des vraies notes visibles — le serveur les
+   *  résout en contenu réel (famille maison qui lit le journal) */
+  journalNoteIds?: string[]
+  /** Liens tracés entre les cartes du canvas (source, cible) */
+  journalLiens?: [string, string][]
 }
 
 async function posterCapture(

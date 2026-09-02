@@ -75,7 +75,7 @@ function MessageDetailPanel({
             {panelTitle ? (
               <p className="text-sm font-semibold text-foreground truncate">{panelTitle}</p>
             ) : (
-              <span className="text-sm font-medium text-muted-foreground">Contenu captur\u00e9</span>
+              <span className="text-sm font-medium text-muted-foreground">Contenu capturé</span>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

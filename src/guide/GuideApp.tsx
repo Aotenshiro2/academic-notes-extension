@@ -65,6 +65,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.5',
+    title: 'La capture lit ton journal pour de vrai',
+    items: [
+      'Capturer ton canvas du Journal d\'Études lit maintenant les VRAIES notes derrière les cartes visibles — et les liens que tu as tracés entre elles — au lieu du texte de l\'écran. Fini les points clés qui recopiaient des titres tronqués.',
+      'Correction : le + du header fonctionne aussi depuis les écrans mentorat, support ou forfait — il ramène à l\'accueil pour capturer.',
+      'Correction : le panneau d\'un bloc affichait « Contenu captur\\u00e9 » au lieu de « Contenu capturé ».',
+    ],
+  },
+  {
     version: '1.8.4',
     title: 'La capture range mieux, et le mentor ne lit que ce que tu veux',
     items: [

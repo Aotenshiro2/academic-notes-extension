@@ -16,8 +16,11 @@ import { forexFactoryStrategy } from './strategies/forex-factory'
 import { investingStrategy } from './strategies/investing'
 import { youtubeStrategy } from './strategies/youtube'
 import { genericArticleStrategy } from './strategies/generic-article'
+import { journalAokStrategy } from './strategies/journal-aok'
 
 const strategies: SiteStrategy[] = [
+  // Maison — le canvas du journal se lit depuis la base, pas depuis le DOM
+  journalAokStrategy,
   // Video
   youtubeStrategy,
   // Prop firms — TopStepX path-specific first (higher priority), generic catch-all last

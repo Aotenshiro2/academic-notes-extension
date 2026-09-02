@@ -412,6 +412,9 @@ function App() {
 
   // Fonction pour retourner à l'accueil (au lieu de créer une note vide)
   const handleGoHome = () => {
+    // Ferme aussi les écrans (mentorat, support, forfait…) : le + du header
+    // depuis l'écran mentorat ne faisait rien de visible (retour Brice 02/09)
+    closeAllViews()
     setCurrentNoteId(null)
   }
 
