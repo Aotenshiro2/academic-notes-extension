@@ -49,7 +49,7 @@ function echapper(s: string): string {
 export interface ContenuPage {
   content?: string
   url?: string
-  extras?: { images?: { src: string; alt: string }[] }
+  extras?: { images?: { src: string; alt: string }[]; transcriptionHtml?: string }
 }
 
 export async function poserBlocsDeCapture(
@@ -120,5 +120,14 @@ export async function poserBlocsDeCapture(
   // 4. La page. Bloc à part, donc retouchable sans toucher au reste.
   if (page.content?.trim()) {
     await storage.addMessageToNote(noteId, { type: 'text', content: page.content })
+  }
+
+  // 5. La transcription de la vidéo (YouTube), façon Glasp : des paragraphes
+  // ouverts par un horodatage cliquable qui ramène au moment de la vidéo.
+  // Bloc à part — assez long pour se replier en tuile, dont le titre est le
+  // premier <strong> du HTML : « Transcription (…) ».
+  const transcriptionHtml = page.extras?.transcriptionHtml
+  if (typeof transcriptionHtml === 'string' && transcriptionHtml.trim()) {
+    await storage.addMessageToNote(noteId, { type: 'text', content: transcriptionHtml })
   }
 }

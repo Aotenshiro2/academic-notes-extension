@@ -7,10 +7,11 @@
 import { toast } from '@/lib/toast'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowLeft, LifeBuoy, Send, Loader2, User } from 'lucide-react'
-import { sendSupportMessage, escalateSupport } from '@/lib/sync'
+import { sendSupportMessage, escalateSupport, fetchSupportThread } from '@/lib/sync'
 
 interface ChatMessage {
-  role: 'user' | 'assistant'
+  // 'human' = une vraie personne de l'équipe a répondu depuis le cockpit.
+  role: 'user' | 'assistant' | 'human' | string
   content: string
 }
 
@@ -50,6 +51,21 @@ function SupportView({ onBack }: { onBack: () => void }) {
   const threadIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // Rouvrir la conversation existante : c'est par elle qu'arrivent les
+  // réponses humaines posées depuis le cockpit. Sans ce chargement, chaque
+  // ouverture repartait de zéro et la réponse n'atteignait jamais le membre.
+  useEffect(() => {
+    let annule = false
+    void fetchSupportThread().then(({ threadId, messages: histo }) => {
+      if (annule || !threadId) return
+      threadIdRef.current = threadId
+      if (histo.length > 0) {
+        setMessages(histo.map(m => ({ role: m.role, content: String(m.content ?? '') })))
+      }
+    })
+    return () => { annule = true }
+  }, [])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, sending])
@@ -71,9 +87,16 @@ function SupportView({ onBack }: { onBack: () => void }) {
   }, [input, sending])
 
   const talkToHuman = useCallback(async () => {
-    const { email } = await escalateSupport(threadIdRef.current)
+    const { email, notified } = await escalateSupport(threadIdRef.current)
+    // L'équipe est prévenue par email serveur : rien d'autre à faire, la
+    // réponse arrivera ICI, dans ce fil. Le mailto ne sert plus que de
+    // secours quand le backend n'a pas pu envoyer (clé absente, panne).
+    if (notified) {
+      toast.success('L’équipe est prévenue. Tu recevras la réponse ici, dans cette conversation.')
+      return
+    }
     const transcript = messages
-      .map(m => `${m.role === 'user' ? 'Moi' : 'Assistant'} : ${m.content}`)
+      .map(m => `${m.role === 'user' ? 'Moi' : m.role === 'human' ? 'Équipe' : 'Assistant'} : ${m.content}`)
       .join('\n\n')
       .slice(0, 1400)
     const body = transcript
@@ -112,10 +135,19 @@ function SupportView({ onBack }: { onBack: () => void }) {
             className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
               m.role === 'user'
                 ? 'ml-auto bg-primary text-primary-foreground rounded-br-sm'
-                : 'mr-auto bg-muted/60 text-foreground/90 rounded-bl-sm'
+                : m.role === 'human'
+                  ? 'mr-auto bg-blue-500/10 border border-blue-500/25 text-foreground rounded-bl-sm'
+                  : 'mr-auto bg-muted/60 text-foreground/90 rounded-bl-sm'
             }`}
           >
-            {m.role === 'assistant' ? <Linkified text={m.content} /> : m.content}
+            {/* Une vraie personne : on le dit, ça change tout pour le membre. */}
+            {m.role === 'human' && (
+              <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 mb-0.5">
+                <User size={10} />
+                L'équipe AOK
+              </span>
+            )}
+            {m.role === 'user' ? m.content : <Linkified text={m.content} />}
           </div>
         ))}
         {sending && (

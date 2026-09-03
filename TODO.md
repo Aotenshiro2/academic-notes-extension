@@ -259,6 +259,13 @@ lisaient comme un sommaire.
       télécharge la transcription à la source (`captionTracks` du JSON du
       lecteur, piste fr sinon en, format json3, 9 000 cars — le serveur coupe
       à 12 000). Étiquetée « automatique » quand la piste est asr.
+      ✅ Transcription en BLOC de note façon Glasp (demande du 03/09) : des
+      paragraphes ~350 cars ouverts par un horodatage CLIQUABLE (`&t=…s`),
+      posés en 5e bloc par `poserBlocsDeCapture` (extras.transcriptionHtml,
+      plafond 60 000 cars). Le modèle reçoit le texte aplati à part
+      (extras.transcriptionTexte, cousu dans payload()). La tuile repliée et
+      le panneau titrent « Transcription (…) » via le premier <strong> —
+      c'était le point « mise en forme des cards longs textes pas opti ».
       ⏭️ Piste suivante consignée : SimpleFX — le résumé décrit la page (« deux
       graphiques US100 en 1h et 15m ») au lieu de lire la situation du compte,
       et les points clés remontent du contenu déjà présent dans la note plutôt

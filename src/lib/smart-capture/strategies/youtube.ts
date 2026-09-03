@@ -32,8 +32,8 @@ async function extractYouTube(): Promise<SiteExtractResult> {
     // (`captionTracks`, avec l'URL timedtext de chaque piste). On télécharge
     // la piste (fr d'abord, sinon en, sinon la première) au format json3 —
     // le content script est sur youtube.com, le fetch est même origine.
-    const chargerTranscription = async (): Promise<{ texte: string; auto: boolean; langue: string }> => {
-      const vide = { texte: '', auto: false, langue: '' }
+    const chargerTranscription = async (): Promise<{ texte: string; html: string; auto: boolean; langue: string }> => {
+      const vide = { texte: '', html: '', auto: false, langue: '' }
       try {
         const script = Array.from(document.querySelectorAll('script')).find(
           s => (s.textContent ?? '').includes('"captionTracks":')
@@ -61,15 +61,82 @@ async function extractYouTube(): Promise<SiteExtractResult> {
         if (!piste?.baseUrl) return vide
         const res = await fetch(piste.baseUrl + '&fmt=json3')
         if (!res.ok) return vide
-        const data = await res.json() as { events?: { segs?: { utf8?: string }[] }[] }
-        const texte = (data.events ?? [])
-          .flatMap(e => e.segs ?? [])
-          .map(s => s.utf8 ?? '')
-          .join('')
-          .replace(/\n/g, ' ')
-          .replace(/\s{2,}/g, ' ')
-          .trim()
-        return { texte, auto: piste.kind === 'asr', langue: piste.languageCode ?? '' }
+        const data = await res.json() as { events?: { tStartMs?: number; segs?: { utf8?: string }[] }[] }
+
+        // --- Mise en forme façon Glasp -----------------------------------
+        // Un paragraphe ≈ 30-60 s de parole (coupé à ~350 caractères, sur une
+        // frontière de sous-titre), ouvert par son horodatage. L'horodatage
+        // est un LIEN vers ce moment de la vidéo : cliquer dans la note ramène
+        // au passage. C'est ce qui rend la transcription relisable, là où le
+        // texte aplati d'avant était un pavé.
+        let videoId = ''
+        try {
+          const u = new URL(window.location.href)
+          videoId = u.searchParams.get('v') ?? (u.hostname === 'youtu.be' ? u.pathname.slice(1) : '')
+        } catch { /* ignore */ }
+        const fmtMs = (ms: number): string => {
+          const s = Math.floor(ms / 1000)
+          const h = Math.floor(s / 3600)
+          const m = Math.floor((s % 3600) / 60)
+          const sec = s % 60
+          if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+          return `${m}:${String(sec).padStart(2, '0')}`
+        }
+        const echap = (t: string): string =>
+          t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+        const paragraphes: { debutMs: number; texte: string }[] = []
+        let courant: { debutMs: number; texte: string } | null = null
+        for (const e of data.events ?? []) {
+          const bout = (e.segs ?? [])
+            .map(s => s.utf8 ?? '')
+            .join('')
+            .replace(/\n/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+          if (!bout) continue
+          if (!courant) courant = { debutMs: e.tStartMs ?? 0, texte: bout }
+          else courant.texte += ' ' + bout
+          if (courant.texte.length >= 350) {
+            paragraphes.push(courant)
+            courant = null
+          }
+        }
+        if (courant) paragraphes.push(courant)
+
+        const texte = paragraphes.map(p => p.texte).join(' ').replace(/\s{2,}/g, ' ').trim()
+        const auto = piste.kind === 'asr'
+        const langue = piste.languageCode ?? ''
+
+        // Le HTML du bloc de note. Plafond à 60 000 caractères (~1 h 30 de
+        // parole) : au-delà on coupe et on le dit dans l'étiquette. Le premier
+        // <strong> sert de titre à la tuile repliée et au panneau de lecture —
+        // c'est « Transcription (…) », pas un horodatage.
+        const morceauxHtml: string[] = []
+        let taille = 0
+        let coupe = false
+        for (const p of paragraphes) {
+          const secondes = Math.floor(p.debutMs / 1000)
+          const heure = videoId
+            ? `<a href="https://www.youtube.com/watch?v=${videoId}&amp;t=${secondes}s" target="_blank" rel="noopener">${fmtMs(p.debutMs)}</a>`
+            : fmtMs(p.debutMs)
+          const bloc = `<p><strong>${heure}</strong> — ${echap(p.texte)}</p>`
+          if (taille + bloc.length > 60000) {
+            coupe = true
+            break
+          }
+          morceauxHtml.push(bloc)
+          taille += bloc.length
+        }
+        let html = ''
+        if (morceauxHtml.length > 0) {
+          const etiquette = auto
+            ? `Transcription (sous-titres automatiques${langue ? ', ' + langue : ''})`
+            : `Transcription${langue ? ' (' + langue + ')' : ''}`
+          html = `<p><strong>${etiquette}${coupe ? ' — tronquée' : ''}</strong></p>` + morceauxHtml.join('')
+        }
+
+        return { texte, html, auto, langue }
       } catch {
         return vide
       }
@@ -252,21 +319,14 @@ async function extractYouTube(): Promise<SiteExtractResult> {
     if (mainContent) {
       parts.push(`<hr><p>${mainContent.slice(0, 8000).replace(/\n/g, '<br>')}</p>`)
     }
-    // La transcription téléchargée : c'est elle qui porte le contenu réel
-    // de la vidéo (le serveur coupe à 12 000 caractères, on garde la place
-    // pour la description et les chapitres)
-    if (st.texte) {
-      const etiquette = st.auto
-        ? `Transcription (sous-titres automatiques${st.langue ? ', ' + st.langue : ''})`
-        : `Transcription${st.langue ? ' (' + st.langue + ')' : ''}`
-      const tronquee = st.texte.length > 9000
-      parts.push(`<hr><p><strong>${etiquette}${tronquee ? ' — début de la vidéo, transcription tronquée' : ''} :</strong></p>`)
-      parts.push(`<p>${st.texte.slice(0, 9000)}</p>`)
-    }
+    // La transcription téléchargée ne vit PLUS ici : `content` est le bloc
+    // « page » de la note, la transcription a son bloc à elle (posé par
+    // poserBlocsDeCapture depuis extras.transcriptionHtml, façon Glasp) et
+    // rejoint le modèle par extras.transcriptionTexte (cousu dans payload()).
     const content = parts.join('\n')
 
     return {
-      success: content.length >= 50 || Boolean(description),
+      success: content.length >= 50 || Boolean(description) || st.texte.length > 0,
       pageTitle: title || 'Vidéo YouTube',
       content,
       summary: author ? `Vidéo de ${author} : ${title}` : title || 'Vidéo YouTube',
@@ -284,6 +344,8 @@ async function extractYouTube(): Promise<SiteExtractResult> {
         hasTranscript: transcript.length > 0 || st.texte.length > 0,
         transcriptionChargee: st.texte.length,
         transcriptionAuto: st.auto,
+        transcriptionTexte: st.texte,
+        transcriptionHtml: st.html,
         chaptersCount: chapters.length,
         descriptionDepuisJson: Boolean(json.description),
         descriptionLongueur: description.length,

@@ -68,6 +68,17 @@ function payload(h: CaptureHeuristique): string {
     morceaux.push('')
     morceaux.push(htmlVersTexte(h.content))
   }
+  // La transcription vidéo (YouTube) voyage à part : dans la note elle a son
+  // bloc horodaté, ici le modèle reçoit le texte aplati. 9 000 caractères,
+  // pour laisser la place au reste sous le plafond serveur de 12 000.
+  const transcription = typeof h.extras?.transcriptionTexte === 'string'
+    ? (h.extras.transcriptionTexte as string)
+    : ''
+  if (transcription) {
+    morceaux.push('')
+    morceaux.push('Transcription de la vidéo :')
+    morceaux.push(transcription.slice(0, 9000))
+  }
   return morceaux.join('\n')
 }
 

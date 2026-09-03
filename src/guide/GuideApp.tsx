@@ -70,6 +70,7 @@ const CHANGELOG = [
     items: [
       'Capturer ton canvas du Journal d\'Études lit maintenant les VRAIES notes derrière les cartes visibles — et les liens que tu as tracés entre elles — au lieu du texte de l\'écran. Fini les points clés qui recopiaient des titres tronqués.',
       'Capturer une vidéo YouTube télécharge désormais sa transcription (sous-titres, français en priorité) — la capture lit ce qui se DIT dans la vidéo, plus seulement sa description.',
+      'Cette transcription devient un bloc de la note, mis en forme façon Glasp : des paragraphes ouverts par un horodatage cliquable qui ramène à ce moment de la vidéo. Le bloc se replie en tuile intitulée « Transcription », et son panneau de lecture affiche des paragraphes aérés au lieu d’un pavé.',
       'Correction : le + du header fonctionne aussi depuis les écrans mentorat, support ou forfait — il ramène à l\'accueil pour capturer.',
       'Correction : le panneau d\'un bloc affichait « Contenu captur\\u00e9 » au lieu de « Contenu capturé ».',
     ],
