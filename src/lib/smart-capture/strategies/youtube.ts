@@ -23,9 +23,58 @@ import type { SiteStrategy, SiteExtractResult } from '../types'
  *     Il ne porte plus que ce que l'appelant n'a pas : position de lecture,
  *     lien horodaté, description et transcription.
  */
-function extractYouTube(): SiteExtractResult {
+async function extractYouTube(): Promise<SiteExtractResult> {
   try {
     const propre = (s: string | null | undefined): string => (s ?? '').trim()
+
+    // --- Transcription : à la source, comme Glasp ou YouTube Summary ------
+    // La liste des pistes de sous-titres vit dans le même JSON du lecteur
+    // (`captionTracks`, avec l'URL timedtext de chaque piste). On télécharge
+    // la piste (fr d'abord, sinon en, sinon la première) au format json3 —
+    // le content script est sur youtube.com, le fetch est même origine.
+    const chargerTranscription = async (): Promise<{ texte: string; auto: boolean; langue: string }> => {
+      const vide = { texte: '', auto: false, langue: '' }
+      try {
+        const script = Array.from(document.querySelectorAll('script')).find(
+          s => (s.textContent ?? '').includes('"captionTracks":')
+        )
+        const txt = script?.textContent ?? ''
+        const marqueur = '"captionTracks":'
+        const debut = txt.indexOf(marqueur)
+        if (debut < 0) return vide
+        const ouverture = txt.indexOf('[', debut)
+        if (ouverture < 0) return vide
+        // Fermeture du tableau par comptage de crochets, puis JSON.parse
+        // (qui déséchappe les & des URL au passage)
+        let prof = 0
+        let fin = -1
+        for (let i = ouverture; i < txt.length; i++) {
+          if (txt[i] === '[') prof++
+          else if (txt[i] === ']') { prof--; if (prof === 0) { fin = i + 1; break } }
+        }
+        if (fin < 0) return vide
+        const tracks: { baseUrl?: string; languageCode?: string; kind?: string }[] =
+          JSON.parse(txt.slice(ouverture, fin))
+        const piste = tracks.find(t => t.languageCode?.startsWith('fr'))
+          ?? tracks.find(t => t.languageCode?.startsWith('en'))
+          ?? tracks[0]
+        if (!piste?.baseUrl) return vide
+        const res = await fetch(piste.baseUrl + '&fmt=json3')
+        if (!res.ok) return vide
+        const data = await res.json() as { events?: { segs?: { utf8?: string }[] }[] }
+        const texte = (data.events ?? [])
+          .flatMap(e => e.segs ?? [])
+          .map(s => s.utf8 ?? '')
+          .join('')
+          .replace(/\n/g, ' ')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+        return { texte, auto: piste.kind === 'asr', langue: piste.languageCode ?? '' }
+      } catch {
+        return vide
+      }
+    }
+    const st = await chargerTranscription()
 
     // --- Source de vérité : le JSON du lecteur ---------------------------
     // On ne parse pas tout le blob (plusieurs centaines de Ko) : on va
@@ -203,6 +252,17 @@ function extractYouTube(): SiteExtractResult {
     if (mainContent) {
       parts.push(`<hr><p>${mainContent.slice(0, 8000).replace(/\n/g, '<br>')}</p>`)
     }
+    // La transcription téléchargée : c'est elle qui porte le contenu réel
+    // de la vidéo (le serveur coupe à 12 000 caractères, on garde la place
+    // pour la description et les chapitres)
+    if (st.texte) {
+      const etiquette = st.auto
+        ? `Transcription (sous-titres automatiques${st.langue ? ', ' + st.langue : ''})`
+        : `Transcription${st.langue ? ' (' + st.langue + ')' : ''}`
+      const tronquee = st.texte.length > 9000
+      parts.push(`<hr><p><strong>${etiquette}${tronquee ? ' — début de la vidéo, transcription tronquée' : ''} :</strong></p>`)
+      parts.push(`<p>${st.texte.slice(0, 9000)}</p>`)
+    }
     const content = parts.join('\n')
 
     return {
@@ -221,7 +281,9 @@ function extractYouTube(): SiteExtractResult {
         currentTime,
         urlWithTimestamp,
         dureeSecondes: json.duree,
-        hasTranscript: transcript.length > 0,
+        hasTranscript: transcript.length > 0 || st.texte.length > 0,
+        transcriptionChargee: st.texte.length,
+        transcriptionAuto: st.auto,
         chaptersCount: chapters.length,
         descriptionDepuisJson: Boolean(json.description),
         descriptionLongueur: description.length,

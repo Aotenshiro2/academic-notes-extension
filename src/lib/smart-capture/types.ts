@@ -19,5 +19,8 @@ export interface SiteStrategy {
   label: string
   match: (url: string) => boolean
   priority?: number
-  func: () => SiteExtractResult
+  /** Exécutée dans la page via chrome.scripting.executeScript, qui résout les
+   *  promesses : une stratégie peut être async (ex. YouTube télécharge la
+   *  piste de sous-titres). Elle doit rester AUTONOME (pas de closure). */
+  func: () => SiteExtractResult | Promise<SiteExtractResult>
 }

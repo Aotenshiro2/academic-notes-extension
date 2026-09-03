@@ -69,6 +69,7 @@ const CHANGELOG = [
     title: 'La capture lit ton journal pour de vrai',
     items: [
       'Capturer ton canvas du Journal d\'Études lit maintenant les VRAIES notes derrière les cartes visibles — et les liens que tu as tracés entre elles — au lieu du texte de l\'écran. Fini les points clés qui recopiaient des titres tronqués.',
+      'Capturer une vidéo YouTube télécharge désormais sa transcription (sous-titres, français en priorité) — la capture lit ce qui se DIT dans la vidéo, plus seulement sa description.',
       'Correction : le + du header fonctionne aussi depuis les écrans mentorat, support ou forfait — il ramène à l\'accueil pour capturer.',
       'Correction : le panneau d\'un bloc affichait « Contenu captur\\u00e9 » au lieu de « Contenu capturé ».',
     ],
