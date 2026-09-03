@@ -249,14 +249,20 @@ lisaient comme un sommaire.
       bloc, image. Sinon un membre ouvre une fiche et lit la note d'un autre.
       Inquiétude de Brice, fondée, et qui se règle à la conception.
 
-- [ ] **La capture intelligente n'est pas satisfaisante.** Verdict de Brice le
-      01/09 après usage réel, sans détail à ce stade (« je reviendrai dessus
-      plus tard »). Ne pas deviner : lui demander sur quelles pages et sur quoi
-      précisément avant de toucher aux prompts. Piste déjà visible dans ses
-      captures d'écran du jour : sur SimpleFX, le résumé décrit la page (« deux
+- [~] **La capture intelligente n'est pas satisfaisante — TRAITEMENT EN COURS
+      au fil des exemples de Brice** (pas « en attente » : chaque exemple donné
+      est traité dans la foulée — recadrage du 02/09, il avait raison).
+      ✅ Canvas du journal (screenshots du 02/09) : la famille maison LIT les
+      vraies notes + les liens tracés (1.8.5 — stratégie `journal-aok` +
+      `resoudreCanvasJournal` côté serveur, cloison par userId).
+      ✅ YouTube (question du 02/09 « comment Glasp y arrive ? ») : la capture
+      télécharge la transcription à la source (`captionTracks` du JSON du
+      lecteur, piste fr sinon en, format json3, 9 000 cars — le serveur coupe
+      à 12 000). Étiquetée « automatique » quand la piste est asr.
+      ⏭️ Piste suivante consignée : SimpleFX — le résumé décrit la page (« deux
       graphiques US100 en 1h et 15m ») au lieu de lire la situation du compte,
-      et les points clés remontent surtout du contenu déjà présent dans la note
-      plutôt que de la page captée.
+      et les points clés remontent du contenu déjà présent dans la note plutôt
+      que de la page captée. À traiter au prochain exemple concret.
 
 - [x] **La superposition au survol entre deux blocs.** ✅ **FAIT en 1.8.4** — confirme par Brice le 01/09 : disparait au depart du curseur, image intacte au rechargement. Le glyphe translucide devient une pastille pleine (bg-background) et les traits passent en h-px. Diagnostic conserve ci-dessous. Le correctif 1.8.3 a
       réglé la PERTE (une capture collée dans le ＋ ne s'enregistrait pas) mais
