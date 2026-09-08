@@ -23,6 +23,50 @@ centre garde le geste actuel, un flanc donne directement la nuance.
   journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
   vérifier la ligne « Qualité moyenne des jugements » du brief.
 
+## ✅ v1.8.7 — LE MENTOR APPREND À COMPTER (08/09/2026, points 1 et 2 arbitrés par Brice)
+
+- **Champ R** sur trade clos (pastille « R ? », saisie +1,5/−1, virgule ok,
+  effaçable ; `TradeSegment.r`, `storage.setTradeR`, voyage avec la sync).
+- **Brief mentor enrichi** (journal `5df5d28` déployé) : résultats en R (total,
+  gagnant/perdant moyen, win rate d'équilibre dès 3+3, R par grade), répartition
+  par jour de semaine et heure d'entrée (Europe/Paris), % de A par mois, et les
+  5 derniers jugements B/C dans les mots de l'élève.
+- Zip : `D:\8_Developpement\le-carnet-du-trader-v1.8.7.zip` (extension `e4c1af8`).
+  À dogfooder : saisir un R sur un trade clos, régénérer un brief mentorat.
+
+### CHANTIER PROPOSÉ le 08/09 — import des données de trading (point 3, ATTEND LE GO DE BRICE)
+
+Question de Brice : peu importe comment la data arrive (capture intelligente,
+CSV, PDF, screenshot), comment le carnet/journal/mentor la lit ? Exemples
+fournis : TopstepX (dashboard web avec table Trades dans le DOM), Tradovate
+Performance.csv (trades appariés, LE format propre), Quantower/Rithmic Orders
+history.csv (des ORDRES multi-comptes — copy trading — à reconstruire en
+trades), PDFs de perf Tradovate (agrégats), Sheets money management, et...
+nos propres exports PDF du carnet.
+
+**Architecture : un format pivot + trois portes.**
+- Schéma `TradeImport` (journal, cloison userId, dédoublonné par
+  source+idExterne) : compte, symbole, direction, qty, prix entrée/sortie,
+  horodatages, pnl, frais, durée, source.
+- Porte 1 DÉTERMINISTE : parseurs par format reconnus à la signature des
+  en-têtes (Tradovate d'abord, Quantower ensuite avec appariement des fills).
+  Zéro token, zéro invention.
+- Porte 2 CAPTURE INTELLIGENTE : stratégie DOM TopstepX (comme journal-aok) →
+  extras.tradesImportes → même tuyau.
+- Porte 3 IA (PDF/screenshot/format inconnu) : passe secrétaire Haiku en mode
+  extraction JSON au schéma pivot, VALIDATION serveur ligne par ligne (le
+  backend décide, l'IA propose).
+- Le mentor lit carnet (jugements) + imports (réalité d'exécution). À terme :
+  rapprochement carnet↔imports par fenêtre temporelle (piste déjà consignée
+  « rapprochement positions↔trades ») → le R se calcule tout seul, la saisie
+  manuelle devient un filet.
+- Doctrine données de compte : porte 1 n'envoie RIEN à l'IA ; option ligne
+  dure = normaliser en R côté serveur et ne pas garder les montants. À
+  trancher par Brice.
+- Ordre proposé : v1 table + parseur Tradovate + écran « Importer mes trades »
+  (journal) + lignes du brief ; v2 stratégie TopstepX ; v3 reconstruction
+  Quantower + R auto.
+
 ### Piste consignée le 08/09 — le brief mentor face au rapport perso de Florent
 
 Comparaison faite (rapport « Récap trading juillet-septembre » généré par Florent
