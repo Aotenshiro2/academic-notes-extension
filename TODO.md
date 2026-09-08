@@ -23,6 +23,29 @@ centre garde le geste actuel, un flanc donne directement la nuance.
   journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
   vérifier la ligne « Qualité moyenne des jugements » du brief.
 
+### Piste consignée le 08/09 — le brief mentor face au rapport perso de Florent
+
+Comparaison faite (rapport « Récap trading juillet-septembre » généré par Florent
+avec son IA + son journal Word). Son rapport gagne sur le QUANTITATIF parce que
+SON journal stocke le R par trade, l'instrument et l'heure — pas parce que son
+IA lit mieux. Notre TradeSegment ne porte que gain/perte/BE.
+
+À trancher par Brice, dans l'ordre de coût :
+1. **Gratuit (données déjà là)** : le brief remonte (a) heure d'entrée et jour
+   de semaine × issues (startedAt existe — « vendredi : 0 gagnant sur 5 » se dit
+   déjà sans le R), (b) % de A par mois (la sélectivité, pas juste les comptes),
+   (c) des EXTRAITS datés des phrases de jugement des B/C — l'équivalent des
+   « MAIS » de Florent, qu'on possède déjà et qu'on n'exploite pas.
+2. **Petite donnée nouvelle** : champ « R » optionnel à la clôture d'un trade
+   (saisie 2 s, compatible doctrine masquage : un R est un multiple de risque,
+   pas un montant de compte). Éventuellement l'instrument. Débloque : espérance,
+   seuil de WR d'équilibre, « tes 15 B = −12,6 R », contrefactuel sortie fixe
+   sur les A+ — toute la couche que Florent a et pas nous.
+3. Ce que nous avons et pas lui (à préserver) : warmups émotion × part de C,
+   causes des SL, cycle de relecture, concepts, nuances ±, « l'IA propose,
+   Brice valide ». Son rapport est un bilan trimestriel manuel ; le nôtre est
+   une boucle continue.
+
 ## ✅ v1.8.1 — CAPTURE INTELLIGENTE IA, en deux temps (30/08/2026)
 
 Clôt le backlog « capture intelligente à retravailler » du 17/07 et l'orientation
