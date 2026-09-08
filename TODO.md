@@ -60,9 +60,14 @@ nos propres exports PDF du carnet.
   rapprochement carnet↔imports par fenêtre temporelle (piste déjà consignée
   « rapprochement positions↔trades ») → le R se calcule tout seul, la saisie
   manuelle devient un filet.
-- Doctrine données de compte : porte 1 n'envoie RIEN à l'IA ; option ligne
-  dure = normaliser en R côté serveur et ne pas garder les montants. À
-  trancher par Brice.
+- Doctrine données de compte — TRANCHÉ par Brice le 08/09 : on GARDE les
+  montants en base, dans leur monnaie d'origine (€/$/crypto, pas de
+  conversion). Côté mentor : RÉGLAGE par membre, pas du dur — défaut « le
+  brief parle en R » (les montants ne partent pas à l'API), interrupteur pour
+  exposer aussi les montants à l'IA si le membre le veut. Raisons du défaut :
+  règle historique de masquage, montants = donnée intime (taille de compte)
+  traitée par un tiers, et le R compare mieux (indépendant de la taille et de
+  l'instrument). Brice fait confiance mais ne veut pas de règle figée.
 - Ordre proposé : v1 table + parseur Tradovate + écran « Importer mes trades »
   (journal) + lignes du brief ; v2 stratégie TopstepX ; v3 reconstruction
   Quantower + R auto.
