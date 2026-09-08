@@ -34,7 +34,25 @@ centre garde le geste actuel, un flanc donne directement la nuance.
 - Zip : `D:\8_Developpement\le-carnet-du-trader-v1.8.7.zip` (extension `e4c1af8`).
   À dogfooder : saisir un R sur un trade clos, régénérer un brief mentorat.
 
-### CHANTIER PROPOSÉ le 08/09 — import des données de trading (point 3, ATTEND LE GO DE BRICE)
+### CHANTIER IMPORTS — GO donné le 08/09, V1 LIVRÉE le jour même (journal `9c973fd` déployé)
+
+**v1 FAITE** : table `TradeImport` (migration `2026-09-08-trade-imports.sql`
+appliquée en prod) ; parseur Tradovate Performance (validé sur le fichier réel
+S14 : NQM5 long +465 $, dédup par fill ids) ; API `/api/imports-trades`
+(aperçu → confirmation, réimport = 0 doublon, DELETE par source) ; écran
+`/imports` (dépôt de fichier, tableau nouveaux/déjà connus) rattaché à
+« Analyser mes données » ; brief mentor : **profit factor DEVANT** (métrique
+de Brice, « en apprend plus que le RR ») dans la ligne R ET sur les imports —
+section imports en ratios sans dimension uniquement (PF, win rate, payoff,
+PF par instrument, devise dominante). Quantower orders : reconnu, message
+clair « pas encore supporté ».
+**RESTE** : v2 stratégie capture TopstepX (table Trades du DOM) ; v3
+reconstruction Quantower/Rithmic + rapprochement carnet↔imports (R auto) ;
+réglage par membre « exposer les montants à l'IA » (défaut : ratios seuls).
+À dogfooder par Brice : déposer un CSV Performance Tradovate sur /imports,
+le redéposer (vérifier « 0 nouveau »), puis régénérer un brief mentorat.
+
+### Mémoire du chantier (proposition d'origine, 08/09)
 
 Question de Brice : peu importe comment la data arrive (capture intelligente,
 CSV, PDF, screenshot), comment le carnet/journal/mentor la lit ? Exemples
