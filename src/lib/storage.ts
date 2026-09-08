@@ -981,6 +981,18 @@ export const storage = {
     await this.saveNote({ ...note, trades })
   },
 
+  /** Pose ou efface le résultat en R d'un trade (undefined = effacer). */
+  async setTradeR(noteId: string, tradeId: string, r: number | undefined): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const trades = (note.trades ?? []).map(t => {
+      if (t.id !== tradeId) return t
+      const { r: _ancien, ...reste } = t
+      return r === undefined ? reste : { ...reste, r }
+    })
+    await this.saveNote({ ...note, trades })
+  },
+
   /** Clôt silencieusement le segment actif (fermeture/changement de note). */
   async closeActiveTrade(noteId: string): Promise<void> {
     const note = await this.getNote(noteId)

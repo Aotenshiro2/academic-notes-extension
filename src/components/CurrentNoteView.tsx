@@ -77,6 +77,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [notationTarget, setNotationTarget] = useState<{ tradeRef?: string } | null>(null)
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
+  // Saisie du résultat en R d'un trade clos (optionnelle, « +1,5 » accepté)
+  const [editingRTradeId, setEditingRTradeId] = useState<string | null>(null)
+  const [rDraft, setRDraft] = useState('')
   const [cooldownTradeId, setCooldownTradeId] = useState<string | null>(null)
   const [cooldownPos, setCooldownPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [addingConcept, setAddingConcept] = useState(false)
@@ -329,6 +332,18 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
+
+  // Le R : virgule ou point acceptés, vide = effacer, bornes larges (±100)
+  const handleSaveTradeR = useCallback(async (tradeId: string) => {
+    const brut = rDraft.trim().replace(',', '.')
+    const valeur = brut === '' ? undefined : Number(brut)
+    if (valeur === undefined || (Number.isFinite(valeur) && Math.abs(valeur) <= 100)) {
+      await storage.setTradeR(noteId, tradeId, valeur)
+      await loadNote()
+      onNoteUpdate?.()
+    }
+    setEditingRTradeId(null)
+  }, [rDraft, noteId, onNoteUpdate])
 
   // Cooldown par trade : débrief mental rattaché au segment (mental game), persisté avec la note
   const handleSaveCooldown = useCallback(async (tradeId: string, cooldown: TradeCooldown) => {
@@ -741,6 +756,44 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                       >
                         {trade.outcome ? OUTCOME_LABEL[trade.outcome] : 'Résultat ?'}
                       </button>
+                      {/* Le R : la donnée qui rend le mentor chiffré (espérance,
+                          coût des B). Optionnel — une pastille discrète. */}
+                      {editingRTradeId === trade.id ? (
+                        <input
+                          autoFocus
+                          value={rDraft}
+                          onChange={e => setRDraft(e.target.value)}
+                          onBlur={() => handleSaveTradeR(trade.id)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleSaveTradeR(trade.id) }
+                            if (e.key === 'Escape') setEditingRTradeId(null)
+                          }}
+                          placeholder="+1,5"
+                          className="w-12 px-1 py-0 text-[10px] text-center bg-muted/40 border border-border rounded-full focus:outline-none focus:border-primary/50"
+                          aria-label={`Résultat en R du trade ${n}`}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setRDraft(trade.r !== undefined ? String(trade.r).replace('.', ',') : '')
+                            setEditingRTradeId(trade.id)
+                          }}
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
+                            trade.r !== undefined
+                              ? trade.r > 0
+                                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                                : trade.r < 0
+                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                  : 'bg-muted text-muted-foreground'
+                              : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                          }`}
+                          title={trade.r !== undefined ? 'Résultat en R — modifier' : 'Résultat en R (multiple du risque, ex. +1,5)'}
+                        >
+                          {trade.r !== undefined
+                            ? `${trade.r > 0 ? '+' : ''}${String(trade.r).replace('.', ',')} R`
+                            : 'R ?'}
+                        </button>
+                      )}
                       <button
                         onClick={e => {
                           const rect = e.currentTarget.getBoundingClientRect()

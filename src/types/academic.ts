@@ -144,6 +144,12 @@ export interface TradeSegment {
   startedAt: number
   closedAt?: number
   outcome?: TradeOutcome // saisi à la clôture (3 chips), modifiable ensuite
+  /** Résultat en R (multiple du risque initial, signé : +1.5, -1, +0.3).
+   *  Saisie optionnelle — c'est elle qui débloque l'espérance, le coût des B
+   *  et le contrefactuel des A+ dans le brief mentor (08/09/2026, comparaison
+   *  avec le rapport perso de Florent). Un R n'est PAS un montant de compte :
+   *  compatible avec la doctrine de masquage. */
+  r?: number
   cooldown?: TradeCooldown // débrief mental de fin de trade (mental game)
 }
 
