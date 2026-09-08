@@ -130,7 +130,9 @@ export async function sendPasswordResetEmail(
  * Déconnexion
  */
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut()
+  // scope 'local' : le defaut ('global') revoque les sessions de TOUS les
+  // appareils et de toutes les apps AOK (meme projet Supabase).
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 /**

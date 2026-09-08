@@ -48,7 +48,7 @@ function tradeHtml(t: TradeSegment, n: number, annotation?: Annotation): string 
   const lines: string[] = [`<h3>Trade ${n} · ${fmtTime(t.startedAt)}${outcome}</h3>`]
   if (annotation) {
     const cause = annotation.causeCategory ? ` (${CAUSE_LABEL[annotation.causeCategory] ?? annotation.causeCategory})` : ''
-    lines.push(`<p><em>Jugement ${annotation.grade} — « ${esc(annotation.phrase)} »${cause}</em></p>`)
+    lines.push(`<p><em>Jugement ${annotation.grade.replace('-', '−')} — « ${esc(annotation.phrase)} »${cause}</em></p>`)
   }
   const cd = t.cooldown
   if (cd && (cd.emotion || cd.error || cd.lesson)) {

@@ -79,7 +79,15 @@ export interface NoteFolder {
 // ── Notation (masterclass edge) ───────────────────────────────────────────────
 // Un jugement posé en 2e temps, découplé du résultat : grade + une phrase + cause.
 // Miroir du modèle Annotation du journal (apps/journal-d-etude, /api/annotations).
-export type AnnotationGrade = 'A' | 'B' | 'C'
+// Nuances +/− depuis le 08/09/2026 (coaching Florent : « c'est l'élève qui
+// rappelle au maître »). Le grade reste un ressenti : la lettre porte les
+// stats, le modificateur porte la tendance fine. Stocké en ASCII ('B-'),
+// affiché avec le vrai signe moins (« B− »).
+export type AnnotationLettre = 'A' | 'B' | 'C'
+export type AnnotationGrade =
+  | 'A+' | 'A' | 'A-'
+  | 'B+' | 'B' | 'B-'
+  | 'C+' | 'C' | 'C-'
 export type AnnotationCause = 'technique' | 'connaissance' | 'emotionnel'
 
 export interface Annotation {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import type { Annotation, AnnotationGrade, AnnotationCause, TradeOutcome } from '@/types/academic'
+import type { Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeOutcome } from '@/types/academic'
 
 interface NotationPopoverProps {
   position: { top: number; bottom: number; left: number }
@@ -11,11 +11,18 @@ interface NotationPopoverProps {
   onClose: () => void
 }
 
-const GRADES: { value: AnnotationGrade; hint: string; selectedClass: string }[] = [
+const GRADES: { value: AnnotationLettre; hint: string; selectedClass: string }[] = [
   { value: 'A', hint: 'je le reprendrais sans hésiter', selectedClass: 'border-green-600 bg-green-500/15 text-green-600 dark:text-green-400' },
   { value: 'B', hint: 'ça a marché mais c\'était flou', selectedClass: 'border-amber-600 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
   { value: 'C', hint: 'forcé, émotionnel', selectedClass: 'border-red-600 bg-red-500/15 text-red-600 dark:text-red-400' },
 ]
+
+// Choix de Brice au labo du 08/09 (option 2) : chaque bouton lettre porte deux
+// flancs − et +. Le centre donne le neutre (le geste actuel, intact), un flanc
+// donne directement la nuance. Aucune sémantique sur le ± : c'est un ressenti,
+// et la vraie question est le POURQUOI, posée par le placeholder.
+const lettreDe = (g: AnnotationGrade): AnnotationLettre => g[0] as AnnotationLettre
+const modDe = (g: AnnotationGrade): '+' | '-' | '' => (g.length > 1 ? (g[1] as '+' | '-') : '')
 
 const CAUSES: { value: AnnotationCause; label: string }[] = [
   { value: 'technique', label: 'technique' },
@@ -83,27 +90,54 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
       className="bg-background border border-border rounded-xl shadow-lg p-3 space-y-2"
       onMouseDown={e => e.stopPropagation()}
     >
-      {/* Grades A / B / C */}
+      {/* Grades A / B / C, avec flancs − et + (labo du 08/09, option 2).
+          30px de haut : Brice a demandé la même hauteur que la grille du labo. */}
       <div className="flex gap-2">
-        {GRADES.map(g => (
-          <button
-            key={g.value}
-            onClick={() => handleSelectGrade(g.value)}
-            className={`flex-1 h-10 rounded-lg border text-base font-medium transition-colors ${
-              grade === g.value
-                ? g.selectedClass
-                : 'border-border text-muted-foreground hover:border-border/80 hover:bg-muted/40'
-            }`}
-            aria-label={`Grade ${g.value} — ${g.hint}`}
-          >
-            {g.value}
-          </button>
-        ))}
+        {GRADES.map(g => {
+          const active = grade !== null && lettreDe(grade) === g.value
+          const mod = active && grade ? modDe(grade) : ''
+          return (
+            <div
+              key={g.value}
+              className={`flex-1 h-[30px] rounded-lg border flex items-stretch overflow-hidden transition-colors ${
+                active ? g.selectedClass : 'border-border text-muted-foreground'
+              }`}
+            >
+              <button
+                onClick={() => handleSelectGrade(`${g.value}-` as AnnotationGrade)}
+                className={`w-[26%] text-xs flex items-center justify-center transition-opacity ${
+                  mod === '-' ? 'opacity-100 font-semibold' : 'opacity-40 hover:opacity-100 hover:bg-muted/40'
+                }`}
+                aria-label={`Grade ${g.value} moins`}
+              >
+                −
+              </button>
+              <button
+                onClick={() => handleSelectGrade(g.value as AnnotationGrade)}
+                className={`flex-1 text-base font-medium flex items-center justify-center ${
+                  active && mod === '' ? '' : active ? 'opacity-80' : 'hover:bg-muted/40'
+                }`}
+                aria-label={`Grade ${g.value} — ${g.hint}`}
+              >
+                {g.value}
+              </button>
+              <button
+                onClick={() => handleSelectGrade(`${g.value}+` as AnnotationGrade)}
+                className={`w-[26%] text-xs flex items-center justify-center transition-opacity ${
+                  mod === '+' ? 'opacity-100 font-semibold' : 'opacity-40 hover:opacity-100 hover:bg-muted/40'
+                }`}
+                aria-label={`Grade ${g.value} plus`}
+              >
+                +
+              </button>
+            </div>
+          )
+        })}
       </div>
       <p className="text-[10px] leading-snug text-muted-foreground/70 px-0.5">
         {grade
-          ? GRADES.find(g => g.value === grade)?.hint
-          : 'A — sans hésiter · B — flou · C — forcé'}
+          ? GRADES.find(g => g.value === lettreDe(grade))?.hint
+          : 'A — sans hésiter · B — flou · C — forcé (± pour nuancer)'}
       </p>
 
       {/* La phrase — l'exercice canonique */}
@@ -114,7 +148,13 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
         onKeyDown={e => {
           if (e.key === 'Enter') { e.preventDefault(); handleSave() }
         }}
-        placeholder="Pourquoi cette note ? (une phrase)"
+        placeholder={
+          grade && modDe(grade) === '+'
+            ? 'Pourquoi ce + ?'
+            : grade && modDe(grade) === '-'
+              ? 'Pourquoi ce − ?'
+              : 'Pourquoi cette note ? (une phrase)'
+        }
         className="w-full px-2.5 py-1.5 text-xs bg-muted/40 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50"
       />
 

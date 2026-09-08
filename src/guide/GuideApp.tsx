@@ -65,6 +65,17 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.6',
+    title: 'La notation apprend les nuances',
+    items: [
+      'Les grades acceptent les nuances : A+, A−, B+, B−, C+, C−. Chaque bouton du popover de notation porte deux petits flancs − et + ; le centre garde le geste habituel, un flanc donne directement la nuance. Rien d’obligatoire : A, B, C tout court marchent comme avant.',
+      'Quand tu poses un + ou un −, la question du champ change : « Pourquoi ce + ? ». C’est la vraie matière : pas la note, mais ce qui te la fait sentir.',
+      'La relecture dans le journal parle le même langage : les boutons A/B/C de la file de relecture portent les mêmes flancs.',
+      'Les statistiques restent lisibles : elles comptent par lettre (un B+ et un B− restent des B). La nuance nourrit le brief du mentor : qualité moyenne sur une échelle de C− à A+, et sa tendance sur la période.',
+      'Tes jugements déjà posés ne bougent pas : un B d’avant reste un B, la valeur neutre.',
+    ],
+  },
+  {
     version: '1.8.5',
     title: 'La capture lit ton journal pour de vrai',
     items: [

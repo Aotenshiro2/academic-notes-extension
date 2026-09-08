@@ -19,17 +19,24 @@ import { collectNoteImages } from '@/lib/note-images'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
-const GRADE_BADGE_CLASS: Record<AnnotationGrade, string> = {
+// Couleurs par LETTRE : un B+ et un B− restent ambrés, la nuance se lit dans
+// le texte du badge. Affichage avec le vrai signe moins (« B− »), stockage
+// ASCII ('B-').
+const GRADE_BADGE_CLASS: Record<'A' | 'B' | 'C', string> = {
   A: 'bg-green-500/15 text-green-600 dark:text-green-400',
   B: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   C: 'bg-red-500/15 text-red-600 dark:text-red-400',
 }
 
-const GRADE_TEXT_CLASS: Record<AnnotationGrade, string> = {
+const GRADE_TEXT_CLASS: Record<'A' | 'B' | 'C', string> = {
   A: 'text-green-600 dark:text-green-400',
   B: 'text-amber-600 dark:text-amber-400',
   C: 'text-red-600 dark:text-red-400',
 }
+
+const badgeClassDe = (g: AnnotationGrade): string => GRADE_BADGE_CLASS[g[0] as 'A' | 'B' | 'C']
+const texteClassDe = (g: AnnotationGrade): string => GRADE_TEXT_CLASS[g[0] as 'A' | 'B' | 'C']
+const afficherGrade = (g: AnnotationGrade): string => g.replace('-', '−')
 
 const OUTCOME_LABEL: Record<TradeOutcome, string> = { gain: 'Gain', perte: 'Perte', be: 'BE' }
 const OUTCOME_CLASS: Record<TradeOutcome, string> = {
@@ -535,15 +542,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
                 setNotationTarget({})
               }}
-              className={`flex items-center justify-center w-[22px] h-[22px] rounded-full text-[11px] font-semibold flex-shrink-0 transition-colors ${
+              className={`flex items-center justify-center min-w-[22px] h-[22px] px-0.5 rounded-full text-[11px] font-semibold flex-shrink-0 transition-colors ${
                 noteAnnotation
-                  ? GRADE_BADGE_CLASS[noteAnnotation.grade]
+                  ? badgeClassDe(noteAnnotation.grade)
                   : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
               }`}
-              title={noteAnnotation ? `${noteAnnotation.grade} — ${noteAnnotation.phrase}` : 'Noter (A/B/C + une phrase)'}
-              aria-label={noteAnnotation ? `Notation ${noteAnnotation.grade}, modifier` : 'Noter cette note'}
+              title={noteAnnotation ? `${afficherGrade(noteAnnotation.grade)} — ${noteAnnotation.phrase}` : 'Noter (A/B/C, ± pour nuancer)'}
+              aria-label={noteAnnotation ? `Notation ${afficherGrade(noteAnnotation.grade)}, modifier` : 'Noter cette note'}
             >
-              {noteAnnotation ? noteAnnotation.grade : '±'}
+              {noteAnnotation ? afficherGrade(noteAnnotation.grade) : '±'}
             </button>
           </>
         )}
@@ -605,8 +612,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           className="flex items-baseline gap-1.5 text-left w-full rounded hover:bg-muted/30 px-1 py-0.5 -mx-1 transition-colors"
           title="Modifier la notation"
         >
-          <span className={`text-[11px] font-semibold flex-shrink-0 ${GRADE_TEXT_CLASS[noteAnnotation.grade]}`}>
-            {noteAnnotation.grade}
+          <span className={`text-[11px] font-semibold flex-shrink-0 ${texteClassDe(noteAnnotation.grade)}`}>
+            {afficherGrade(noteAnnotation.grade)}
           </span>
           <span className="text-[11px] text-muted-foreground italic leading-snug">
             « {noteAnnotation.phrase} »
@@ -740,15 +747,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                           setNotationPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
                           setNotationTarget({ tradeRef: trade.id })
                         }}
-                        className={`flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold flex-shrink-0 transition-colors ${
+                        className={`flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 transition-colors ${
                           tradeAnnotation
-                            ? GRADE_BADGE_CLASS[tradeAnnotation.grade]
+                            ? badgeClassDe(tradeAnnotation.grade)
                             : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
                         }`}
-                        title={tradeAnnotation ? `${tradeAnnotation.grade} — ${tradeAnnotation.phrase}` : 'Noter ce trade'}
-                        aria-label={tradeAnnotation ? `Notation ${tradeAnnotation.grade} du trade ${n}` : `Noter le trade ${n}`}
+                        title={tradeAnnotation ? `${afficherGrade(tradeAnnotation.grade)} — ${tradeAnnotation.phrase}` : 'Noter ce trade'}
+                        aria-label={tradeAnnotation ? `Notation ${afficherGrade(tradeAnnotation.grade)} du trade ${n}` : `Noter le trade ${n}`}
                       >
-                        {tradeAnnotation ? tradeAnnotation.grade : '±'}
+                        {tradeAnnotation ? afficherGrade(tradeAnnotation.grade) : '±'}
                       </button>
                       <button
                         onClick={e => {
