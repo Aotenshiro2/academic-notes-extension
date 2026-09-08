@@ -1,6 +1,28 @@
 # TODO — Le Carnet du Trader (extension)
 <!-- ontologie: id=ch-todo-extension; statut=actif; concerne=extension,mentorat-ia,carnet-premium,ou-anthropic -->
 
+## ✅ v1.8.6 — NOTATION NUANCÉE A+/A−/B+/B−/C+/C− (08/09/2026)
+
+Origine : coaching Florent du 08/09 (« c'est l'élève qui rappelle au maître »,
+00:16:29) — les nuances enseignées manquaient dans l'app. Brice a choisi au labo
+(option 2) : chaque bouton lettre porte deux flancs − et +, hauteur 30 px. Le
+centre garde le geste actuel, un flanc donne directement la nuance.
+
+- **Aucune sémantique codée** (décision Brice) : le grade est un ressenti ; la
+  matière est le POURQUOI — le placeholder devient « Pourquoi ce + ? » quand un
+  modificateur est choisi.
+- **Stats PAR LETTRE partout** (un B+ reste un B dans les compteurs) ; la nuance
+  nourrit le brief mentorat : qualité ordinale C− = 1 … A+ = 9, moyenne et
+  tendance première/seconde moitié (dès 6 jugements). Le grade pilote aussi la
+  gestion (transcript 00:25:22 : A/A+ sortie fixe, A−/B partiels) — piste pour
+  le mentor plus tard.
+- Stockage ASCII (`B-`), affichage vrai signe moins (« B− »). Colonne déjà
+  String : AUCUNE migration, rétrocompat totale (A/B/C existants = neutres).
+- ReviewDeck du journal aligné (mêmes flancs), badges en pilules.
+- Zip : `D:\8_Developpement\le-carnet-du-trader-v1.8.6.zip`. Extension `8cbb4f8`,
+  journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
+  vérifier la ligne « Qualité moyenne des jugements » du brief.
+
 ## ✅ v1.8.1 — CAPTURE INTELLIGENTE IA, en deux temps (30/08/2026)
 
 Clôt le backlog « capture intelligente à retravailler » du 17/07 et l'orientation
