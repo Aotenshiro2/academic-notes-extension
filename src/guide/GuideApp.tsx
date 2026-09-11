@@ -72,6 +72,7 @@ const CHANGELOG = [
       'Ce R débloque l’étage chiffré du mentor : total en R sur la période, gagnant moyen contre perdant moyen, win rate d’équilibre à ton ratio, et le R par grade — « tes B t’ont coûté −5,2 R » devient une phrase possible.',
       'Le brief du mentor lit aussi ce qu’il savait déjà sans le dire : la répartition de tes trades par jour de semaine et par heure d’entrée (heure de Paris), le pourcentage de A mois par mois (ta sélectivité), et tes cinq derniers jugements B/C dans tes propres mots.',
       'Rien à ressaisir : tout le reste vient de ce que tu notes déjà.',
+      'Correction : sur TradingView, la capture lisait « 3m » (3 minutes) comme « 3M » (3 mois) — la casse est maintenant respectée, et l’unité de temps s’écrit en toutes lettres dans la note (« 3 minutes ») pour que le doute ne revienne jamais.',
     ],
   },
   {

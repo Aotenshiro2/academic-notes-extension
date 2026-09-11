@@ -635,7 +635,7 @@ export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratB
 
 export interface MentoratAccessData {
   entitled: boolean
-  reason: 'manuel' | 'liveclub' | 'skool-vip' | 'skool-premium' | 'carnet-premium' | null
+  reason: 'etm' | 'manuel' | 'liveclub' | 'skool-vip' | 'skool-premium' | 'carnet-premium' | null
 }
 
 /** Le mode mentorat est-il ouvert pour ce compte ? (le backend décide) */

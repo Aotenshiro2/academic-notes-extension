@@ -122,17 +122,43 @@ function extractTradingView(): SiteExtractResult {
         // aria-pressed="true" dans certaines versions de la toolbar
         document.querySelector('#header-toolbar-intervals [aria-pressed="true"]')?.textContent?.trim() ||
         ''
-      if (active) return active.toUpperCase()
+      // La casse EST la donnée chez TradingView : m = minutes, M = mois.
+      // Bug du 11/09/2026 : le .toUpperCase() transformait « 3m » (3 minutes)
+      // en « 3M » (3 mois). On ne touche plus à la casse.
+      if (active) return active
 
       // Fallback: regex sur le titre de la page
       // Format possible : "NQ1! | 1M", "NQ1!, 15 — TradingView", "NQ1! 4H …"
       const tfMatch =
-        title.match(/[|,]\s*(\d+[mhHdDwWM]|[DWMQ])\b/) ||
-        title.match(/\b(\d{1,3}[mhHd]|[DWMQ])\s*[-—]/)
-      if (tfMatch) return tfMatch[1].toUpperCase()
+        title.match(/[|,]\s*(\d+[smhHdDwWM]|[DWMQ])\b/) ||
+        title.match(/\b(\d{1,3}[smhHd]|[DWMQ])\s*[-—]/)
+      if (tfMatch) return tfMatch[1]
 
       return ''
     })()
+
+    // Traduction en toutes lettres : « 3m » et « 3M » se ressemblent trop pour
+    // rester ambigus dans un texte lu par l'élève ou par le modèle. Un nombre
+    // seul (« 15 ») est en minutes, la convention TradingView.
+    const libellerTimeframe = (tf: string): string => {
+      const brut = tf.trim()
+      if (/^\d+$/.test(brut)) return `${brut} minutes`
+      const m = /^(\d+)?\s*([smhHDWM])$/.exec(brut)
+      if (!m) return brut
+      const n = m[1] ? parseInt(m[1], 10) : 1
+      const noms: Record<string, [string, string]> = {
+        s: ['seconde', 'secondes'],
+        m: ['minute', 'minutes'],
+        h: ['heure', 'heures'],
+        H: ['heure', 'heures'],
+        D: ['jour', 'jours'],
+        W: ['semaine', 'semaines'],
+        M: ['mois', 'mois'],
+      }
+      const nom = noms[m[2]]
+      return nom ? `${n} ${n > 1 ? nom[1] : nom[0]}` : brut
+    }
+    const timeframeLibelle = timeframe ? libellerTimeframe(timeframe) : ''
 
     // --- Exchange / contrat ---
     // Visible comme "Contrats à terme NASDAQ 100 E-MINI - 1 - CME"
@@ -239,7 +265,7 @@ function extractTradingView(): SiteExtractResult {
     // --- Contenu HTML — context pack ---
     const parts: string[] = []
     parts.push(`<p><strong>Symbole :</strong> ${symbol || '—'}</p>`)
-    if (timeframe) parts.push(`<p><strong>Timeframe :</strong> ${timeframe}</p>`)
+    if (timeframe) parts.push(`<p><strong>Timeframe :</strong> ${timeframe}${timeframeLibelle && timeframeLibelle !== timeframe ? ` (${timeframeLibelle})` : ''}</p>`)
     parts.push(`<p><strong>Prix :</strong> ${price || '—'}</p>`)
     if (ohlc) parts.push(`<p><strong>OHLC :</strong> O ${ohlc.o} · H ${ohlc.h} · B ${ohlc.l} · C ${ohlc.c}</p>`)
     if (changePct) parts.push(`<p><strong>Variation :</strong> ${changePct}</p>`)
@@ -268,7 +294,7 @@ function extractTradingView(): SiteExtractResult {
     else if (symbol) keyPoints.push(symbol)
     if (ohlc) keyPoints.push(`O ${ohlc.o} · H ${ohlc.h} · B ${ohlc.l} · C ${ohlc.c}`)
     if (changePct) keyPoints.push(`Variation : ${changePct}`)
-    if (timeframe) keyPoints.push(`Unité de temps : ${timeframe}`)
+    if (timeframe) keyPoints.push(`Unité de temps : ${timeframeLibelle || timeframe}`)
     if (session) keyPoints.push(`Session : ${session}`)
     if (contractInfo) keyPoints.push(contractInfo)
     if (indicators.length > 0) keyPoints.push(`Indicateurs : ${indicators.join(', ')}`)
@@ -276,7 +302,9 @@ function extractTradingView(): SiteExtractResult {
     // Tags auto
     const tags = ['tradingview']
     if (symbol) tags.push(symbol.toLowerCase())
-    if (timeframe) tags.push(timeframe.toLowerCase())
+    // Pas de toLowerCase ici : « 3M » (mois) deviendrait le tag « 3m »
+    // (minutes). Le libellé en toutes lettres est sans ambiguïté.
+    if (timeframe) tags.push((timeframeLibelle || timeframe).replace(/\s+/g, ''))
 
     return {
       // Succès si on a au minimum le symbole ou le prix
@@ -288,7 +316,7 @@ function extractTradingView(): SiteExtractResult {
       concepts: indicators.slice(0, 5),
       tags,
       siteName: 'TradingView',
-      extras: { symbol, price, ohlc, changePct, timeframe, chartTime, systemTime: systemTimeWithTz, session, exchange, futuresContract, contractInfo, indicators }
+      extras: { symbol, price, ohlc, changePct, timeframe, timeframeLibelle, chartTime, systemTime: systemTimeWithTz, session, exchange, futuresContract, contractInfo, indicators }
     }
   } catch (e) {
     return { success: false, error: String(e) }
