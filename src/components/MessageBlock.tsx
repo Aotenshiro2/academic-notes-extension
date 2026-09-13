@@ -396,6 +396,16 @@ function MessageBlock({
             {roleBloc === 'points-cles' ? 'Points clés' : 'Résumé'}
           </h3>
         )}
+        {/* `transition-colors` et SURTOUT PAS `transition-all` (corrigé le
+            13/09/2026, bug d'affichage remonté par Franky). Les classes de ce
+            bloc basculent entre `p-2 -m-2` au survol et `border-2 p-3` en
+            édition : avec `transition-all`, Chrome animait le padding, la
+            marge ET la bordure, donc la largeur du texte changeait image par
+            image et le paragraphe se recoupait à chaque frame. Il promeut en
+            plus l'élément en couche composite le temps de l'animation, et
+            laissait derrière lui une couche morte — le texte peint une
+            deuxième fois, plus haut et coupé plus étroit, par-dessus l'image
+            du dessus. Seule la couleur de fond a besoin d'être animée ici. */}
         <div
           ref={contentRef}
           contentEditable={isEditing}
@@ -404,7 +414,7 @@ function MessageBlock({
           onMouseUp={!isReadOnly ? handleMouseUp : undefined}
           onKeyDown={isEditing ? handleKeyDown : undefined}
           className={`
-            prose prose-sm max-w-none text-foreground/90 leading-relaxed rounded-lg transition-all outline-none
+            prose prose-sm max-w-none text-foreground/90 leading-relaxed rounded-lg transition-colors outline-none
             [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
             [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:hover:opacity-80
             [&_*]:max-w-full

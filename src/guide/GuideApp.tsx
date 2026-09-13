@@ -73,6 +73,7 @@ const CHANGELOG = [
       'Le brief du mentor lit aussi ce qu’il savait déjà sans le dire : la répartition de tes trades par jour de semaine et par heure d’entrée (heure de Paris), le pourcentage de A mois par mois (ta sélectivité), et tes cinq derniers jugements B/C dans tes propres mots.',
       'Rien à ressaisir : tout le reste vient de ce que tu notes déjà.',
       'Correction : sur TradingView, la capture lisait « 3m » (3 minutes) comme « 3M » (3 mois) — la casse est maintenant respectée, et l’unité de temps s’écrit en toutes lettres dans la note (« 3 minutes ») pour que le doute ne revienne jamais.',
+      'Correction : en survolant un bloc de texte, le paragraphe pouvait s’afficher une deuxième fois, décalé et par-dessus l’image du dessus. C’était une animation de trop — rien n’était abîmé dans la note, et ça disparaissait en bougeant la souris. Merci Franky pour la vidéo.',
     ],
   },
   {
