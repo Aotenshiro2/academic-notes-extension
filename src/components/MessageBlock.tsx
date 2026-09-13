@@ -545,9 +545,19 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // survol laissait des artefacts de peinture (zone basse fantôme en
   // surimpression du texte, vidéo Brice du 29/08). L'opacité se compose sur
   // le GPU sans re-peindre la zone.
+  //
+  // ⚠️ `bottom-full` et pas `-top-2.5` (corrigé le 13/09/2026). La pastille
+  // fait une vingtaine de pixels ; posée à −10 px, elle était à cheval sur le
+  // bord du bloc et masquait la moitié de sa PREMIÈRE LIGNE — on ne voyait
+  // plus les mots qu'on était en train de lire. L'écart entre blocs
+  // (`space-y-1.5`, 6 px) ne peut pas l'accueillir, il faut donc mordre
+  // quelque part : on mord au-dessus, sur la fin du bloc précédent, qu'on
+  // n'est pas en train de lire. C'est le compromis des barres flottantes des
+  // éditeurs. Le fond opaque (`bg-popover` + bordure + ombre) reste
+  // indispensable pour qu'elle occulte proprement au lieu de se mélanger.
   if (!tags || tags.length === 0) {
     return (
-      <div className="absolute -top-2.5 right-0 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
+      <div className="absolute bottom-full right-0 mb-0.5 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
         <span>{formatSmartDate(timestamp)}</span>
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
@@ -575,7 +585,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // pastille en surimpression, comme pour les blocs sans tag.
   return (
     <>
-      <span className="absolute -top-2.5 right-0 z-20 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
+      <span className="absolute bottom-full right-0 mb-0.5 z-20 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
         {formatSmartDate(timestamp)}
       </span>
       <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
