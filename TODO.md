@@ -255,6 +255,27 @@ plutôt que dans des blocs dédiés) ; le rapprochement positions clôturées �
 documentés (« tu as clôturé 7 positions mardi, 2 sont documentées ») ; le masquage
 des données de compte avant envoi à l'API ; le mode session.
 
+## À surveiller en usage — 1.8.7 envoyée au Store le 13/09/2026
+
+Deux correctifs d'affichage partis sans avoir pu être vérifiés en conditions
+réelles (un panneau latéral MV3 ne se rend pas hors de Chrome). Brice a tranché :
+on verra aux retours.
+
+- [ ] **Le fantôme de texte au survol d'un bloc** (vidéo de Franky, 12/09).
+      Cause : `transition-all` sur le conteneur de texte de `MessageBlock`, dont
+      les classes basculent entre `p-2 -m-2` et `border-2 p-3` — Chrome animait
+      padding, marge et bordure, le paragraphe se recoupait à chaque frame, et
+      la couche composite morte restait peinte. Passé en `transition-colors`.
+      Si ça revient : chercher une autre propriété de boîte qui change sous
+      transition, pas un problème de rendu React.
+
+- [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
+      première ligne du bloc ; elle mord maintenant sur la fin du bloc
+      précédent, faute d'écart suffisant (`space-y-1.5` = 6 px pour une pastille
+      de ~20 px). **Cas non vérifié : le TOUT PREMIER bloc d'une note**, qui n'a
+      rien au-dessus — si elle se fait rogner par le haut du conteneur, la
+      basculer vers le bas pour ce cas seulement.
+
 ## Deux fils rouverts par Brice le 01/09/2026 (relecture de la release note)
 
 Les deux sont sortis de la relecture, pas d'un bug : il a lu ce qu'on annonçait
