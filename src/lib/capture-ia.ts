@@ -149,40 +149,52 @@ export async function enrichirCapture(
  * Tags automatiques sur une note DÉJÀ remplie (demande Brice, 17/09/2026) :
  * la capture intelligente sait taguer une page, mais rien ne savait taguer
  * une note existante sans capturer quoi que ce soit. Même passe secrétaire,
- * même gating serveur — on ne garde QUE les tags, la note n'est pas réécrite.
- * La première image de la note part avec (c'est souvent le graphique, et il
- * veut aussi taguer ses images). Renvoie null si l'IA n'a rien donné : pas
- * de tags inventés localement en repli.
+ * même gating et mêmes budgets serveur (famille « relecture »).
+ *
+ * UN clic = UN appel, au coût borné quelle que soit la taille de la note :
+ * tout le texte (10 000 caractères max) + un ÉCHANTILLON de 3 images
+ * (début / milieu / fin — une leçon change de sujet en route, la première
+ * capture ne suffit pas, remarque Brice du 18/09). On récolte les tags ET
+ * les concepts : ce sont eux qui font remonter la note dans le journal.
+ * Renvoie null si l'IA n'a rien donné — pas de tags inventés en repli.
  */
 export async function suggererTagsNote(note: {
   title?: string
   tags?: string[]
+  concepts?: string[]
   messages?: { type: string; content: string }[]
-}): Promise<string[] | null> {
+}): Promise<{ tags: string[]; concepts: string[] } | null> {
   const textes: string[] = []
-  let image: string | null = null
+  const imagesNote: string[] = []
   for (const m of note.messages ?? []) {
-    if (m.type === 'text') textes.push(htmlVersTexte(m.content))
-    if (m.type === 'image' && !image && m.content.startsWith('data:')) image = m.content
-    if (textes.join('\n').length > 10_000) break
+    if (m.type === 'text' && textes.join('\n').length < 10_000) textes.push(htmlVersTexte(m.content))
+    if (m.type === 'image' && m.content.startsWith('data:')) imagesNote.push(m.content)
   }
+  // Échantillon début / milieu / fin, dédoublonné (une note à 1 ou 2 images
+  // donne 1 ou 2 entrées, pas des doublons)
+  const echantillon = [...new Set([
+    imagesNote[0],
+    imagesNote[Math.floor(imagesNote.length / 2)],
+    imagesNote[imagesNote.length - 1],
+  ].filter(Boolean))] as string[]
+
   const contenu = [
     note.title ? `Titre de la note : ${note.title}` : '',
-    'Propose des tags pour classer cette note de trading déjà écrite.',
     textes.join('\n').slice(0, 10_000),
   ].filter(Boolean).join('\n\n')
-  if (contenu.length < 60 && !image) return null
+  if (contenu.length < 60 && echantillon.length === 0) return null
 
-  // URL neutre : pas de page capturée, le serveur route sur la famille par
-  // défaut. Le contenu EST la note.
   const { sortie } = await capturerAvecIA({
     url: 'https://note-locale.carnet/tags',
     contenu,
-    image,
+    images: echantillon,
     langue: getLangueAnalyse(),
   })
-  if (!sortie?.tags?.length) return null
-  return [...new Set([...(note.tags ?? []), ...sortie.tags])].slice(0, 10)
+  if (!sortie) return null
+  const tags = [...new Set([...(note.tags ?? []), ...(sortie.tags ?? [])])].slice(0, 10)
+  const concepts = [...new Set([...(note.concepts ?? []), ...(sortie.concepts ?? [])])].slice(0, 12)
+  if (tags.length === (note.tags ?? []).length && concepts.length === (note.concepts ?? []).length) return null
+  return { tags, concepts }
 }
 
 export interface EtudeRendue {

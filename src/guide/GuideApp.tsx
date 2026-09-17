@@ -68,7 +68,7 @@ const CHANGELOG = [
     version: '1.8.8',
     title: 'Les tags viennent à toi',
     items: [
-      'Nouveau : « tags auto » à côté du + tag de la note. L’IA lit ta note déjà écrite (textes et première image) et propose des tags — sans rien capturer, sans toucher au contenu. Tes tags posés à la main restent.',
+      'Nouveau : « tags auto » à côté du + tag de la note. L’IA lit ta note déjà écrite — tout le texte, plus un échantillon de trois images (début, milieu, fin : une leçon change de sujet en route) — et pose des tags ET des concepts, sans rien capturer, sans toucher au contenu. Tes tags posés à la main restent. Un clic = un seul appel, au même tarif qu’une capture, sur ton forfait habituel.',
       'Correction : en plein écran, le bouton « Analyser avec une IA » n’ouvrait rien. Il ouvre.',
       'Correction : la pastille « + tag » d’un bloc disparaissait quand le curseur quittait le texte pour l’atteindre — il y avait 2 pixels de vide entre les deux, et le survol s’y perdait. Le vide est comblé, la pastille t’attend.',
     ],

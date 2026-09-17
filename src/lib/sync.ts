@@ -854,6 +854,9 @@ export interface DemandeCaptureIA {
   contenu: string
   /** data URL du screenshot, ou URL publique si la note est déjà synchronisée */
   image?: string | null
+  /** Échantillon d'images d'une note existante (tags auto) : début/milieu/fin,
+   *  3 max — un clic reste UN appel au coût borné */
+  images?: string[]
   noteId?: string
   /** modèle préféré pour l'étude — une PROPOSITION, le serveur tranche */
   modele?: string | null

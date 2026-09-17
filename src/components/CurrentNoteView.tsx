@@ -284,9 +284,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     if (!note || tagsAutoEnCours) return
     setTagsAutoEnCours(true)
     try {
-      const tags = await suggererTagsNote(note)
-      if (tags) {
-        await storage.saveNote({ ...note, tags })
+      const resultat = await suggererTagsNote(note)
+      if (resultat) {
+        // Tags ET concepts : les concepts nourrissent « Observer les
+        // concepts » au journal — c'est là qu'il veut retrouver ses notes.
+        await storage.saveNote({ ...note, tags: resultat.tags, concepts: resultat.concepts })
         await loadNote()
         onNoteUpdate?.()
       } else {
