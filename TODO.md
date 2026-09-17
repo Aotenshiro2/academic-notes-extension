@@ -90,6 +90,19 @@ nos propres exports PDF du carnet.
   (journal) + lignes du brief ; v2 stratégie TopstepX ; v3 reconstruction
   Quantower + R auto.
 
+### Piste consignée le 17/09 — export des notes d'un même tag/concept d'un coup
+
+Demande Brice (17/09) : « exporter les notes liées à un même tag/concept d'un
+coup ». Consigné pour plus tard (son accord explicite). Les briques existent :
+`buildExportHtml(note)` dans export-flow.ts (extension) et les notes taguées
+sont en local ET au journal. Ce qui manque : un POINT D'ENTRÉE UI — il n'y a
+aujourd'hui aucun écran « parcourir par tag » ni dans l'extension ni comme
+liste exportable. Deux options à trancher à la reprise :
+- extension : filtre par tag dans la bibliothèque plein écran + bouton
+  « Exporter ces notes » (concat des buildExportHtml, un PDF) ;
+- journal (sa propre intuition) : depuis l'écran d'un concept
+  (`/concepts/[tagId]`), bouton d'export des séances liées.
+
 ### Piste consignée le 08/09 — le brief mentor face au rapport perso de Florent
 
 Comparaison faite (rapport « Récap trading juillet-septembre » généré par Florent
