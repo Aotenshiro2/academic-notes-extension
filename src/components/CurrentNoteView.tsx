@@ -15,6 +15,7 @@ import DolBar from './DolBar'
 import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
 import { deleteJournalAnnotation } from '@/lib/sync'
+import { suggererTagsNote } from '@/lib/capture-ia'
 import { collectNoteImages } from '@/lib/note-images'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
@@ -274,6 +275,27 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [note, onNoteUpdate])
+
+  // Tags automatiques sur une note déjà remplie (demande Brice 17/09) : la
+  // même IA que la capture, mais sans capturer quoi que ce soit — elle lit
+  // les blocs (et la première image) et ne pose QUE des tags.
+  const [tagsAutoEnCours, setTagsAutoEnCours] = useState(false)
+  const handleTagsAuto = useCallback(async () => {
+    if (!note || tagsAutoEnCours) return
+    setTagsAutoEnCours(true)
+    try {
+      const tags = await suggererTagsNote(note)
+      if (tags) {
+        await storage.saveNote({ ...note, tags })
+        await loadNote()
+        onNoteUpdate?.()
+      } else {
+        toast.info('Pas de tags proposés (note trop courte, ou IA indisponible).')
+      }
+    } finally {
+      setTagsAutoEnCours(false)
+    }
+  }, [note, tagsAutoEnCours, onNoteUpdate])
 
   // Annotation courante de la note (ni messageRef ni tradeRef = jugement de la note entière)
   const noteAnnotation: Annotation | undefined = useMemo(() => {
@@ -551,6 +573,18 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 <span>tag</span>
               </button>
             )}
+            {note.tags.length === 0 && (
+              <button
+                onClick={handleTagsAuto}
+                disabled={tagsAutoEnCours}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0 disabled:opacity-100"
+                title="Tags automatiques : l'IA lit la note et propose des tags"
+                aria-label="Tags automatiques"
+              >
+                {tagsAutoEnCours ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                <span>tags auto</span>
+              </button>
+            )}
             <button
               onClick={e => {
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -603,6 +637,16 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           >
             <Plus size={10} />
             <span>tag</span>
+          </button>
+          <button
+            onClick={handleTagsAuto}
+            disabled={tagsAutoEnCours}
+            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100 disabled:opacity-100"
+            title="Tags automatiques : l'IA lit la note et complète les tags"
+            aria-label="Tags automatiques"
+          >
+            {tagsAutoEnCours ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+            <span>auto</span>
           </button>
         </div>
       )}

@@ -145,6 +145,46 @@ export async function enrichirCapture(
   }
 }
 
+/**
+ * Tags automatiques sur une note DÉJÀ remplie (demande Brice, 17/09/2026) :
+ * la capture intelligente sait taguer une page, mais rien ne savait taguer
+ * une note existante sans capturer quoi que ce soit. Même passe secrétaire,
+ * même gating serveur — on ne garde QUE les tags, la note n'est pas réécrite.
+ * La première image de la note part avec (c'est souvent le graphique, et il
+ * veut aussi taguer ses images). Renvoie null si l'IA n'a rien donné : pas
+ * de tags inventés localement en repli.
+ */
+export async function suggererTagsNote(note: {
+  title?: string
+  tags?: string[]
+  messages?: { type: string; content: string }[]
+}): Promise<string[] | null> {
+  const textes: string[] = []
+  let image: string | null = null
+  for (const m of note.messages ?? []) {
+    if (m.type === 'text') textes.push(htmlVersTexte(m.content))
+    if (m.type === 'image' && !image && m.content.startsWith('data:')) image = m.content
+    if (textes.join('\n').length > 10_000) break
+  }
+  const contenu = [
+    note.title ? `Titre de la note : ${note.title}` : '',
+    'Propose des tags pour classer cette note de trading déjà écrite.',
+    textes.join('\n').slice(0, 10_000),
+  ].filter(Boolean).join('\n\n')
+  if (contenu.length < 60 && !image) return null
+
+  // URL neutre : pas de page capturée, le serveur route sur la famille par
+  // défaut. Le contenu EST la note.
+  const { sortie } = await capturerAvecIA({
+    url: 'https://note-locale.carnet/tags',
+    contenu,
+    image,
+    langue: getLangueAnalyse(),
+  })
+  if (!sortie?.tags?.length) return null
+  return [...new Set([...(note.tags ?? []), ...sortie.tags])].slice(0, 10)
+}
+
 export interface EtudeRendue {
   sortie?: SortieCaptureIA
   /** 'reservee' quand le palier ne l'ouvre pas — le client affiche l'upgrade */

@@ -860,7 +860,10 @@ function FullscreenApp() {
             </div>
 
             <button
-              onClick={currentNote ? () => setShowAnalyzeDialog(true) : undefined}
+              /* Bug du 17/09 : ouvrir le flag sans charger la note laissait
+                 `analyzeNote` à null et le dialog ne se rendait jamais —
+                 handleOpenAnalyze existait mais n'était pas branché ici. */
+              onClick={currentNote ? handleOpenAnalyze : undefined}
               disabled={!currentNote}
               className={`p-2 rounded-md transition-colors ${
                 currentNote

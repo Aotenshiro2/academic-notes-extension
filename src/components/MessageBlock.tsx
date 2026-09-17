@@ -555,9 +555,17 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // n'est pas en train de lire. C'est le compromis des barres flottantes des
   // éditeurs. Le fond opaque (`bg-popover` + bordure + ombre) reste
   // indispensable pour qu'elle occulte proprement au lieu de se mélanger.
+  // ⚠️ Pas de MARGE entre la pastille et le bloc (corrigé le 17/09/2026, bug
+  // remonté par Brice) : le `mb-0.5` créait 2 px de vide — en allant du bloc
+  // vers « + tag », le curseur traversait ce vide, le :hover du groupe tombait,
+  // pointer-events-none retombait, et la pastille mourait avant d'être
+  // atteinte. Le conteneur touche maintenant le bloc (bottom-full, marge
+  // zéro) et l'écart visuel est un PADDING intérieur (pb-0.5) : tout le
+  // rectangle est survolable, le hover ne se perd jamais en route.
   if (!tags || tags.length === 0) {
     return (
-      <div className="absolute bottom-full right-0 mb-0.5 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
+      <div className="absolute bottom-full right-0 z-20 pb-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
+      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground">
         <span>{formatSmartDate(timestamp)}</span>
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
@@ -576,6 +584,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
             <Trash2 size={11} />
           </button>
         )}
+      </div>
       </div>
     )
   }
