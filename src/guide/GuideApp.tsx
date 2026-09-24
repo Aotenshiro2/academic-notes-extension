@@ -575,22 +575,24 @@ function Section({ icon: Icon, title, children }: { icon: typeof Keyboard; title
 
 // Feuille de route publique — le teaser des chantiers à venir, sans détail
 // business. Alimentée au fil des livraisons (source interne : TODO.md).
+// Rafraîchie le 20/09/2026 : les quatre chantiers précédents (mentorat, capture
+// IA, transcription vidéo, forfaits) sont livrés depuis la 1.8.x.
 const ROADMAP = [
   {
-    title: 'Mode mentorat',
-    desc: 'Ton suivi de progression chiffré et un plan d\'évolution proposé par l\'IA puis validé par un mentor humain. Option payante, le carnet gratuit reste entier.',
+    title: 'Pas de 1.9 avant que l\'IA soit alignée',
+    desc: 'Les 1.8.x servent à ça : la capture intelligente, le mentor et les tags auto s\'ajustent sur tes retours. La prochaine grande fonctionnalité n\'entre qu\'après.',
   },
   {
-    title: 'Capture intelligente nouvelle génération',
-    desc: 'La capture de page repensée et propulsée par l\'IA pour des résumés vraiment utiles.',
+    title: 'Exporter par tag ou par concept',
+    desc: 'Sortir d\'un coup toutes les notes qui portent un tag ou un concept, pour les relire ou les travailler ailleurs.',
   },
   {
-    title: 'Transcription vidéo',
-    desc: 'Le même moteur local que la dictée vocale, appliqué aux vidéos que tu étudies.',
+    title: 'Les imports de trades, suite',
+    desc: 'TopstepX puis Quantower, et le rapprochement entre tes trades importés dans le journal et ceux du carnet : le R se calculera tout seul.',
   },
   {
-    title: 'Forfaits dans l\'extension',
-    desc: 'Voir et gérer son forfait directement depuis le panneau, sans passer par le site.',
+    title: 'Le Journal d\'Études continue',
+    desc: 'Le 0.2 « Observer les concepts » avance : les liens entre tes notes et les concepts se poseront sans corvée, et chaque concept aura sa fiche. Toujours en bêta ouverte, sans date.',
   },
 ]
 
