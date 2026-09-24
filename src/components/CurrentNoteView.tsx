@@ -12,7 +12,7 @@ import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
 import WarmupCard from './WarmupCard'
 import DolBar from './DolBar'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
 import { deleteJournalAnnotation } from '@/lib/sync'
 import { suggererTagsNote } from '@/lib/capture-ia'
@@ -23,20 +23,24 @@ const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 // Couleurs par LETTRE : un B+ et un B− restent ambrés, la nuance se lit dans
 // le texte du badge. Affichage avec le vrai signe moins (« B− »), stockage
 // ASCII ('B-').
-const GRADE_BADGE_CLASS: Record<'A' | 'B' | 'C', string> = {
+// D (24/09/2026) : un rouge plus sombre que le C, même teinte que dans le
+// popover. Couleur par défaut, à faire valider par Brice.
+const GRADE_BADGE_CLASS: Record<AnnotationLettre, string> = {
   A: 'bg-green-500/15 text-green-600 dark:text-green-400',
   B: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   C: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  D: 'bg-red-800/15 text-red-800 dark:text-red-300',
 }
 
-const GRADE_TEXT_CLASS: Record<'A' | 'B' | 'C', string> = {
+const GRADE_TEXT_CLASS: Record<AnnotationLettre, string> = {
   A: 'text-green-600 dark:text-green-400',
   B: 'text-amber-600 dark:text-amber-400',
   C: 'text-red-600 dark:text-red-400',
+  D: 'text-red-800 dark:text-red-300',
 }
 
-const badgeClassDe = (g: AnnotationGrade): string => GRADE_BADGE_CLASS[g[0] as 'A' | 'B' | 'C']
-const texteClassDe = (g: AnnotationGrade): string => GRADE_TEXT_CLASS[g[0] as 'A' | 'B' | 'C']
+const badgeClassDe = (g: AnnotationGrade): string => GRADE_BADGE_CLASS[g[0] as AnnotationLettre]
+const texteClassDe = (g: AnnotationGrade): string => GRADE_TEXT_CLASS[g[0] as AnnotationLettre]
 const afficherGrade = (g: AnnotationGrade): string => g.replace('-', '−')
 
 const OUTCOME_LABEL: Record<TradeOutcome, string> = { gain: 'Gain', perte: 'Perte', be: 'BE' }
@@ -94,17 +98,42 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   useEffect(() => subscribeShowMeta(setShowMetaState), [])
   const isFirstLoad = useRef(true)
 
+  // Grade D proposé ou non (réglage opt-in, 24/09/2026). Lu depuis le
+  // stockage et suivi en direct : le basculer dans les Paramètres doit valoir
+  // tout de suite, sans rouvrir la note.
+  const [notationJusquaD, setNotationJusquaD] = useState(false)
+  useEffect(() => {
+    let vivant = true
+    storage.getSettings().then(s => { if (vivant) setNotationJusquaD(!!s.notationJusquaD) })
+    const onChanged = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+      if (area === 'local' && changes.settings) setNotationJusquaD(!!changes.settings.newValue?.notationJusquaD)
+    }
+    chrome.storage?.onChanged?.addListener(onChanged)
+    return () => { vivant = false; chrome.storage?.onChanged?.removeListener(onChanged) }
+  }, [])
+
+  // Sélection multiple façon chat (24/09/2026) : null = hors mode sélection.
+  // Raison d'être : grouper sous un trade des blocs capturés sans avoir pensé
+  // à lancer le trade au moment de la position (retour Brice).
+  const [selection, setSelection] = useState<Set<string> | null>(null)
+  const [groupementEnCours, setGroupementEnCours] = useState(false)
+
   // Recharger la note quand noteId change
   useEffect(() => {
     isFirstLoad.current = true
     setRemoteUpdatePending(false)
+    // Une sélection ne survit pas à un changement de note : ses ids
+    // désigneraient des blocs d'une autre note.
+    setSelection(null)
     loadNote()
   }, [noteId])
 
-  // Quand un refresh distant arrive, vérifier si une édition est en cours
+  // Quand un refresh distant arrive, vérifier si une édition est en cours.
+  // Le mode sélection compte comme une édition : recharger sous les doigts
+  // pourrait faire disparaître ou déplacer un bloc déjà coché.
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || selection !== null) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -356,6 +385,42 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
+
+  // ---- Sélection multiple → « Grouper sous un trade » ----
+  const entrerSelection = useCallback((messageId: string) => {
+    setSelection(new Set([messageId]))
+  }, [])
+
+  const basculerSelection = useCallback((messageId: string) => {
+    setSelection(prev => {
+      if (!prev) return prev
+      const suivante = new Set(prev)
+      if (suivante.has(messageId)) suivante.delete(messageId)
+      else suivante.add(messageId)
+      return suivante
+    })
+  }, [])
+
+  const handleGrouperSousTrade = useCallback(async () => {
+    if (!selection || selection.size === 0 || groupementEnCours) return
+    setGroupementEnCours(true)
+    try {
+      const tradeId = await storage.grouperSousTrade(noteId, [...selection])
+      if (!tradeId) {
+        toast.error('Aucun bloc à grouper (déjà rattachés à un trade ?)')
+        return
+      }
+      setSelection(null)
+      setRemoteUpdatePending(false)
+      await loadNote()
+      onNoteUpdate?.()
+    } catch (error) {
+      console.error('[CurrentNoteView] Groupement impossible:', error)
+      toast.error('Impossible de grouper ces blocs')
+    } finally {
+      setGroupementEnCours(false)
+    }
+  }, [selection, groupementEnCours, noteId, onNoteUpdate])
 
   // Le R : virgule ou point acceptés, vide = effacer, bornes larges (±100)
   const handleSaveTradeR = useCallback(async (tradeId: string) => {
@@ -891,8 +956,13 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 seen.add(tRef)
                 items.push(renderMarker(tradesById.get(tRef)!))
               }
+              // Sélectionnable = ni métadonnée, ni déjà dans un trade EXISTANT
+              // (un tradeRef orphelin ne regroupe plus rien à l'écran, le bloc
+              // se regroupe donc comme un bloc libre).
+              const dansUnTrade = Boolean(tRef && tradesById.has(tRef))
+              const selectionnable = message.type !== 'meta' && !dansUnTrade
               items.push(
-                <div key={message.id} className={tRef && tradesById.has(tRef) ? 'border-l-2 border-blue-500/25 pl-2.5 ml-1' : undefined}>
+                <div key={message.id} className={dansUnTrade ? 'border-l-2 border-blue-500/25 pl-2.5 ml-1' : undefined}>
                   <MessageBlock
                     message={message}
                     noteId={noteId}
@@ -901,12 +971,21 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                     onTagsUpdate={loadNote}
                     onImageClick={handleImageClick}
                     onOpenPanel={() => setPanelMessage(message)}
+                    selectionMode={selection !== null}
+                    selected={selection?.has(message.id) ?? false}
+                    selectable={selectionnable}
+                    onToggleSelect={() => basculerSelection(message.id)}
+                    onEnterSelection={selectionnable ? () => entrerSelection(message.id) : undefined}
                   />
                 </div>
               )
               if (message.id !== lastVisibleId) {
                 items.push(
-                  <InsertPoint key={`ins-${message.id}`} onInsert={html => handleInsertAfter(message.id, html)} />
+                  <InsertPoint
+                    key={`ins-${message.id}`}
+                    inactif={selection !== null}
+                    onInsert={html => handleInsertAfter(message.id, html)}
+                  />
                 )
               }
             }
@@ -969,6 +1048,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           position={notationPos}
           existing={notationTarget.tradeRef ? findTradeAnnotation(notationTarget.tradeRef) : noteAnnotation}
           outcome={notationTarget.tradeRef ? (note.trades ?? []).find(t => t.id === notationTarget.tradeRef)?.outcome : undefined}
+          avecD={notationJusquaD}
           onSave={handleSaveNotation}
           onRemove={handleRemoveNotation}
           onClose={() => setNotationTarget(null)}
@@ -1081,6 +1161,37 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           </div>
         </div>
       )}
+
+      {/* Barre d'action de la sélection multiple (24/09/2026). `sticky` en
+          DERNIER enfant : elle s'ajoute sous tout le contenu (rien au-dessus
+          ne bouge) et, dès que la note dépasse la hauteur du panneau, elle
+          colle au bas de la zone qui défile, donc juste au-dessus de la
+          capture bar. Fond opaque + ombre : elle recouvre proprement le texte
+          qui passe dessous. */}
+      {selection !== null && (
+        <div className="sticky bottom-2 z-30 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-popover shadow-lg">
+          <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+            {selection.size === 0
+              ? 'Aucun bloc sélectionné'
+              : `${selection.size} bloc${selection.size > 1 ? 's' : ''} sélectionné${selection.size > 1 ? 's' : ''}`}
+          </span>
+          <button
+            onClick={() => setSelection(null)}
+            disabled={groupementEnCours}
+            className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors disabled:opacity-50 flex-shrink-0"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => void handleGrouperSousTrade()}
+            disabled={selection.size === 0 || groupementEnCours}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            {groupementEnCours ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />}
+            Grouper sous un trade
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1093,7 +1204,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
  * pendant la relecture) n'avait aucun geste — la capture bar n'ajoute qu'en
  * fin de fil (retour Brice 28/08).
  */
-function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }) {
+function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) => Promise<void>; inactif?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
@@ -1125,11 +1236,14 @@ function InsertPoint({ onInsert }: { onInsert: (html: string) => Promise<void> }
   }, [onInsert])
 
   if (!editing) {
+    // Inactif (mode sélection, 24/09/2026) : la bande reste RENDUE, elle
+    // participe à l'espacement entre blocs ; la retirer ferait remonter tout
+    // le fil. On coupe seulement le pointeur, le clic retombe sur le fil.
     return (
       <div
-        className="group/ins relative z-10 -my-1 h-2.5 flex items-center cursor-pointer"
-        onClick={() => setEditing(true)}
-        title="Insérer du texte ou une capture ici"
+        className={`group/ins relative z-10 -my-1 h-2.5 flex items-center ${inactif ? 'pointer-events-none' : 'cursor-pointer'}`}
+        onClick={() => { if (!inactif) setEditing(true) }}
+        title={inactif ? undefined : 'Insérer du texte ou une capture ici'}
       >
         {/* Révélation par opacité (jamais display : artefacts de peinture).
             Le ＋ est OPAQUE depuis le 01/09 : la bande fait 10 px pour un

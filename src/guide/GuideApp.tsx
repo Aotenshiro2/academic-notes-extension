@@ -65,6 +65,15 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.9',
+    title: 'La note s’édite quand tu le décides',
+    items: [
+      'Changement de fond : cliquer sur un texte ne l’édite plus. Pour éditer : double-clique, ou le crayon dans la pastille au survol du bloc. Le clic redevient un geste sans risque — fini les éditions ouvertes sans le vouloir.',
+      'Nouveau : sélectionne plusieurs blocs comme dans une messagerie (la coche dans la pastille d’un bloc ouvre le mode), puis « Grouper sous un trade » : le trade est créé après coup, sur la plage de temps des blocs choisis. Tu avais oublié de lancer le trade au moment de ta position ? Maintenant tu reviens en arrière.',
+      'Nouveau, discret : la note D. Désactivée par défaut — un interrupteur « Noter jusqu’à D » dans les Paramètres l’ajoute sous le C, avec ses nuances D+ et D−. Tes statistiques et le mentor la comptent, mais elle n’apparaît nulle part tant que tu n’en poses pas.',
+    ],
+  },
+  {
     version: '1.8.8',
     title: 'Les tags viennent à toi',
     items: [

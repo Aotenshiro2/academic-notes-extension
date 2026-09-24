@@ -13,7 +13,8 @@ import type {
   Settings,
   SyncStatus,
   AIConfig,
-  NoteSummary
+  NoteSummary,
+  TradeSegment
 } from '@/types/academic'
 
 /**
@@ -991,6 +992,41 @@ export const storage = {
       return r === undefined ? reste : { ...reste, r }
     })
     await this.saveNote({ ...note, trades })
+  },
+
+  /**
+   * Groupe a posteriori des blocs sous un trade créé pour l'occasion (demande
+   * Brice 24/09/2026). Il fallait penser à lancer le trade AU MOMENT de la
+   * position ; oublié, il n'y avait plus de retour possible. Le segment couvre
+   * la plage des blocs choisis (premier → dernier horodatage) et naît clos :
+   * ce n'est pas un trade en cours, et il ne doit pas capter les blocs qu'on
+   * ajoutera ensuite en fin de fil. Pas d'outcome : le « Résultat ? » du
+   * marqueur prend le relais, comme pour un trade clos sans résultat.
+   *
+   * Garde-fou côté stockage, en plus de l'interface : un bloc `meta` ou déjà
+   * rattaché à un trade EXISTANT n'est jamais réassigné par ce chemin (un
+   * tradeRef orphelin, lui, peut l'être : il ne pointe plus sur rien).
+   */
+  async grouperSousTrade(noteId: string, messageIds: string[]): Promise<string | null> {
+    const note = await this.getNote(noteId)
+    if (!note || messageIds.length === 0) return null
+    const tradesExistants = new Set((note.trades ?? []).map(t => t.id))
+    const demandes = new Set(messageIds)
+    const cibles = new Set(
+      (note.messages ?? [])
+        .filter(m => demandes.has(m.id) && m.type !== 'meta' && !(m.tradeRef && tradesExistants.has(m.tradeRef)))
+        .map(m => m.id)
+    )
+    if (cibles.size === 0) return null
+    const horodatages = (note.messages ?? []).filter(m => cibles.has(m.id)).map(m => m.timestamp)
+    const trade: TradeSegment = {
+      id: crypto.randomUUID(),
+      startedAt: Math.min(...horodatages),
+      closedAt: Math.max(...horodatages),
+    }
+    const messages = (note.messages ?? []).map(m => (cibles.has(m.id) ? { ...m, tradeRef: trade.id } : m))
+    await this.saveNote({ ...note, messages, trades: [...(note.trades ?? []), trade] })
+    return trade.id
   },
 
   /** Clôt silencieusement le segment actif (fermeture/changement de note). */

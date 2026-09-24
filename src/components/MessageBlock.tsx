@@ -1,6 +1,6 @@
 import { toast } from '../lib/toast'
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Save, X, Trash2, GripVertical, ChevronUp, FileText, Tag } from 'lucide-react'
+import { Save, X, Trash2, GripVertical, ChevronUp, FileText, Tag, Pencil, CheckSquare, Check, Crosshair } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
 import { formatSmartDate } from '@/lib/date-utils'
 import storage from '@/lib/storage'
@@ -20,6 +20,14 @@ interface MessageBlockProps {
   onImageClick?: (src: string) => void
   onOpenPanel?: () => void
   isReadOnly?: boolean
+  /** Sélection multiple façon chat (24/09/2026) : la vue est en mode sélection */
+  selectionMode?: boolean
+  selected?: boolean
+  /** false = bloc déjà rattaché à un trade : coche grisée, le clic ne coche rien */
+  selectable?: boolean
+  onToggleSelect?: () => void
+  /** Absent = pas d'entrée « Sélectionner des blocs » dans la pastille */
+  onEnterSelection?: () => void
 }
 
 function MessageBlock({
@@ -30,7 +38,12 @@ function MessageBlock({
   onTagsUpdate,
   onImageClick,
   onOpenPanel,
-  isReadOnly = false
+  isReadOnly = false,
+  selectionMode = false,
+  selected = false,
+  selectable = true,
+  onToggleSelect,
+  onEnterSelection
 }: MessageBlockProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -205,11 +218,68 @@ function MessageBlock({
       }
     }
 
-    // For text, start editing (only if not collapsed)
+    // Le clic simple sur du texte n'édite PLUS rien (retour Brice 24/09/2026,
+    // qui revient sur son choix d'origine) : chaque clic pour sélectionner,
+    // relire ou poser le curseur ailleurs faisait basculer le bloc en édition.
+    // L'édition passe par le double-clic (handleDoubleClick) ou le crayon de
+    // la pastille ; le clic simple sert désormais à la sélection multiple.
+  }, [message, isEditing, onImageClick])
+
+  // Double-clic = édition. Mêmes gardes que l'ancien clic : pas en lecture
+  // seule, pas sur une tuile longue repliée (son clic ouvre le panneau), pas
+  // sur une image intégrée (son clic ouvre déjà la visionneuse).
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'IMG') return
     if (!isReadOnly && !isEditing && (!isLongText || !isCollapsed)) {
       startEditing()
     }
-  }, [message, isEditing, isReadOnly, isLongText, isCollapsed, startEditing, onImageClick])
+  }, [isReadOnly, isEditing, isLongText, isCollapsed, startEditing])
+
+  // Mode sélection : le bloc en cours d'édition n'y participe pas (sinon
+  // chaque clic pour placer le curseur cocherait/décocherait le bloc).
+  const enSelection = selectionMode && !isEditing
+
+  // En mode sélection, TOUT clic sur le bloc bascule la coche : on l'arrête
+  // en phase de CAPTURE, avant qu'il n'atteigne la visionneuse, le panneau
+  // d'une tuile longue ou un bouton de la pastille. Le double-clic est
+  // neutralisé de la même façon (il n'ouvre pas l'édition au passage).
+  const interceptSelection = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'click' && selectable) onToggleSelect?.()
+  }, [selectable, onToggleSelect])
+
+  const selectionProps = enSelection
+    ? { onClickCapture: interceptSelection, onDoubleClickCapture: interceptSelection }
+    : {}
+
+  // Sans la classe `group`, aucune révélation au survol ne se déclenche dans
+  // le bloc (pastille, poubelles, poignée) : en mode sélection, elles
+  // proposeraient des gestes que le clic ne peut plus atteindre. Retirer une
+  // classe ne change rien à la mise en page. Le fond et l'anneau d'un bloc
+  // coché passent par background et box-shadow : zéro décalage non plus.
+  const groupe = enSelection ? '' : 'group'
+  const selectionClass = enSelection
+    ? `cursor-pointer rounded-lg ${selected ? 'bg-primary/5 ring-1 ring-primary/30' : ''}`
+    : ''
+
+  // Coche en SURIMPRESSION (absolute) au coin haut gauche : elle n'occupe
+  // aucune place dans le flux, rien ne bouge quand le mode s'ouvre.
+  const caseSelection = enSelection ? (
+    <span
+      className={`absolute -top-1.5 -left-1.5 z-20 flex items-center justify-center w-[18px] h-[18px] rounded-full border shadow-sm transition-colors ${
+        !selectable
+          ? 'bg-muted border-border text-muted-foreground/50'
+          : selected
+            ? 'bg-primary border-primary text-primary-foreground'
+            : 'bg-popover border-border'
+      }`}
+      title={!selectable ? 'Déjà rattaché à un trade' : selected ? 'Retirer de la sélection' : 'Ajouter à la sélection'}
+      aria-hidden="true"
+    >
+      {!selectable ? <Crosshair size={9} /> : selected ? <Check size={11} strokeWidth={3} /> : null}
+    </span>
+  ) : null
 
   // Render meta message — métadonnée de capture (date, titre, URL) : ligne
   // discrète, pas de tags, pas d'édition ; suppression possible
@@ -246,13 +316,14 @@ function MessageBlock({
   // Render image message
   if (message.type !== 'text') {
     return (
-      <div className="group relative">
+      <div className={`${groupe} relative ${selectionClass}`} {...selectionProps}>
+        {caseSelection}
         <img
           src={message.content}
           alt={message.metadata?.alt || 'Image'}
           loading="lazy"
           decoding="async"
-          className="max-w-full rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+          className={`max-w-full rounded-lg transition-opacity ${enSelection ? '' : 'cursor-zoom-in hover:opacity-90'}`}
           onClick={handleClick}
         />
 
@@ -278,6 +349,7 @@ function MessageBlock({
             setPickerPosition({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
             setPickerOpen(true)
           }}
+          onEnterSelection={onEnterSelection}
         />
 
         {pickerOpen && (
@@ -308,7 +380,8 @@ function MessageBlock({
   // minuscule qui remplit la tuile, badge en bas à gauche.
   if (isLongText && isCollapsed && !isEditing) {
     return (
-      <div className="group relative block w-fit">
+      <div className={`${groupe} relative block w-fit ${selectionClass}`} {...selectionProps}>
+        {caseSelection}
         <div
           onClick={() => onOpenPanel ? onOpenPanel() : setIsCollapsed(false)}
           className="cursor-pointer rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden w-[132px] h-[140px] flex flex-col p-2.5"
@@ -350,7 +423,8 @@ function MessageBlock({
 
   // Render text message (normal or expanded long text)
   return (
-    <div className="group relative">
+    <div className={`${groupe} relative ${selectionClass}`} {...selectionProps}>
+      {caseSelection}
       {/* Edit controls */}
       {!isReadOnly && (
         <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
@@ -405,12 +479,16 @@ function MessageBlock({
             plus l'élément en couche composite le temps de l'animation, et
             laissait derrière lui une couche morte — le texte peint une
             deuxième fois, plus haut et coupé plus étroit, par-dessus l'image
-            du dessus. Seule la couleur de fond a besoin d'être animée ici. */}
+            du dessus. Seule la couleur de fond a besoin d'être animée ici.
+            Plus de `cursor-pointer` hors sélection (24/09/2026) : le clic
+            simple n'édite plus, une main promettrait un geste qui n'existe
+            pas. `p-2 -m-2` reste identique dans tous les modes (pas de reflow). */}
         <div
           ref={contentRef}
           contentEditable={isEditing}
           suppressContentEditableWarning={true}
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           onMouseUp={!isReadOnly ? handleMouseUp : undefined}
           onKeyDown={isEditing ? handleKeyDown : undefined}
           className={`
@@ -420,7 +498,7 @@ function MessageBlock({
             [&_*]:max-w-full
             ${isEditing
               ? 'border-2 border-primary/40 bg-background p-3 focus:border-primary'
-              : 'cursor-pointer hover:bg-muted/30 p-2 -m-2'
+              : `${enSelection ? 'cursor-pointer' : ''} hover:bg-muted/30 p-2 -m-2`
             }
           `}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
@@ -502,6 +580,8 @@ function MessageBlock({
             setPickerOpen(true)
           }}
           onDelete={handleDelete}
+          onStartEdit={startEditing}
+          onEnterSelection={onEnterSelection}
         />
       )}
     </div>
@@ -516,6 +596,12 @@ interface MessageFooterProps {
   onOpenPicker: (rect: DOMRect) => void
   /** Absent = pas de suppression depuis le pied (l'image a sa poubelle en surimpression) */
   onDelete?: () => void
+  /** Crayon « Modifier ce bloc » : le geste explicite qui remplace le clic
+   *  direct (24/09/2026). Absent = bloc non éditable (image) */
+  onStartEdit?: () => void
+  /** Entrée dans la sélection multiple, ce bloc déjà coché. Absent = bloc
+   *  non sélectionnable (déjà rattaché à un trade) */
+  onEnterSelection?: () => void
 }
 
 /**
@@ -531,8 +617,38 @@ interface MessageFooterProps {
  * le pied sort du flux et devient une pastille en surimpression au survol ;
  * la rangée en flux ne subsiste que quand des tags existent.
  */
-function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker, onDelete }: MessageFooterProps) {
+function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker, onDelete, onStartEdit, onEnterSelection }: MessageFooterProps) {
   if (isReadOnly && (!tags || tags.length === 0)) return null
+
+  // Sélectionner / modifier : mêmes boutons dans les deux variantes, posés
+  // juste avant la poubelle. Rendus même hors survol (l'opacité du parent les
+  // cache) : l'espace est réservé, le survol ne déplace rien.
+  const boutonsActions = !isReadOnly && (
+    <>
+      {onEnterSelection && (
+        // blur() : sans lui, le bouton garde le focus et le `focus-within` de
+        // la pastille la laisse affichée pendant tout le mode sélection.
+        <button
+          onClick={e => { e.stopPropagation(); e.currentTarget.blur(); onEnterSelection() }}
+          className="p-0.5 text-muted-foreground/50 hover:text-primary rounded transition-colors"
+          title="Sélectionner des blocs"
+          aria-label="Sélectionner des blocs"
+        >
+          <CheckSquare size={11} />
+        </button>
+      )}
+      {onStartEdit && (
+        <button
+          onClick={e => { e.stopPropagation(); onStartEdit() }}
+          className="p-0.5 text-muted-foreground/50 hover:text-primary rounded transition-colors"
+          title="Modifier ce bloc (ou double-clic sur le texte)"
+          aria-label="Modifier ce bloc"
+        >
+          <Pencil size={11} />
+        </button>
+      )}
+    </>
+  )
 
   // Sans tags, le pied ne prend AUCUNE place dans le flux : chaque bloc
   // réservait 16 px + l'espacement pour une ligne vide la plupart du temps,
@@ -574,6 +690,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         >
           + tag
         </button>
+        {boutonsActions}
         {onDelete && (
           <button
             onClick={e => { e.stopPropagation(); onDelete() }}
@@ -631,18 +748,26 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
           + tag
         </button>
       )}
-      {!isReadOnly && onDelete && (
-        // Filet de sécurité : sans cette poubelle, un bloc texte ne contenant
-        // qu'une image était indéboulonnable (le clic ouvre la lightbox, jamais
-        // l'édition — et « Supprimer » n'existe qu'en mode édition)
-        <button
-          onClick={e => { e.stopPropagation(); onDelete() }}
-          className="ml-auto p-0.5 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Supprimer ce bloc"
-          aria-label="Supprimer ce bloc"
-        >
-          <Trash2 size={11} />
-        </button>
+      {!isReadOnly && (onDelete || onStartEdit || onEnterSelection) && (
+        // Sélectionner, modifier et supprimer forment UN groupe calé à droite
+        // (le `ml-auto` porté jadis par la seule poubelle passe au groupe),
+        // révélé par opacité au survol comme le reste de la rangée (24/09/2026).
+        <span className="ml-auto inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          {boutonsActions}
+          {onDelete && (
+            // Filet de sécurité : sans cette poubelle, un bloc texte ne contenant
+            // qu'une image était indéboulonnable (le clic ouvre la lightbox, jamais
+            // l'édition — et « Supprimer » n'existe qu'en mode édition)
+            <button
+              onClick={e => { e.stopPropagation(); onDelete() }}
+              className="p-0.5 text-muted-foreground/50 hover:text-red-500 rounded transition-colors"
+              title="Supprimer ce bloc"
+              aria-label="Supprimer ce bloc"
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
+        </span>
       )}
       </div>
     </>

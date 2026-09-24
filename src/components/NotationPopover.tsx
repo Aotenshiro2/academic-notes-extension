@@ -9,13 +9,27 @@ interface NotationPopoverProps {
   /** Retirer un jugement déjà posé (visible seulement si `existing`) */
   onRemove?: () => void
   onClose: () => void
+  /** Réglage « Noter jusqu'à D » (Settings.notationJusquaD) : propose le D */
+  avecD?: boolean
 }
 
-const GRADES: { value: AnnotationLettre; hint: string; selectedClass: string }[] = [
+type GradeOption = { value: AnnotationLettre; hint: string; selectedClass: string }
+
+const GRADES: GradeOption[] = [
   { value: 'A', hint: 'je le reprendrais sans hésiter', selectedClass: 'border-green-600 bg-green-500/15 text-green-600 dark:text-green-400' },
   { value: 'B', hint: 'ça a marché mais c\'était flou', selectedClass: 'border-amber-600 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
   { value: 'C', hint: 'forcé, émotionnel', selectedClass: 'border-red-600 bg-red-500/15 text-red-600 dark:text-red-400' },
 ]
+
+// Le D, opt-in (24/09/2026, entretien Brice avec Florent) : un plancher sous
+// le C pour les élèves qui en ont l'usage. Même motif segmenté − | D | + que
+// les trois autres. Teinte : un rouge plus sombre que le C pour garder la
+// gradation lisible. ⚠️ Couleur choisie par défaut, à faire valider par Brice.
+const GRADE_D: GradeOption = {
+  value: 'D',
+  hint: 'ton plancher, sous le C',
+  selectedClass: 'border-red-800 bg-red-800/15 text-red-800 dark:text-red-300',
+}
 
 // Choix de Brice au labo du 08/09 (option 2) : chaque bouton lettre porte deux
 // flancs − et +. Le centre donne le neutre (le geste actuel, intact), un flanc
@@ -33,8 +47,12 @@ const CAUSES: { value: AnnotationCause; label: string }[] = [
 const POPUP_WIDTH = 264
 const POPUP_HEIGHT = 240
 
-function NotationPopover({ position, existing, outcome, onSave, onRemove, onClose }: NotationPopoverProps) {
+function NotationPopover({ position, existing, outcome, onSave, onRemove, onClose, avecD = false }: NotationPopoverProps) {
   const [grade, setGrade] = useState<AnnotationGrade | null>(existing?.grade ?? null)
+  // Un D déjà posé reste visible et modifiable même réglage éteint : sans la
+  // colonne, le popover s'ouvrirait sur un jugement qu'on ne voit nulle part.
+  const afficherD = avecD || (existing ? lettreDe(existing.grade) === 'D' : false)
+  const grades = afficherD ? [...GRADES, GRADE_D] : GRADES
   const [phrase, setPhrase] = useState(existing?.phrase ?? '')
   const [cause, setCause] = useState<AnnotationCause | null>(existing?.causeCategory ?? null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -93,7 +111,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
       {/* Grades A / B / C, avec flancs − et + (labo du 08/09, option 2).
           30px de haut : Brice a demandé la même hauteur que la grille du labo. */}
       <div className="flex gap-2">
-        {GRADES.map(g => {
+        {grades.map(g => {
           const active = grade !== null && lettreDe(grade) === g.value
           const mod = active && grade ? modDe(grade) : ''
           return (
@@ -136,8 +154,8 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
       </div>
       <p className="text-[10px] leading-snug text-muted-foreground/70 px-0.5">
         {grade
-          ? GRADES.find(g => g.value === lettreDe(grade))?.hint
-          : 'A — sans hésiter · B — flou · C — forcé (± pour nuancer)'}
+          ? grades.find(g => g.value === lettreDe(grade))?.hint
+          : `A — sans hésiter · B — flou · C — forcé${afficherD ? ' · D — plancher' : ''} (± pour nuancer)`}
       </p>
 
       {/* La phrase — l'exercice canonique */}

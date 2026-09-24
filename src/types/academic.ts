@@ -83,11 +83,16 @@ export interface NoteFolder {
 // rappelle au maître »). Le grade reste un ressenti : la lettre porte les
 // stats, le modificateur porte la tendance fine. Stocké en ASCII ('B-'),
 // affiché avec le vrai signe moins (« B− »).
-export type AnnotationLettre = 'A' | 'B' | 'C'
+// Le D (24/09/2026, entretien Brice avec Florent) : un plancher sous le C pour
+// les élèves qui en ont l'usage. Il fait partie du type pour TOUS : un D déjà
+// posé doit se relire et se modifier même si le réglage est éteint. Seul le
+// fait de le PROPOSER dépend de `Settings.notationJusquaD`.
+export type AnnotationLettre = 'A' | 'B' | 'C' | 'D'
 export type AnnotationGrade =
   | 'A+' | 'A' | 'A-'
   | 'B+' | 'B' | 'B-'
   | 'C+' | 'C' | 'C-'
+  | 'D+' | 'D' | 'D-'
 export type AnnotationCause = 'technique' | 'connaissance' | 'emotionnel'
 
 export interface Annotation {
@@ -309,6 +314,11 @@ export interface Settings {
   /** Le cadrage a-t-il deja ete propose ? Sans ce drapeau on ne distinguerait
    *  pas « il a choisi tout le carnet » de « on ne lui a jamais demande ». */
   mentoratCadrageFait?: boolean
+  /** Propose le grade D sous le C dans la notation (24/09/2026). Absent =
+   *  false : la plupart des élèves n'en ont pas l'usage et trois lettres
+   *  suffisent. C'est un choix d'AFFICHAGE seulement : le serveur accepte
+   *  toujours un D existant, et un D déjà posé reste visible réglage éteint. */
+  notationJusquaD?: boolean
 }
 
 // Messages pour communication entre composants

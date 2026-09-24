@@ -15,7 +15,7 @@ import {
 } from '@/lib/note-mentorat'
 import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
-import type { NoteFolder } from '@/types/academic'
+import type { NoteFolder, AnnotationLettre } from '@/types/academic'
 import { OFFRES } from '@/lib/offres'
 
 const PERIODS = [
@@ -24,10 +24,13 @@ const PERIODS = [
   { days: 180, label: '180 j' },
 ]
 
-const GRADE_CLASS: Record<'A' | 'B' | 'C', string> = {
+// D (24/09/2026) : même teinte que la notation (rouge plus sombre que le C),
+// couleur par défaut à faire valider par Brice.
+const GRADE_CLASS: Record<AnnotationLettre, string> = {
   A: 'bg-green-500/15 text-green-600 dark:text-green-400',
   B: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   C: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  D: 'bg-red-800/15 text-red-800 dark:text-red-300',
 }
 
 const CAUSE_LABEL: Record<string, string> = {
@@ -516,11 +519,19 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Jugements</p>
               <div className="flex items-center gap-1">
-                {(['A', 'B', 'C'] as const).map(g => (
-                  <span key={g} className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${GRADE_CLASS[g]}`}>
-                    {t.grades[g]} {g}
-                  </span>
-                ))}
+                {(() => {
+                  // Le D n'apparaît que s'il a servi : chez qui n'a jamais noté
+                  // D, une pastille « 0 D » serait du bruit. Lecture optionnelle :
+                  // tant que le journal n'est pas déployé, le serveur ne renvoie
+                  // pas de clé D (le type MentoratBriefData ne la porte pas encore).
+                  const grades = t.grades as Partial<Record<AnnotationLettre, number>>
+                  const lettres: AnnotationLettre[] = (grades.D ?? 0) > 0 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C']
+                  return lettres.map(g => (
+                    <span key={g} className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${GRADE_CLASS[g]}`}>
+                      {grades[g] ?? 0} {g}
+                    </span>
+                  ))
+                })()}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1.5">
                 {t.graded} notés sur {t.total}
