@@ -661,7 +661,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               className={`flex items-center justify-center min-w-[22px] h-[22px] px-0.5 rounded-full text-[11px] font-semibold flex-shrink-0 transition-colors ${
                 noteAnnotation
                   ? badgeClassDe(noteAnnotation.grade)
-                  : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                  : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
               }`}
               title={noteAnnotation ? `${afficherGrade(noteAnnotation.grade)} — ${noteAnnotation.phrase}` : 'Noter (A/B/C, ± pour nuancer)'}
               aria-label={noteAnnotation ? `Notation ${afficherGrade(noteAnnotation.grade)}, modifier` : 'Noter cette note'}
@@ -862,7 +862,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                     <>
                       <button
                         onClick={() => setClosingTradeId(trade.id)}
-                        className={`text-[10px] font-medium hover:underline underline-offset-2 ${trade.outcome ? OUTCOME_CLASS[trade.outcome] : 'text-muted-foreground/60'}`}
+                        /* Retour Brice 25/09 : la rangée des marqueurs de trade
+                           était trop pâle — un cran de contraste, teinte neutre
+                           gardée (une vraie couleur passerait par un labo). */
+                        className={`text-[10px] font-medium hover:underline underline-offset-2 ${trade.outcome ? OUTCOME_CLASS[trade.outcome] : 'text-muted-foreground'}`}
                         title="Modifier le résultat"
                       >
                         {trade.outcome ? OUTCOME_LABEL[trade.outcome] : 'Résultat ?'}
@@ -896,7 +899,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                                 : trade.r < 0
                                   ? 'bg-red-500/10 text-red-600 dark:text-red-400'
                                   : 'bg-muted text-muted-foreground'
-                              : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                              : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                           }`}
                           title={trade.r !== undefined ? 'Résultat en R — modifier' : 'Résultat en R (multiple du risque, ex. +1,5)'}
                         >
@@ -914,7 +917,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         className={`flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 transition-colors ${
                           tradeAnnotation
                             ? badgeClassDe(tradeAnnotation.grade)
-                            : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                            : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
                         title={tradeAnnotation ? `${afficherGrade(tradeAnnotation.grade)} — ${tradeAnnotation.phrase}` : 'Noter ce trade'}
                         aria-label={tradeAnnotation ? `Notation ${afficherGrade(tradeAnnotation.grade)} du trade ${n}` : `Noter le trade ${n}`}
@@ -930,7 +933,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         className={`flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 transition-colors ${
                           trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson)
                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                            : 'border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-muted-foreground'
+                            : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
                         title={trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson) ? 'Cooldown fait — modifier' : 'Cooldown du trade (débrief mental)'}
                         aria-label="Cooldown du trade"

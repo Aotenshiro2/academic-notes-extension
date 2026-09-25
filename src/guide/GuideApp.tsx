@@ -65,6 +65,13 @@ const TIPS = [
 
 const CHANGELOG = [
   {
+    version: '1.8.10',
+    title: 'Les marqueurs de trade se voient',
+    items: [
+      'La rangée d’un trade (Résultat ?, R ?, notation, cooldown) était trop pâle : un cran de contraste, sans changer les couleurs.',
+    ],
+  },
+  {
     version: '1.8.9',
     title: 'La note s’édite quand tu le décides',
     items: [
