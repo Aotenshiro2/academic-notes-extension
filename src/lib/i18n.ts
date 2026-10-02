@@ -561,7 +561,7 @@ const FR = {
   'guide.confidentialite3': "La capture intelligente, l'approfondissement d'une note, les tags automatiques, le mentor et l'assistant du support passent par nos serveurs, qui envoient le contenu concerné à Claude, le modèle d'Anthropic, pour l'analyser. Le mentor ne lit que les dossiers que tu lui as ouverts.",
   'guide.confidentialite4': "« Analyser avec une IA » ouvre l'IA de ton choix dans un nouvel onglet, sur ton propre compte : ta note part directement chez elle, sans passer par nos serveurs.",
   'guide.confidentialite5': 'La dictée vocale tourne entièrement sur ton appareil : ta voix ne quitte jamais ton ordinateur.',
-  'guide.confidentialite6': "Ce que reçoit ton journal nous sert aussi à mesurer l'usage de nos apps, par exemple tes jours d'activité, pour les améliorer et mieux accompagner nos membres.",
+  'guide.confidentialite6': "Avec la synchronisation, ton carnet envoie aussi les compteurs de ton panneau d'activité : combien de notes, de messages au mentor, de trades, de jugements et de notes ouvertes par jour, sans leur contenu. Ces chiffres et ce que reçoit ton journal nous servent à mesurer l'usage de nos apps, pour les améliorer et mieux accompagner nos membres.",
   'guide.confidentialite7': "Ton adresse email sert à ton compte et à vérifier ton forfait. L'extension n'embarque aucun outil de mesure d'audience ni aucun traceur publicitaire, et tes données ne sont pas revendues.",
 
   // Bascule de thème (ThemeToggle : panneau et guide)
@@ -1304,7 +1304,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'guide.confidentialite3': "Smart capture, going deeper on a note, automatic tags, the mentor and the support assistant go through our servers, which send the relevant content to Claude, Anthropic's model, to analyse it. The mentor only reads the folders you have opened to it.",
   'guide.confidentialite4': '"Analyse with an AI" opens the AI of your choice in a new tab, on your own account: your note goes straight to it, without passing through our servers.',
   'guide.confidentialite5': 'Voice dictation runs entirely on your device: your voice never leaves your computer.',
-  'guide.confidentialite6': 'What your journal receives also helps us measure how our apps are used, for example your active days, to improve them and better support our members.',
+  'guide.confidentialite6': 'With sync on, your journal also receives the counters from your activity panel: how many notes, messages to the mentor, trades, grades and opened notes per day, without their content. These numbers and what your journal receives help us measure how our apps are used, to improve them and better support our members.',
   'guide.confidentialite7': 'Your email address is used for your account and to check your plan. The extension includes no audience-measurement tool and no advertising tracker, and your data is not resold.',
 
   'theme.clair': 'Light',

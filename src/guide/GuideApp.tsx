@@ -113,6 +113,7 @@ const CHANGELOG = [
       'Nouveau sur l\'accueil : ton activité des 12 derniers mois, une case par jour, plus foncée les jours où tu notes, captures, parles à ton mentor, juges tes trades ou rouvres tes notes. Survole une case pour voir le détail de la journée, et garde un œil sur ta série en cours.',
       'Nouveau : tu peux supprimer un trade. Au survol de sa rangée, la corbeille le retire sans toucher à ce qu\'il contient : ses blocs restent dans la note, à leur place, comme des blocs normaux.',
       'La synchronisation avec ton Journal d\'Études se coupe vraiment : dans ton Compte, l\'interrupteur est activé par défaut, et si tu le coupes, une fenêtre te dit ce que ça change avant de valider. « Exclure de la sync » sur une note est aussi respecté quand tu la modifies.',
+      'Avec la synchronisation, les compteurs de ton panneau d\'activité remontent aussi au journal : des nombres par jour, sans aucun contenu. Ils nous aident à voir comment nos apps sont utilisées, pour les améliorer.',
       'Bonnes pratiques : la section « Confidentialité » dit précisément ce qui reste sur ton appareil et ce qui passe par nos serveurs, et « Analyser une note avec une IA » décrit les consignes telles qu\'elles sont aujourd\'hui. La politique de confidentialité de l\'extension est mise à jour dans le même sens.',
     ],
   },
