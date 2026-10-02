@@ -935,3 +935,35 @@ export async function demanderAuMentor(
     return { error: err instanceof Error ? err.message : 'Erreur réseau' }
   }
 }
+
+// ── Activité du carnet (1.8.10) ──────────────────────────────────────────────
+// Les compteurs du panneau « Ton activité », jour par jour, vers le journal :
+// des nombres, jamais de contenu. La logique (quand, quels jours) vit dans
+// activite-sync.ts ; ici, seulement l appel.
+
+export interface JourActivitePourJournal {
+  jour: string
+  ecrits: number
+  mentor: number
+  trades: number
+  jugements: number
+  consultees: number
+}
+
+export async function envoyerActiviteAuJournal(
+  appareil: string,
+  jours: JourActivitePourJournal[]
+): Promise<{ ok: boolean; statut?: number }> {
+  const token = await getBearerToken()
+  if (!token) return { ok: false }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/activite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ appareil, app: 'carnet', jours }),
+    })
+    return { ok: res.ok, statut: res.status }
+  } catch {
+    return { ok: false }
+  }
+}

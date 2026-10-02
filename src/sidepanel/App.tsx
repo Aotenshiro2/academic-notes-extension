@@ -28,6 +28,7 @@ import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import EmptyNoteView from '@/components/EmptyNoteView'
 import { noterConsultation } from '@/lib/consultations'
+import { envoyerActivite } from '@/lib/activite-sync'
 import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
 import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
@@ -301,6 +302,9 @@ function App() {
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
+      // Compteurs d'activité vers le journal (1.8.10) : au plus toutes les
+      // 15 minutes, seulement connecté et sync active, jamais de contenu
+      void envoyerActivite(loadedNotes)
 
       // Diagnostic mémoire : c'est ce chiffre qui dit si la correction tient
       const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
