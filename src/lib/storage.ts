@@ -358,6 +358,20 @@ function approximateNoteSize(note: AcademicNote): number {
   return size
 }
 
+/**
+ * L'envoi AUTOMATIQUE d'une note vers le journal est-il permis ? (1.8.10)
+ * Il faut une session, que le membre n'ait pas coupé la sync dans son Compte,
+ * et que la note ne soit pas exclue. Avant, seule la session comptait :
+ * l'interrupteur du Compte n'était lu nulle part, et une note exclue
+ * repartait à chaque modification. Les boutons manuels du Compte (« Envoyer
+ * les nouvelles », « Tout renvoyer ») restent des gestes explicites.
+ */
+async function envoiAutoPermis(note: AcademicNote): Promise<boolean> {
+  if (note.syncExcluded) return false
+  const [session, settings] = await Promise.all([getSession(), storage.getSettings()])
+  return Boolean(session) && !settings.journalSync?.syncCoupee
+}
+
 function toSummary(note: AcademicNote): NoteSummary {
   const messages = note.messages ?? []
   const messageTags = new Set<string>()
@@ -436,11 +450,12 @@ export const storage = {
     // Sauvegarde de CETTE note uniquement (voir le bloc BACKUP SYSTEM ci-dessus)
     void backupNote(fullNote)
 
-    // Cloud sync vers Journal d'Études (non-bloquant)
+    // Cloud sync vers Journal d'Études (non-bloquant). Seulement si le membre
+    // n'a pas coupé la sync et n'a pas exclu cette note (cf. envoiAutoPermis).
     if (isNew && !fullNote.lastSyncAt) {
       // Nouvelle note : sync initiale
-      getSession().then(session => {
-        if (session) {
+      envoiAutoPermis(fullNote).then(permis => {
+        if (permis) {
           syncNoteToJournal(fullNote).then(result => {
             if (result.success) {
               db.notes.update(id, { lastSyncAt: Date.now() }).catch(() => {})
@@ -454,8 +469,8 @@ export const storage = {
       }).catch(() => {})
     } else if (!isNew && fullNote.lastSyncAt && !skipSync) {
       // Note modifiée déjà synquée : propager les modifications vers le journal
-      getSession().then(session => {
-        if (session) {
+      envoiAutoPermis(fullNote).then(permis => {
+        if (permis) {
           syncNoteToJournal(fullNote).then(result => {
             if (!result.success) {
               console.warn('[AOK Sync] Re-sync failed:', result.error, '— note:', fullNote.title)
@@ -1029,6 +1044,34 @@ export const storage = {
     const messages = (note.messages ?? []).map(m => (cibles.has(m.id) ? { ...m, tradeRef: trade.id } : m))
     await this.saveNote({ ...note, messages, trades: [...(note.trades ?? []), trade] })
     return trade.id
+  },
+
+  /**
+   * Supprime un trade, pas ce qu'il contient (Brice, 02/10/2026, après le
+   * retour d'un élève : un trade lancé ne pouvait plus être retiré). Ses blocs
+   * restent à leur place et redeviennent des blocs libres ; son résultat, son
+   * R et son cooldown vivaient sur le segment et partent avec lui ; sa notation
+   * ne juge plus rien et part aussi. Rend les ids des notations retirées : la
+   * sync n'efface jamais d'elle-même côté journal, l'appelant les supprime
+   * (comme « Retirer la note »). Le segment, lui, disparaît du journal à la
+   * prochaine sync de la note (trades = source de vérité extension).
+   */
+  async supprimerTrade(noteId: string, tradeId: string): Promise<string[]> {
+    const note = await this.getNote(noteId)
+    if (!note || !(note.trades ?? []).some(t => t.id === tradeId)) return []
+    const notationsRetirees = (note.annotations ?? []).filter(a => a.tradeRef === tradeId)
+    const messages = (note.messages ?? []).map(m => {
+      if (m.tradeRef !== tradeId) return m
+      const { tradeRef: _retire, ...libre } = m
+      return libre
+    })
+    await this.saveNote({
+      ...note,
+      messages,
+      trades: (note.trades ?? []).filter(t => t.id !== tradeId),
+      annotations: (note.annotations ?? []).filter(a => a.tradeRef !== tradeId),
+    })
+    return notationsRetirees.map(a => a.id)
   },
 
   /** Clôt silencieusement le segment actif (fermeture/changement de note). */

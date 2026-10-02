@@ -35,7 +35,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
   const [verifyTime, setVerifyTime] = useState<number | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
   // Action destructrice en attente de confirmation (boîte de l'app)
-  const [pendingAction, setPendingAction] = useState<'resync' | 'rebuild' | 'pull' | null>(null)
+  const [pendingAction, setPendingAction] = useState<'resync' | 'rebuild' | 'pull' | 'couper' | null>(null)
 
   // Auth state
   const [authMode, setAuthMode] = useState<AuthMode>('signin')
@@ -183,7 +183,20 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
     setPulling(false)
   }
 
+  // Couper la sync (1.8.10) : un choix du membre, pris en connaissance de
+  // cause. Le réactiver est immédiat, sans fenêtre.
+  const runCouperSync = () => {
+    setPendingAction(null)
+    onSettingsChange({ journalSync: { ...settings.journalSync, syncCoupee: true } })
+  }
+
   const CONFIRMS = {
+    couper: {
+      title: 'Couper la synchronisation ?',
+      message: "Tes prochaines notes et tes modifications resteront sur cet appareil : elles n'arriveront plus dans ton Journal d'Études, et le mentor ne verra plus tes nouveaux trades et jugements dans ton brief. Ce qui est déjà dans le journal y reste. La capture intelligente et le mentor continuent d'envoyer ce que tu leur demandes d'analyser. Tu peux réactiver la sync à tout moment : « Envoyer les nouvelles » rattrapera les notes créées entre-temps.",
+      confirmLabel: 'Couper la sync',
+      run: runCouperSync,
+    },
     resync: {
       title: 'Tout renvoyer vers le journal ?',
       message: 'Cela va renvoyer TOUTES les notes, y compris celles déjà envoyées et celles exclues.',
@@ -208,10 +221,10 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
   const handleRebuildJournal = () => setPendingAction('rebuild')
   const handlePullFromJournal = () => setPendingAction('pull')
 
-  const handleSyncToggle = (enabled: boolean) => {
-    onSettingsChange({
-      journalSync: { ...settings.journalSync, syncEnabled: enabled }
-    })
+  const syncActive = !settings.journalSync.syncCoupee
+  const handleSyncToggle = (activer: boolean) => {
+    if (!activer) { setPendingAction('couper'); return }
+    onSettingsChange({ journalSync: { ...settings.journalSync, syncCoupee: false } })
   }
 
   const initials = currentUser?.user_metadata?.full_name
@@ -276,13 +289,17 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
             {/* Sync toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-foreground">Sync automatique</p>
-                <p className="text-xs text-muted-foreground">Chaque nouvelle note est envoyée au journal</p>
+                <p className="text-sm text-foreground">Synchronisation avec le journal</p>
+                <p className="text-xs text-muted-foreground">
+                  {syncActive
+                    ? "Activée : chaque note est copiée dans ton Journal d'Études"
+                    : 'Coupée : tes notes restent sur cet appareil'}
+                </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={settings.journalSync.syncEnabled}
+                  checked={syncActive}
                   onChange={(e) => handleSyncToggle(e.target.checked)}
                   className="sr-only peer"
                 />
@@ -308,7 +325,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
               </button>
               <button
                 onClick={handleSyncAll}
-                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
+                disabled={syncing || verifying || rebuilding || !syncActive}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Envoie les notes pas encore arrivées dans le journal"
               >
@@ -317,7 +334,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
               </button>
               <button
                 onClick={handleForceResyncAll}
-                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
+                disabled={syncing || verifying || rebuilding || !syncActive}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-500/40 text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Renvoie toutes les notes, même celles déjà envoyées et celles exclues"
               >
@@ -326,7 +343,7 @@ export default function AccountView({ settings, onSettingsChange, onSyncAll, onV
               </button>
               <button
                 onClick={handleRebuildJournal}
-                disabled={syncing || verifying || rebuilding || !settings.journalSync.syncEnabled}
+                disabled={syncing || verifying || rebuilding || !syncActive}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/40 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Supprime toutes les données du journal en ligne et les renvoie depuis l'extension"
               >

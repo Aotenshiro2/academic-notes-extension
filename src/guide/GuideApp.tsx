@@ -72,20 +72,31 @@ const TIPS = [
 // en local, ce que la synchronisation avec le journal, la capture intelligente
 // et le mentor démentaient depuis longtemps. Chaque phrase est vérifiée dans le
 // code (storage.saveNote, sync.ts, capture-ia.ts, AnalyzeNoteDialog) : ne rien
-// promettre ici que le code ne tienne pas. En particulier, l'interrupteur
-// « Sync automatique » du Compte et « Exclure de la sync » ne coupent pas
-// l'envoi automatique d'une note (cf. TODO.md) : tant que ce n'est pas réglé,
-// le Guide ne les présente pas comme des garanties.
+// promettre ici que le code ne tienne pas. La coupure de la sync n'est citée
+// que depuis qu'elle coupe vraiment l'envoi automatique (1.8.10, voir
+// envoiAutoPermis dans storage.ts). Mêmes engagements que la politique de
+// confidentialité publiée (privacy-policy.html) : les tenir alignés.
 const CONFIDENTIALITE = [
   'Sans compte, tes notes, tes captures et tes trades restent dans ton navigateur, sur ton appareil, et rien n\'en sort, sauf ce que tu envoies toi-même à une IA avec « Analyser avec une IA ».',
-  'Connecté à ton compte AOKnowledge, tes notes sont copiées dans ton Journal d\'Études, sur nos serveurs : texte, images, tags, trades et jugements. C\'est ce qui te permet de les retrouver dans le journal et de les faire lire au mentor.',
+  'Connecté à ton compte AOKnowledge, tes notes sont copiées dans ton Journal d\'Études, sur nos serveurs : texte, images, tags, trades et jugements. C\'est ce qui te permet de les retrouver dans le journal et de les faire lire au mentor. Tu peux couper cette synchronisation dans ton Compte : tes notes restent alors sur ton appareil.',
   'La capture intelligente, l\'approfondissement d\'une note, les tags automatiques, le mentor et l\'assistant du support passent par nos serveurs, qui envoient le contenu concerné à Claude, le modèle d\'Anthropic, pour l\'analyser. Le mentor ne lit que les dossiers que tu lui as ouverts.',
   '« Analyser avec une IA » ouvre l\'IA de ton choix dans un nouvel onglet, sur ton propre compte : ta note part directement chez elle, sans passer par nos serveurs.',
   'La dictée vocale tourne entièrement sur ton appareil : ta voix ne quitte jamais ton ordinateur.',
-  'Ton adresse email sert à ton compte et à vérifier ton forfait. L\'extension n\'embarque aucun outil de mesure d\'audience ni aucun traceur publicitaire.',
+  'Ce que reçoit ton journal nous sert aussi à mesurer l\'usage de nos apps, par exemple tes jours d\'activité, pour les améliorer et mieux accompagner nos membres.',
+  'Ton adresse email sert à ton compte et à vérifier ton forfait. L\'extension n\'embarque aucun outil de mesure d\'audience ni aucun traceur publicitaire, et tes données ne sont pas revendues.',
 ]
 
 const CHANGELOG = [
+  {
+    version: '1.8.10',
+    title: 'Ton activité, et tes données entre tes mains',
+    items: [
+      'Nouveau sur l\'accueil : ton activité des 12 derniers mois, une case par jour, plus foncée les jours où tu notes, captures, parles à ton mentor, juges tes trades ou rouvres tes notes. Survole une case pour voir le détail de la journée, et garde un œil sur ta série en cours.',
+      'Nouveau : tu peux supprimer un trade. Au survol de sa rangée, la corbeille le retire sans toucher à ce qu\'il contient : ses blocs restent dans la note, à leur place, comme des blocs normaux.',
+      'La synchronisation avec ton Journal d\'Études se coupe vraiment : dans ton Compte, l\'interrupteur est activé par défaut, et si tu le coupes, une fenêtre te dit ce que ça change avant de valider. « Exclure de la sync » sur une note est aussi respecté quand tu la modifies.',
+      'Bonnes pratiques : la section « Confidentialité » dit précisément ce qui reste sur ton appareil et ce qui passe par nos serveurs, et « Analyser une note avec une IA » décrit les consignes telles qu\'elles sont aujourd\'hui. La politique de confidentialité de l\'extension est mise à jour dans le même sens.',
+    ],
+  },
   {
     version: '1.8.9',
     title: 'La note s’édite quand tu le décides',
@@ -93,8 +104,6 @@ const CHANGELOG = [
       'Changement de fond : cliquer sur un texte ne l’édite plus. Pour éditer : double-clique, ou le crayon dans la pastille au survol du bloc. Le clic redevient un geste sans risque — fini les éditions ouvertes sans le vouloir.',
       'Nouveau : sélectionne plusieurs blocs comme dans une messagerie (la coche dans la pastille d’un bloc ouvre le mode), puis « Grouper sous un trade » : le trade est créé après coup, sur la plage de temps des blocs choisis. Tu avais oublié de lancer le trade au moment de ta position ? Maintenant tu reviens en arrière.',
       'Nouveau, discret : la note D. Désactivée par défaut — un interrupteur « Noter jusqu’à D » dans les Paramètres l’ajoute sous le C, avec ses nuances D+ et D−. Tes statistiques et le mentor la comptent, mais elle n’apparaît nulle part tant que tu n’en poses pas.',
-      'Nouveau sur l\'accueil : ton activité des 12 derniers mois, une case par jour, plus foncée les jours où tu as noté, capturé ou jugé des trades. Survole une case pour voir le détail de la journée, et garde un œil sur ta série en cours.',
-      'Bonnes pratiques : la section « Confidentialité » dit maintenant précisément ce qui reste sur ton appareil et ce qui passe par nos serveurs (synchronisation avec le journal, capture intelligente, mentor). Et « Analyser une note avec une IA » décrit les consignes telles qu\'elles sont aujourd\'hui.',
       'Et un cran de contraste sur la rangée d’un trade (Résultat ?, R ?, notation, cooldown) : elle était trop pâle.',
     ],
   },

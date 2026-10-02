@@ -23,56 +23,84 @@ centre garde le geste actuel, un flanc donne directement la nuance.
   journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
   vérifier la ligne « Qualité moyenne des jugements » du brief.
 
-## 1.8.9 (suite, 02/10/2026) — Guide « Confidentialité » corrigé + panneau d'activité — branche `carnet-guide-activite`, À VALIDER
+## v1.8.10 (02/10/2026) — activité, sync désactivable, suppression de trade, confidentialité — CODÉE ET VÉRIFIÉE, à publier sur le Store
 
-Demande de Brice le 02/10 (tâche du picker « Corriger la section Confidentialité
-du Guide », plus l'idée « panneau d'activité » du parking du 02/10). Replié dans
-la 1.8.9, qui n'est pas encore en prod (Store en 1.8.8).
+La 1.8.9 est en ligne depuis (Brice, 02/10) : tout ce qui suit est la 1.8.10.
+Demandes de Brice du 02/10 (tâche picker « Corriger la section Confidentialité
+du Guide », idée du parking « panneau d'activité façon Skool », retour d'un
+élève sur les trades), puis ses réponses du même jour.
 
-- Guide, page Bonnes pratiques : section « Confidentialité » réécrite d'après le
-  code (sans compte rien ne sort ; connecté, les notes partent au journal ; IA
-  maison via nos serveurs vers Claude ; « Analyser avec une IA » va droit chez
-  le fournisseur ; dictée locale ; email = compte + forfait ; aucun outil de
-  mesure). « Analyser une note avec une IA » décrit les vraies consignes
-  (Lancer / Débriefer / L'avis Ao Knowledge / libre, destination Mentor AOK).
-  Page passée au tutoiement. Le titre de la section affichait en prod la
-  séquence d'échappement du « é » en toutes lettres (échappement dans un
-  attribut JSX, non interprété) : corrigé, ainsi que deux infobulles de
-  MessageBlock qui avaient le même défaut.
-- Accueil : panneau « Ton activité » (`ActivityPanel.tsx`, `lib/activite.ts`),
-  une case par jour sur 12 mois, calculé dans `toSummary` (champ `activite` du
-  résumé, aucune relecture de la base). Compte : blocs écrits ou capturés hors
-  `meta` et hors réponses du mentor (tag `mentor`), warmups, cooldowns, trades
-  lancés, jugements posés. Seuils fixes 1-2 / 3-5 / 6-10 / 11+. Série en cours,
-  détail au survol. Mise en page rééquilibrée : salutation et cartes centrées,
-  panneau collé au-dessus de la barre d'écriture (sticky), icône puis phrase
-  d'aide masquées sous 820 / 700 px de haut.
-- Vérifié : tsc + build OK ; rendu réel dans Edge headless (extension chargée,
-  75 jours semés) : clair, sombre, 700 px, barre d'écriture grandie, état vide,
-  survol, 0 erreur console.
+- **Guide, Bonnes pratiques** : « Confidentialité » réécrite d'après le code
+  (sans compte rien ne sort ; connecté, les notes partent au journal et la
+  sync se coupe dans le Compte ; IA maison via nos serveurs vers Claude ;
+  « Analyser avec une IA » va droit chez le fournisseur ; dictée locale ;
+  mesure de l'usage de nos apps ; email = compte + forfait ; aucun outil de
+  mesure d'audience ; données « pas revendues », sans « jamais », à la
+  demande de Brice qui ne se ferme pas de porte). « Analyser une note avec une
+  IA » aux vraies consignes. Page au tutoiement. Le titre de section affichait
+  en prod la séquence d'échappement du « é » en toutes lettres (échappement
+  dans un attribut JSX) : corrigé, avec deux infobulles de MessageBlock.
+- **Politique de confidentialité** (`privacy-policy.html` et
+  `docs/privacy-policy.html`, publiée par GitHub Pages :
+  aotenshiro2.github.io/academic-notes-extension/privacy-policy.html) réécrite
+  le 02/10 : mêmes engagements que le Guide, prestataires (Supabase, Vercel,
+  Anthropic, Stripe, Google, Kit, Resend, Telegram), permissions justifiées,
+  droits RGPD. L'ancienne (12/01/2026) promettait « aucune synchronisation
+  cloud ». Garder Guide et politique alignés à chaque évolution.
+- **Panneau « Ton activité »** sur l'accueil (`ActivityPanel.tsx`,
+  `lib/activite.ts`, `lib/consultations.ts`) : 12 mois, une case par jour.
+  Compte : blocs écrits ou capturés, warmups, cooldowns (« notes et
+  captures ») ; messages de l'élève dans le fil du mentor (« messages au
+  mentor », le fil se reconnaît à ses réponses taguées `mentor`, qui elles ne
+  comptent pas) ; trades lancés ; jugements ; notes OUVERTES (une fois par
+  note et par jour, `chrome.storage.local` clé `carnetConsultations`, 400 jours
+  gardés). Choix : l'ouverture d'une note compte, pas l'ouverture du panneau
+  (il peut rester ouvert sans que l'élève y fasse rien). Seuils fixes
+  1-2 / 3-5 / 6-10 / 11+. Série en cours, détail au survol. Panneau collé
+  au-dessus de la barre d'écriture (sticky), icône puis phrase d'aide masquées
+  sous 820 / 700 px de haut.
+- **Sync désactivable** (Compte) : activée par défaut, coupée seulement par un
+  choix explicite après une fenêtre qui dit ce que ça change. Nouveau champ
+  `journalSync.syncCoupee` (absent = active) ; l'ancien `syncEnabled` (faux par
+  défaut, jamais lu) est gardé mais ignoré, sinon la sync de tous les membres
+  se serait coupée. `envoiAutoPermis` (storage.ts) garde les deux envois
+  automatiques de `saveNote` : session + sync non coupée + note non exclue.
+  « Exclure de la sync » est donc enfin respecté sur une note modifiée. Limite
+  connue : une note déjà synchronisée et modifiée pendant une coupure ne
+  repart qu'à sa prochaine modification (« Envoyer les nouvelles » ne rattrape
+  que les notes jamais envoyées).
+- **Supprimer un trade** : corbeille au survol de la rangée du trade, fenêtre
+  de confirmation. Le segment part, ses blocs restent à leur place et
+  redeviennent libres (règle de Brice : « supprimer un trade, c'est juste
+  supprimer le trade, pas ce qu'il y a à l'intérieur ») ; résultat, R et
+  cooldown partent avec lui ; sa notation aussi, effacée côté journal
+  (`deleteJournalAnnotation`, comme « Retirer la note »). Le segment disparaît
+  du journal à la sync suivante (trades = source de vérité extension). Les
+  numéros des trades suivants se décalent (ils sont calculés).
+- Vérifié : tsc + build OK ; rendu réel dans Edge headless (Chrome 154 refuse
+  `--load-extension`) : accueil clair/sombre, 700 px, barre grandie, état
+  vide, survol (« 2 messages au mentor », « 3 notes ouvertes »), suppression
+  d'un trade de bout en bout (base relue : plus de trade ni de notation, trois
+  blocs libres), 0 erreur console. Non testé en vrai : l'écran Compte (il
+  faut une session) et la sync réelle.
 
-### ⚠️ Trouvé en vérifiant le Guide (02/10) — à trancher par Brice, rien de corrigé
-- **L'interrupteur « Sync automatique » du Compte n'est lu nulle part** :
-  `storage.saveNote` envoie toute nouvelle note au journal dès qu'une session
-  existe, et re-synchronise toute note modifiée déjà synchronisée.
-  `journalSync.syncEnabled` (faux par défaut) ne grise que les boutons du Compte.
-  Le respecter tel quel couperait la sync de tous les membres connectés (et ce
-  que le mentor lit) : décision produit avant de coder.
-- **« Exclure de la sync » ne protège pas une note** : elle part à sa création,
-  avant qu'on puisse l'exclure, puis repart à chaque modification (la branche
-  « note modifiée » de `saveNote` ne lit pas `syncExcluded`). L'exclusion ne
-  joue que sur « Sync tout ».
-- **La politique de confidentialité du dépôt (`privacy-policy.html`,
-  `docs/privacy-policy.html`, 12/01/2026) dit encore « aucune synchronisation
-  cloud », « ne transmet aucune donnée »**. Si c'est l'URL déclarée sur la fiche
-  du Chrome Web Store, la déclaration du Store est fausse aussi.
-- **On ne peut pas supprimer un trade** (retour d'un élève, confirmé dans le
-  code) : le marqueur n'offre que Clore, Résultat, R, notation, cooldown ; il
-  n'existe ni fonction de stockage ni bouton, et il n'en a jamais existé (git
-  log). Ce qui se retire : la notation (« Retirer la note », 1.8.x) et les blocs
-  un par un ; un trade vidé reste en fin de fil. À concevoir : que deviennent
-  ses blocs (libérés), sa notation et son cooldown, et la suppression côté
-  journal.
+### Reste à faire
+- Brice : dogfood de la 1.8.10, puis publication sur le Store
+  (`D:\8_Developpement\le-carnet-du-trader-v1.8.10.zip`).
+- **Activité côté serveur, pour le cockpit** (idée de Brice le 02/10 : « ce
+  ne sont pas des infos sensibles, ça nous permet de faire de la data sur
+  l'usage des membres »). Les notes synchronisées portent déjà de quoi
+  calculer écrits, messages au mentor, trades et jugements par jour côté
+  journal : rien à envoyer de plus pour ça. Seules les notes ouvertes vivent
+  dans l'extension : il faudrait une route du journal et une table, à faire
+  avec un GO (migration en prod).
+- Travail NON COMMITÉ d'une autre session dans le dépôt principal, orphelin
+  (aucune trace dans ETAT.md) : messages d'erreur de connexion partagés avec
+  le journal, anti-énumération à l'inscription, lien de réinitialisation vers
+  journal.aoknowledge.com, ligne « Déjà client AOKnowledge ? » (AccountView,
+  auth.ts), URL du journal par défaut (storage.ts), consigne du menu clic droit
+  (TODO.md). Pas dans la 1.8.10 ni dans la 1.8.9 publiée. À valider par Brice
+  puis committer, ou à jeter.
 
 ## ✅ v1.8.7 — LE MENTOR APPREND À COMPTER (08/09/2026, points 1 et 2 arbitrés par Brice)
 

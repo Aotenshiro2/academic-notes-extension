@@ -27,6 +27,7 @@ import ToolsView from '@/components/ToolsView'
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import EmptyNoteView from '@/components/EmptyNoteView'
+import { noterConsultation } from '@/lib/consultations'
 import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
 import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
@@ -79,6 +80,8 @@ function App() {
   const ouvrirNote = (id: string) => {
     closeAllViews()
     setCurrentNoteId(id)
+    // Relire une note est une activité (panneau de l'accueil, 1.8.10)
+    void noterConsultation(id)
   }
 
   // Menu pop-up du bouton ⚙️ — le hub des écrans secondaires (retour Brice

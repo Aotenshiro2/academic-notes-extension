@@ -1,10 +1,12 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { t, locale } from '@/lib/i18n'
-import { activiteDuCarnet, cleJour, niveauDuJour } from '@/lib/activite'
-import type { ActiviteJour, NoteSummary } from '@/types/academic'
+import { activiteDuCarnet, cleJour, niveauDuJour, type Journee } from '@/lib/activite'
+import { lireConsultations, surveillerConsultations } from '@/lib/consultations'
+import type { NoteSummary } from '@/types/academic'
 
-// Le panneau d'activité de l'accueil (1.8.9) : une case par jour sur douze
-// mois, plus foncée quand l'élève a noté, capturé ou jugé des trades. Même
+// Le panneau d'activité de l'accueil (1.8.10) : une case par jour sur douze
+// mois, plus foncée quand l'élève a noté, capturé, parlé au mentor, jugé des
+// trades ou rouvert ses notes. Même
 // lecture que « Mon activité » du picker hebdo de Brice, à la taille du panneau
 // latéral : la grille défile à l'horizontale et s'ouvre sur les dernières
 // semaines, le reste de l'année est à gauche.
@@ -31,13 +33,14 @@ function decaler(jour: Date, n: number): Date {
   return new Date(jour.getFullYear(), jour.getMonth(), jour.getDate() + n)
 }
 
-function detailDuJour(jour: ActiviteJour | undefined): string {
-  if (!jour || jour[0] + jour[1] + jour[2] === 0) return t('activite.rien')
-  const [e, tr, j] = jour
+function detailDuJour(j: Journee | undefined): string {
+  if (!j || niveauDuJour(j) === 0) return t('activite.rien')
   const morceaux: string[] = []
-  if (e > 0) morceaux.push(e === 1 ? t('activite.ecrits1') : t('activite.ecrits', { n: e }))
-  if (tr > 0) morceaux.push(tr === 1 ? t('activite.trades1') : t('activite.trades', { n: tr }))
-  if (j > 0) morceaux.push(j === 1 ? t('activite.jugements1') : t('activite.jugements', { n: j }))
+  if (j.ecrits > 0) morceaux.push(j.ecrits === 1 ? t('activite.ecrits1') : t('activite.ecrits', { n: j.ecrits }))
+  if (j.mentor > 0) morceaux.push(j.mentor === 1 ? t('activite.mentor1') : t('activite.mentor', { n: j.mentor }))
+  if (j.trades > 0) morceaux.push(j.trades === 1 ? t('activite.trades1') : t('activite.trades', { n: j.trades }))
+  if (j.jugements > 0) morceaux.push(j.jugements === 1 ? t('activite.jugements1') : t('activite.jugements', { n: j.jugements }))
+  if (j.consultees > 0) morceaux.push(j.consultees === 1 ? t('activite.consultees1') : t('activite.consultees', { n: j.consultees }))
   return morceaux.join(', ')
 }
 
@@ -45,7 +48,15 @@ function ActivityPanel({ notes }: ActivityPanelProps) {
   const defileRef = useRef<HTMLDivElement>(null)
   const [survol, setSurvol] = useState<string | null>(null)
 
-  const parJour = useMemo(() => activiteDuCarnet(notes), [notes])
+  const [consultations, setConsultations] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let vivant = true
+    void lireConsultations().then(c => { if (vivant) setConsultations(c) })
+    const stop = surveillerConsultations(setConsultations)
+    return () => { vivant = false; stop() }
+  }, [])
+
+  const parJour = useMemo(() => activiteDuCarnet(notes, consultations), [notes, consultations])
 
   const { semaines, mois, actifs, serie, aujourdhui } = useMemo(() => {
     const maintenant = new Date()

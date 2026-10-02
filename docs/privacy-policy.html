@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Politique de Confidentialité - Trading Notes by AOKnowledge</title>
+    <title>Politique de confidentialité - Le Carnet du Trader</title>
     <style>
         body {
             font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 800px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2rem 1rem;
             line-height: 1.6;
             color: #333;
         }
@@ -38,88 +38,107 @@
             border-radius: 8px;
             margin-top: 2rem;
         }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+        th, td {
+            text-align: left;
+            vertical-align: top;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 0 0.25rem;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Politique de Confidentialité</h1>
-        <p><strong>Trading Notes by AOKnowledge</strong></p>
-        <p>Dernière mise à jour : 12 janvier 2026</p>
+        <h1>Politique de confidentialité</h1>
+        <p><strong>Le Carnet du Trader</strong> (anciennement Trading Notes by AOKnowledge), extension Chrome éditée par AOKnowledge</p>
+        <p><em>Dernière mise à jour : 2 octobre 2026</em></p>
     </div>
 
     <div class="highlight">
-        <strong>En résumé :</strong> Cette extension ne collecte, ne stocke et ne transmet AUCUNE donnée personnelle. Toutes vos notes restent privées et locales sur votre appareil.
+        <strong>En résumé :</strong> sans compte, vos notes restent dans votre navigateur et rien n'en sort, sauf ce que vous envoyez vous-même à une IA. Avec un compte AOKnowledge, vos notes sont copiées dans votre Journal d'Études, sur nos serveurs, pour que vous les retrouviez partout et que le mentor puisse les lire ; vous pouvez couper cette synchronisation. Les fonctions d'IA de l'extension passent par nos serveurs, qui envoient le contenu à analyser à Claude (Anthropic). Vos données ne sont pas revendues et ne servent pas à de la publicité.
     </div>
 
-    <h2>1. Données collectées</h2>
-    <p><strong>Aucune donnée personnelle n'est collectée par cette extension.</strong></p>
-    <p>L'extension Trading Notes by AOKnowledge :</p>
+    <h2>1. Sans compte : tout reste sur votre appareil</h2>
+    <p>Vos notes, captures d'écran, trades, jugements, warmups, cooldowns et réglages sont stockés dans le stockage local de votre navigateur (IndexedDB et <code>chrome.storage</code>). L'extension garde aussi localement la liste des notes que vous ouvrez chaque jour, pour afficher votre panneau d'activité. Rien de tout cela n'est envoyé à nos serveurs tant que vous n'êtes pas connecté.</p>
+
+    <h2>2. Avec un compte AOKnowledge</h2>
+    <p>Vous pouvez vous connecter avec Google ou avec une adresse email et un mot de passe. Nous recevons alors :</p>
     <ul>
-        <li>❌ Ne collecte aucune information personnelle</li>
-        <li>❌ Ne transmet aucune donnée vers des serveurs externes</li>
-        <li>❌ N'utilise aucun service d'analytics ou de tracking</li>
-        <li>❌ Ne partage aucune information avec des tiers</li>
+        <li><strong>Votre identité de compte :</strong> adresse email, et votre nom si vous le renseignez ou si Google le transmet.</li>
+        <li><strong>Vos notes, si la synchronisation est active :</strong> titre, texte, images, adresse et titre de la page capturée, tags, concepts, dossiers, trades (horaires, résultat, R), jugements, warmups, cooldowns et niveaux DOL. Elles sont copiées dans votre Journal d'Études, sur nos serveurs.</li>
+    </ul>
+    <p>La synchronisation est activée par défaut et se coupe à tout moment dans l'écran Compte de l'extension. Coupée, vos nouvelles notes et vos modifications restent sur votre appareil ; ce qui a déjà été envoyé reste dans le journal tant que vous ne le supprimez pas. Une note marquée « Exclure de la sync » n'est plus envoyée automatiquement.</p>
+
+    <h2>3. Les fonctions d'IA de l'extension</h2>
+    <p>La capture intelligente, l'approfondissement d'une note, les tags automatiques, le mentor et l'assistant du support passent par nos serveurs, qui transmettent le contenu concerné (texte de la page ou de la note, et pour certaines fonctions quelques images) à <strong>Anthropic</strong>, qui l'analyse avec son modèle Claude. Ces fonctions ne sont disponibles qu'avec un compte.</p>
+    <p>Le mentor lit un brief chiffré construit à partir des notes synchronisées (trades, jugements, causes d'erreur), limité aux dossiers que vous lui avez ouverts. Les plans d'évolution qu'il propose peuvent être relus par un mentor humain de l'équipe AOKnowledge avant de compter. Si vous demandez à parler à un humain depuis le support, l'équipe est prévenue (par Telegram et par email) et lit votre conversation pour vous répondre.</p>
+
+    <h2>4. « Analyser avec une IA »</h2>
+    <p>Ce bouton ouvre l'IA de votre choix (ChatGPT, Claude, Gemini, Perplexity, Grok) dans un nouvel onglet, sur votre propre compte chez ce fournisseur, avec votre note jointe. La note part directement chez ce fournisseur, sans passer par nos serveurs ; son traitement relève alors de la politique de confidentialité de ce fournisseur.</p>
+
+    <h2>5. Dictée vocale</h2>
+    <p>La dictée fonctionne entièrement sur votre appareil. Le modèle de reconnaissance vocale est téléchargé une fois (depuis Hugging Face) au premier usage ; votre voix ne quitte pas votre ordinateur.</p>
+
+    <h2>6. Forfait, paiement, newsletter, export</h2>
+    <ul>
+        <li><strong>Forfait :</strong> votre adresse email sert à vérifier auprès de Stripe si vous avez un abonnement Carnet Premium ou un accès inclus. Les paiements se font sur les pages de Stripe : l'extension n'a pas accès à vos données de carte.</li>
+        <li><strong>Newsletter :</strong> si vous cochez l'inscription à la newsletter en créant votre compte, votre email et votre prénom sont transmis à notre outil d'emailing (Kit). Désinscription en un clic depuis chaque email.</li>
+        <li><strong>Export Google Drive :</strong> à votre demande uniquement, la note est déposée dans votre Google Drive. L'accès accordé se limite aux fichiers créés par l'extension.</li>
     </ul>
 
-    <h2>2. Stockage local</h2>
-    <p>Toutes vos notes sont stockées <strong>exclusivement en local</strong> dans votre navigateur :</p>
+    <h2>7. Ce que nous faisons de vos données</h2>
     <ul>
-        <li>✅ Vos notes restent sur votre appareil</li>
-        <li>✅ Aucune synchronisation cloud</li>
-        <li>✅ Aucun accès externe à vos données</li>
-        <li>✅ Contrôle total de vos informations</li>
+        <li>Vous rendre le service : synchronisation avec le journal, fonctions d'IA, mentor, support, vérification du forfait.</li>
+        <li>Mesurer l'usage de nos applications (par exemple les jours d'activité ou le nombre de notes), pour les améliorer et mieux accompagner nos membres.</li>
+    </ul>
+    <p>Vos données ne sont pas revendues. L'extension n'embarque aucun outil de mesure d'audience, aucun traceur publicitaire et aucun cookie tiers.</p>
+
+    <h2>8. Prestataires</h2>
+    <table>
+        <tr><th>Prestataire</th><th>Rôle</th></tr>
+        <tr><td>Supabase</td><td>Comptes, base de données et stockage des images du journal</td></tr>
+        <tr><td>Vercel</td><td>Hébergement du Journal d'Études et de ses services</td></tr>
+        <tr><td>Anthropic</td><td>Modèle d'IA (Claude) des fonctions d'IA de l'extension</td></tr>
+        <tr><td>Stripe</td><td>Paiements et vérification du forfait</td></tr>
+        <tr><td>Google</td><td>Connexion avec Google, export vers Google Drive (à votre demande)</td></tr>
+        <tr><td>Kit</td><td>Newsletter, si vous vous y inscrivez</td></tr>
+        <tr><td>Resend, Telegram</td><td>Alertes à l'équipe quand vous demandez un humain au support</td></tr>
+    </table>
+
+    <h2>9. Permissions demandées par l'extension</h2>
+    <ul>
+        <li><code>sidePanel</code> : afficher le carnet dans le panneau latéral.</li>
+        <li><code>storage</code>, <code>unlimitedStorage</code> : garder vos notes et leurs images sur votre appareil.</li>
+        <li><code>activeTab</code>, <code>tabs</code>, accès aux sites (<code>&lt;all_urls&gt;</code>) : lire le titre, l'adresse et le contenu de la page que vous choisissez de capturer, et en faire une capture d'écran.</li>
+        <li><code>scripting</code> : extraire le contenu de la page capturée, et joindre votre note dans l'onglet de l'IA que vous ouvrez.</li>
+        <li><code>contextMenus</code> : le menu du clic droit.</li>
+        <li><code>identity</code> : la connexion à votre compte AOKnowledge et à Google.</li>
+        <li><code>notifications</code>, <code>alarms</code> : les notifications de l'extension et les sauvegardes locales automatiques.</li>
     </ul>
 
-    <h2>3. Permissions utilisées</h2>
-    <p>L'extension demande certaines permissions uniquement pour son fonctionnement :</p>
-    <ul>
-        <li><strong>sidePanel</strong> : Afficher l'interface dans le panneau latéral</li>
-        <li><strong>storage</strong> : Sauvegarder vos notes localement</li>
-        <li><strong>activeTab</strong> : Obtenir le titre/URL de la page et permettre les captures d'écran</li>
-        <li><strong>tabs</strong> : Accéder aux informations des onglets</li>
-        <li><strong>contextMenus</strong> : Menu contextuel (clic droit)</li>
-    </ul>
+    <h2>10. Conservation et suppression</h2>
+    <p>Sur votre appareil, vos données restent jusqu'à ce que vous les supprimiez (note par note, ou en désinstallant l'extension). Sur nos serveurs, elles sont conservées tant que votre compte existe. Vous pouvez supprimer vos notes dans le Journal d'Études, et demander la suppression de votre compte et de toutes vos données en nous écrivant.</p>
 
-    <h2>4. Utilisation des données</h2>
-    <p>Les données que <strong>vous créez</strong> (vos notes, captures d'écran) sont utilisées uniquement pour :</p>
-    <ul>
-        <li>Afficher vos notes dans l'interface</li>
-        <li>Organiser vos contenus par page web</li>
-        <li>Rechercher dans vos propres notes</li>
-    </ul>
+    <h2>11. Vos droits</h2>
+    <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition sur vos données. Écrivez-nous à l'adresse ci-dessous. Vous pouvez aussi introduire une réclamation auprès de la CNIL (cnil.fr).</p>
 
-    <h2>5. Sécurité</h2>
-    <p>Vos données sont sécurisées car elles :</p>
-    <ul>
-        <li>Restent dans le stockage local de votre navigateur</li>
-        <li>Ne transitent jamais par Internet</li>
-        <li>Ne sont accessibles qu'à vous via l'extension</li>
-    </ul>
-
-    <h2>6. Suppression des données</h2>
-    <p>Vous pouvez supprimer toutes vos données à tout moment :</p>
-    <ul>
-        <li>En supprimant l'extension</li>
-        <li>En effaçant les données de navigation de votre navigateur</li>
-        <li>En supprimant individuellement vos notes dans l'interface</li>
-    </ul>
-
-    <h2>7. Modifications</h2>
-    <p>Cette politique peut être mise à jour. Toute modification sera communiquée via les mises à jour de l'extension.</p>
-
-    <h2>8. Conformité</h2>
-    <p>Cette extension respecte :</p>
-    <ul>
-        <li>Le Règlement du programme Chrome Web Store pour les développeurs</li>
-        <li>Les principes de confidentialité by design</li>
-        <li>La réglementation RGPD (aucune donnée collectée)</li>
-    </ul>
+    <h2>12. Modifications</h2>
+    <p>Cette politique suit les évolutions de l'extension. La date en haut de page indique sa dernière mise à jour ; les changements importants sont annoncés dans l'historique des versions de l'extension (Guide, page « Versions »).</p>
 
     <div class="contact">
-        <h2>9. Contact</h2>
-        <p>Pour toute question concernant cette politique de confidentialité :</p>
-        <p><strong>Email :</strong> brice.d@aoknowledge.com</p>
-        <p><strong>Développeur :</strong> AOKnowledge</p>
+        <h2>13. Contact</h2>
+        <p>Pour toute question sur cette politique ou sur vos données :</p>
+        <p><strong>Email :</strong> brice.d@aoknowledge.com<br>
+        <strong>Éditeur :</strong> AOKnowledge</p>
     </div>
 </body>
 </html>

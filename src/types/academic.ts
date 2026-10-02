@@ -67,14 +67,23 @@ export interface NoteSummary {
   /** Poids approximatif de l'enregistrement, pour le diagnostic mémoire */
   sizeBytes: number
   /** Ce que l'élève a fait dans cette note, jour par jour (clé AAAA-MM-JJ en
-   *  heure locale) : [blocs écrits ou capturés + warmups et cooldowns, trades
-   *  lancés, jugements posés]. Calculé au même passage que le reste du résumé :
-   *  le panneau d'activité de l'accueil n'a pas à recharger les notes complètes. */
+   *  heure locale). Calculé au même passage que le reste du résumé : le
+   *  panneau d'activité de l'accueil n'a pas à recharger les notes complètes. */
   activite?: Record<string, ActiviteJour>
 }
 
-/** [écrit ou capturé, trades lancés, jugements posés] sur une journée */
-export type ActiviteJour = [number, number, number]
+/** Une journée d'activité. Les notes ouvertes (consultations) ne vivent pas
+ *  dans les notes : le panneau les ajoute depuis lib/consultations.ts. */
+export interface ActiviteJour {
+  /** blocs écrits ou capturés, warmups, cooldowns */
+  ecrits: number
+  /** messages de l'élève dans la note « Mentorat AOK » */
+  mentor: number
+  /** trades lancés */
+  trades: number
+  /** jugements A/B/C posés */
+  jugements: number
+}
 
 export interface NoteFolder {
   id: string
@@ -281,7 +290,14 @@ export interface ExtractedText {
 export interface SyncStatus {
   lastSync: number
   pendingNotes: string[]
+  /** HISTORIQUE, plus lu par l'envoi automatique : il valait faux par défaut
+   *  et n'a jamais rien coupé (la sync partait dès qu'une session existait).
+   *  Le respecter tel quel aurait coupé la sync de tous les membres. */
   syncEnabled: boolean
+  /** Le membre a coupé la synchronisation avec le journal (1.8.10). Absent =
+   *  sync active : c'est le défaut, la coupure est un choix explicite, pris
+   *  après l'avertissement du Compte. */
+  syncCoupee?: boolean
   journalAppUrl: string
   apiKey?: string
 }

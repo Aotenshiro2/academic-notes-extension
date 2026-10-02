@@ -1,7 +1,7 @@
 import { toast } from '../lib/toast'
 import { t } from '@/lib/i18n'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2 } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2, Trash2 } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -11,6 +11,7 @@ import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
 import WarmupCard from './WarmupCard'
+import ConfirmDialog from './ConfirmDialog'
 import DolBar from './DolBar'
 import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
@@ -82,6 +83,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [notationTarget, setNotationTarget] = useState<{ tradeRef?: string } | null>(null)
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
+  const [tradeASupprimer, setTradeASupprimer] = useState<string | null>(null)
   // Saisie du résultat en R d'un trade clos (optionnelle, « +1,5 » accepté)
   const [editingRTradeId, setEditingRTradeId] = useState<string | null>(null)
   const [rDraft, setRDraft] = useState('')
@@ -385,6 +387,17 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
+
+  // Supprimer un trade (1.8.10) : le segment seulement, ses blocs restent
+  // libres. Les notations qu'il portait sont effacées aussi côté journal.
+  const handleSupprimerTrade = useCallback(async (tradeId: string) => {
+    setTradeASupprimer(null)
+    if (closingTradeId === tradeId) setClosingTradeId(null)
+    const notationsRetirees = await storage.supprimerTrade(noteId, tradeId)
+    for (const id of notationsRetirees) void deleteJournalAnnotation(id)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, closingTradeId, onNoteUpdate])
 
   // ---- Sélection multiple → « Grouper sous un trade » ----
   const entrerSelection = useCallback((messageId: string) => {
@@ -823,7 +836,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               const n = tradeNumber(trade.id)
               const tradeAnnotation = findTradeAnnotation(trade.id)
               return (
-                <div key={`trade-${trade.id}`} className="flex items-center gap-2 pt-1">
+                <div key={`trade-${trade.id}`} className="group/trade flex items-center gap-2 pt-1">
                   <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
                     <Crosshair size={10} />
                     Trade {n} · {formatTradeTime(trade.startedAt)}
@@ -941,6 +954,17 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         <Moon size={11} />
                       </button>
                     </>
+                  )}
+                  {/* Supprimer le trade : discret, au survol de sa rangée */}
+                  {closingTradeId !== trade.id && (
+                    <button
+                      onClick={() => setTradeASupprimer(trade.id)}
+                      className="flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/trade:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      title="Supprimer ce trade (ses blocs restent dans la note)"
+                      aria-label={`Supprimer le trade ${n}`}
+                    >
+                      <Trash2 size={11} />
+                    </button>
                   )}
                 </div>
               )
@@ -1067,6 +1091,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           onClose={() => setCooldownTradeId(null)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={tradeASupprimer !== null}
+        title="Supprimer ce trade ?"
+        message="Le trade disparaît, pas ce qu'il contient : ses blocs restent dans la note, à leur place, comme des blocs normaux. Son résultat, son R, son cooldown et sa notation sont supprimés."
+        confirmLabel="Supprimer le trade"
+        onConfirm={() => tradeASupprimer && handleSupprimerTrade(tradeASupprimer)}
+        onCancel={() => setTradeASupprimer(null)}
+      />
 
       {/* Message Detail Panel overlay */}
       {panelMessage && (

@@ -48,6 +48,7 @@ import { exportNoteToDrive } from '@/lib/drive-export'
 import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { collectNoteImages } from '@/lib/note-images'
+import { noterConsultation } from '@/lib/consultations'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
 function FullscreenApp() {
@@ -702,7 +703,7 @@ function FullscreenApp() {
             {filteredNotes.map((note) => (
               <button
                 key={note.id}
-                onClick={() => setCurrentNoteId(note.id)}
+                onClick={() => { setCurrentNoteId(note.id); void noterConsultation(note.id) }}
                 className={`group w-full text-left p-3 rounded-lg transition-colors mb-1 ${
                   currentNoteId === note.id
                     ? 'bg-primary/10 border-primary/20 border'
