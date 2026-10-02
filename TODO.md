@@ -23,7 +23,7 @@ centre garde le geste actuel, un flanc donne directement la nuance.
   journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
   vérifier la ligne « Qualité moyenne des jugements » du brief.
 
-## v1.8.10 (02/10/2026) — activité, sync désactivable, suppression de trade, confidentialité — CODÉE ET VÉRIFIÉE, à publier sur le Store
+## v1.8.10 (02/10/2026) — activité, sync désactivable, suppression de trade, confidentialité, anglais — CODÉE ET VÉRIFIÉE, à publier sur le Store
 
 La 1.8.9 est en ligne depuis (Brice, 02/10) : tout ce qui suit est la 1.8.10.
 Demandes de Brice du 02/10 (tâche picker « Corriger la section Confidentialité
@@ -84,23 +84,42 @@ du Guide », idée du parking « panneau d'activité façon Skool », retour d'u
   blocs libres), 0 erreur console. Non testé en vrai : l'écran Compte (il
   faut une session) et la sync réelle.
 
+- **Traduction anglaise ré-appliquée** (02/10, sous-agent Sonnet, commit
+  `8202663`) : le patch du 01/10 (fil ω d'ETAT.md : 595 chaînes + écran « Mon
+  forfait » complété) remis sur la 1.8.10, conflits résolus en gardant la
+  1.8.10, plus les nouveautés traduites (suppression de trade, Guide).
+  Dictionnaires FR = EN = 681 clés. Restent en français, voulu : l'historique
+  des versions du Guide (décision de Brice), AccountView / auth / storage
+  (fichiers du travail orphelin ci-dessous). Rendu vérifié en EN et en FR dans
+  Edge headless (accueil, survols, confirmation de suppression, Guide).
+- **Activité vers le journal** (GO de Brice le 02/10 : « l'activité de
+  manière globale, comme le panneau, juste la tuyauterie, pas d'affichage
+  pour l'instant ») : `lib/activite-sync.ts` envoie les compteurs du panneau
+  (écrits, messages au mentor, trades, jugements, notes ouvertes) par jour,
+  seulement connecté et sync active, seulement les jours changés, au plus
+  toutes les 15 min, avec un identifiant d'appareil tiré au hasard. Journal :
+  route `POST /api/activite` + `src/lib/activite-jour.ts` (commits `890c550`,
+  `a943287` sur master), table `ActiviteJour` (migration
+  `sites/Aoknowledgecom/supabase/migrations/20261002170000_activite_jour.sql`,
+  appliquée en prod le 02/10, RLS active, anon et authenticated sans droits :
+  401 vérifié en lecture et en écriture). Requête essayée sur la vraie table
+  dans une transaction annulée (insertion, remplacement du même jour, 0 ligne
+  restante). Guide et politique disent que ces compteurs remontent.
+
 ### Reste à faire
-- Brice : dogfood de la 1.8.10, puis publication sur le Store
+- Brice : recharger l'extension (le `dist` du dépôt est en 1.8.10), dogfood,
+  puis publication sur le Store
   (`D:\8_Developpement\le-carnet-du-trader-v1.8.10.zip`).
-- **Activité côté serveur, pour le cockpit** (idée de Brice le 02/10 : « ce
-  ne sont pas des infos sensibles, ça nous permet de faire de la data sur
-  l'usage des membres »). Les notes synchronisées portent déjà de quoi
-  calculer écrits, messages au mentor, trades et jugements par jour côté
-  journal : rien à envoyer de plus pour ça. Seules les notes ouvertes vivent
-  dans l'extension : il faudrait une route du journal et une table, à faire
-  avec un GO (migration en prod).
+- Après son rechargement : vérifier en lecture seule les premières lignes de
+  `ActiviteJour` (son compte, son appareil).
+- Plus tard : l'affichage dans le cockpit (rien n'est branché côté cockpit).
 - Travail NON COMMITÉ d'une autre session dans le dépôt principal, orphelin
   (aucune trace dans ETAT.md) : messages d'erreur de connexion partagés avec
   le journal, anti-énumération à l'inscription, lien de réinitialisation vers
   journal.aoknowledge.com, ligne « Déjà client AOKnowledge ? » (AccountView,
   auth.ts), URL du journal par défaut (storage.ts), consigne du menu clic droit
-  (TODO.md). Pas dans la 1.8.10 ni dans la 1.8.9 publiée. À valider par Brice
-  puis committer, ou à jeter.
+  (TODO.md). Pas dans la 1.8.10 ni dans la 1.8.9 publiée. Mis de côté et reposé
+  intact à chaque fusion (stash). À valider par Brice puis committer, ou jeter.
 
 ## ✅ v1.8.7 — LE MENTOR APPREND À COMPTER (08/09/2026, points 1 et 2 arbitrés par Brice)
 
