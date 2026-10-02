@@ -430,8 +430,8 @@ function MessageBlock({
         <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
           <button
             className="p-1 text-muted-foreground hover:text-foreground rounded"
-            title="Glisser pour r\u00e9organiser"
-            aria-label="R\u00e9organiser"
+            title="Glisser pour réorganiser"
+            aria-label="Réorganiser"
           >
             <GripVertical size={14} />
           </button>

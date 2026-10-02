@@ -23,6 +23,57 @@ centre garde le geste actuel, un flanc donne directement la nuance.
   journal `9eec9be` déployé. À dogfooder : poser un B+, relire au journal,
   vérifier la ligne « Qualité moyenne des jugements » du brief.
 
+## 1.8.9 (suite, 02/10/2026) — Guide « Confidentialité » corrigé + panneau d'activité — branche `carnet-guide-activite`, À VALIDER
+
+Demande de Brice le 02/10 (tâche du picker « Corriger la section Confidentialité
+du Guide », plus l'idée « panneau d'activité » du parking du 02/10). Replié dans
+la 1.8.9, qui n'est pas encore en prod (Store en 1.8.8).
+
+- Guide, page Bonnes pratiques : section « Confidentialité » réécrite d'après le
+  code (sans compte rien ne sort ; connecté, les notes partent au journal ; IA
+  maison via nos serveurs vers Claude ; « Analyser avec une IA » va droit chez
+  le fournisseur ; dictée locale ; email = compte + forfait ; aucun outil de
+  mesure). « Analyser une note avec une IA » décrit les vraies consignes
+  (Lancer / Débriefer / L'avis Ao Knowledge / libre, destination Mentor AOK).
+  Page passée au tutoiement. Le titre de la section affichait en prod la
+  séquence d'échappement du « é » en toutes lettres (échappement dans un
+  attribut JSX, non interprété) : corrigé, ainsi que deux infobulles de
+  MessageBlock qui avaient le même défaut.
+- Accueil : panneau « Ton activité » (`ActivityPanel.tsx`, `lib/activite.ts`),
+  une case par jour sur 12 mois, calculé dans `toSummary` (champ `activite` du
+  résumé, aucune relecture de la base). Compte : blocs écrits ou capturés hors
+  `meta` et hors réponses du mentor (tag `mentor`), warmups, cooldowns, trades
+  lancés, jugements posés. Seuils fixes 1-2 / 3-5 / 6-10 / 11+. Série en cours,
+  détail au survol. Mise en page rééquilibrée : salutation et cartes centrées,
+  panneau collé au-dessus de la barre d'écriture (sticky), icône puis phrase
+  d'aide masquées sous 820 / 700 px de haut.
+- Vérifié : tsc + build OK ; rendu réel dans Edge headless (extension chargée,
+  75 jours semés) : clair, sombre, 700 px, barre d'écriture grandie, état vide,
+  survol, 0 erreur console.
+
+### ⚠️ Trouvé en vérifiant le Guide (02/10) — à trancher par Brice, rien de corrigé
+- **L'interrupteur « Sync automatique » du Compte n'est lu nulle part** :
+  `storage.saveNote` envoie toute nouvelle note au journal dès qu'une session
+  existe, et re-synchronise toute note modifiée déjà synchronisée.
+  `journalSync.syncEnabled` (faux par défaut) ne grise que les boutons du Compte.
+  Le respecter tel quel couperait la sync de tous les membres connectés (et ce
+  que le mentor lit) : décision produit avant de coder.
+- **« Exclure de la sync » ne protège pas une note** : elle part à sa création,
+  avant qu'on puisse l'exclure, puis repart à chaque modification (la branche
+  « note modifiée » de `saveNote` ne lit pas `syncExcluded`). L'exclusion ne
+  joue que sur « Sync tout ».
+- **La politique de confidentialité du dépôt (`privacy-policy.html`,
+  `docs/privacy-policy.html`, 12/01/2026) dit encore « aucune synchronisation
+  cloud », « ne transmet aucune donnée »**. Si c'est l'URL déclarée sur la fiche
+  du Chrome Web Store, la déclaration du Store est fausse aussi.
+- **On ne peut pas supprimer un trade** (retour d'un élève, confirmé dans le
+  code) : le marqueur n'offre que Clore, Résultat, R, notation, cooldown ; il
+  n'existe ni fonction de stockage ni bouton, et il n'en a jamais existé (git
+  log). Ce qui se retire : la notation (« Retirer la note », 1.8.x) et les blocs
+  un par un ; un trade vidé reste en fin de fil. À concevoir : que deviennent
+  ses blocs (libérés), sa notation et son cooldown, et la suppression côté
+  journal.
+
 ## ✅ v1.8.7 — LE MENTOR APPREND À COMPTER (08/09/2026, points 1 et 2 arbitrés par Brice)
 
 - **Champ R** sur trade clos (pastille « R ? », saisie +1,5/−1, virgule ok,

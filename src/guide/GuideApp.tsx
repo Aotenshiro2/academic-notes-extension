@@ -26,41 +26,63 @@ const SHORTCUTS = [
   { keys: ['\u00c9chap'], mac: ['\u00c9chap'], desc: 'Fermer un dialog' },
 ]
 
+// Page « Bonnes pratiques » passée au tutoiement le 02/10/2026, comme le reste
+// de l'app, en même temps que la réécriture de « Analyser une note avec une
+// IA » (les types neutre / mentor / action / libre n'existaient plus).
 const WORKFLOWS = [
   {
     title: 'Capturer une note',
     steps: [
-      'Ouvrez le panneau avec Ctrl+Shift+A',
-      'Tapez votre texte dans l\'éditeur en bas',
-      'Ajoutez un screenshot si besoin (icône appareil photo)',
-      'Appuyez sur Entrée pour enregistrer',
+      'Ouvre le panneau avec Ctrl+Shift+A',
+      'Tape ton texte dans la barre d\'écriture, en bas',
+      'Ajoute une capture d\'écran si besoin (menu +)',
+      'Appuie sur Entrée pour enregistrer',
     ],
   },
   {
     title: 'Mode plein écran',
     steps: [
-      'Cliquez sur l\'icône d\'agrandissement dans l\'en-tête',
-      'Naviguez entre vos notes dans la sidebar gauche',
-      'Éditez le titre, ajoutez des messages, exportez en PDF',
+      'Clique sur l\'icône d\'agrandissement, en haut du panneau',
+      'Navigue entre tes notes dans la colonne de gauche',
+      'Modifie le titre, ajoute des blocs, exporte en PDF',
     ],
   },
   {
-    title: 'Analyse IA',
+    title: 'Analyser une note avec une IA',
     steps: [
-      'Ouvrez une note puis cliquez sur l\'icône Sparkles (violet)',
-      'Choisissez un type d\'analyse (neutre, mentor, action, libre)',
-      'Sélectionnez le provider (ChatGPT, Claude, Gemini, Perplexity, Grok)',
-      'Le contexte est envoyé automatiquement — le prompt est aussi copié en backup',
+      'Ouvre la note, puis clique sur l\'icône étincelles en haut du panneau',
+      'Choisis la consigne : « Lancer la conversation » la première fois, « Débriefer une séance » ensuite dans la même conversation, « L\'avis Ao Knowledge » pour notre lecture de ta note, ou un prompt libre',
+      'Choisis l\'IA (ChatGPT, Claude, Gemini, Perplexity, Grok), puis une nouvelle conversation ou une conversation existante',
+      'Elle s\'ouvre dans un nouvel onglet, sur ton compte, avec ta note jointe. Le prompt est aussi copié dans ton presse-papier, au cas où',
+      'Si le mentor t\'est ouvert, la destination « Mentor AOK » range la note dans ton fil de mentorat, sans quitter le carnet',
     ],
   },
 ]
 
 const TIPS = [
-  'Titrez chaque note clairement pour la retrouver facilement dans l\'historique.',
-  'Utilisez les tags pour organiser vos notes par thème ou par session.',
-  'Capturez d\'abord, analysez ensuite — ne perdez pas le momentum.',
-  'Exportez en PDF pour archiver une version figée de vos notes.',
-  'L\'analyse IA copie toujours le prompt dans le presse-papier en backup.',
+  'Donne à chaque note un titre clair pour la retrouver facilement dans l\'historique.',
+  'Utilise les tags pour ranger tes notes par thème ou par séance.',
+  'Capture d\'abord, analyse ensuite, sans perdre le momentum.',
+  'Exporte en PDF pour archiver une version figée de ta note.',
+  'L\'analyse IA copie toujours le prompt dans ton presse-papier, au cas où.',
+]
+
+// Ce que deviennent les données de l'élève. Réécrit le 02/10/2026 : l'ancienne
+// version promettait que rien n'était collecté ni transmis et que tout restait
+// en local, ce que la synchronisation avec le journal, la capture intelligente
+// et le mentor démentaient depuis longtemps. Chaque phrase est vérifiée dans le
+// code (storage.saveNote, sync.ts, capture-ia.ts, AnalyzeNoteDialog) : ne rien
+// promettre ici que le code ne tienne pas. En particulier, l'interrupteur
+// « Sync automatique » du Compte et « Exclure de la sync » ne coupent pas
+// l'envoi automatique d'une note (cf. TODO.md) : tant que ce n'est pas réglé,
+// le Guide ne les présente pas comme des garanties.
+const CONFIDENTIALITE = [
+  'Sans compte, tes notes, tes captures et tes trades restent dans ton navigateur, sur ton appareil, et rien n\'en sort, sauf ce que tu envoies toi-même à une IA avec « Analyser avec une IA ».',
+  'Connecté à ton compte AOKnowledge, tes notes sont copiées dans ton Journal d\'Études, sur nos serveurs : texte, images, tags, trades et jugements. C\'est ce qui te permet de les retrouver dans le journal et de les faire lire au mentor.',
+  'La capture intelligente, l\'approfondissement d\'une note, les tags automatiques, le mentor et l\'assistant du support passent par nos serveurs, qui envoient le contenu concerné à Claude, le modèle d\'Anthropic, pour l\'analyser. Le mentor ne lit que les dossiers que tu lui as ouverts.',
+  '« Analyser avec une IA » ouvre l\'IA de ton choix dans un nouvel onglet, sur ton propre compte : ta note part directement chez elle, sans passer par nos serveurs.',
+  'La dictée vocale tourne entièrement sur ton appareil : ta voix ne quitte jamais ton ordinateur.',
+  'Ton adresse email sert à ton compte et à vérifier ton forfait. L\'extension n\'embarque aucun outil de mesure d\'audience ni aucun traceur publicitaire.',
 ]
 
 const CHANGELOG = [
@@ -71,6 +93,8 @@ const CHANGELOG = [
       'Changement de fond : cliquer sur un texte ne l’édite plus. Pour éditer : double-clique, ou le crayon dans la pastille au survol du bloc. Le clic redevient un geste sans risque — fini les éditions ouvertes sans le vouloir.',
       'Nouveau : sélectionne plusieurs blocs comme dans une messagerie (la coche dans la pastille d’un bloc ouvre le mode), puis « Grouper sous un trade » : le trade est créé après coup, sur la plage de temps des blocs choisis. Tu avais oublié de lancer le trade au moment de ta position ? Maintenant tu reviens en arrière.',
       'Nouveau, discret : la note D. Désactivée par défaut — un interrupteur « Noter jusqu’à D » dans les Paramètres l’ajoute sous le C, avec ses nuances D+ et D−. Tes statistiques et le mentor la comptent, mais elle n’apparaît nulle part tant que tu n’en poses pas.',
+      'Nouveau sur l\'accueil : ton activité des 12 derniers mois, une case par jour, plus foncée les jours où tu as noté, capturé ou jugé des trades. Survole une case pour voir le détail de la journée, et garde un œil sur ta série en cours.',
+      'Bonnes pratiques : la section « Confidentialité » dit maintenant précisément ce qui reste sur ton appareil et ce qui passe par nos serveurs (synchronisation avec le journal, capture intelligente, mentor). Et « Analyser une note avec une IA » décrit les consignes telles qu\'elles sont aujourd\'hui.',
       'Et un cran de contraste sur la rangée d’un trade (Résultat ?, R ?, notation, cooldown) : elle était trop pâle.',
     ],
   },
@@ -760,14 +784,9 @@ export default function GuideApp() {
 
         {/* Confidentialité */}
         {page === 'pratiques' && (
-        <Section icon={Shield} title="Confidentialit\u00e9">
+        <Section icon={Shield} title="Confidentialité">
           <div className="space-y-2.5">
-            {[
-              'Toutes vos notes sont stockées localement sur votre appareil (IndexedDB).',
-              'Aucune donnée personnelle n\'est collectée ni transmise.',
-              'Aucun tracker, aucun analytics, aucun cookie tiers.',
-              'L\'analyse IA ouvre le provider dans un nouvel onglet — vos données ne transitent pas par nos serveurs.',
-            ].map((text, i) => (
+            {CONFIDENTIALITE.map((text, i) => (
               <p key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                 <Shield size={14} className="text-green-500/60 flex-shrink-0 mt-0.5" />
                 <span>{text}</span>

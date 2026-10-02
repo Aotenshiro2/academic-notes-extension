@@ -16,6 +16,7 @@ import type {
   NoteSummary,
   TradeSegment
 } from '@/types/academic'
+import { activiteDeLaNote } from './activite'
 
 /**
  * Convert legacy HTML content to NoteMessage array
@@ -400,7 +401,8 @@ function toSummary(note: AcademicNote): NoteSummary {
     messageTags: [...messageTags],
     imageCount,
     hasOpenTrade: (note.trades ?? []).some(t => !t.closedAt),
-    sizeBytes: approximateNoteSize(note)
+    sizeBytes: approximateNoteSize(note),
+    activite: activiteDeLaNote(note)
   }
 }
 

@@ -1133,6 +1133,7 @@ function App() {
                     : undefined
                   }
                   onSelectNote={ouvrirNote}
+                  notes={notes}
                 />
               )}
             </>

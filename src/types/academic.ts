@@ -66,7 +66,15 @@ export interface NoteSummary {
   hasOpenTrade: boolean
   /** Poids approximatif de l'enregistrement, pour le diagnostic mémoire */
   sizeBytes: number
+  /** Ce que l'élève a fait dans cette note, jour par jour (clé AAAA-MM-JJ en
+   *  heure locale) : [blocs écrits ou capturés + warmups et cooldowns, trades
+   *  lancés, jugements posés]. Calculé au même passage que le reste du résumé :
+   *  le panneau d'activité de l'accueil n'a pas à recharger les notes complètes. */
+  activite?: Record<string, ActiviteJour>
 }
+
+/** [écrit ou capturé, trades lancés, jugements posés] sur une journée */
+export type ActiviteJour = [number, number, number]
 
 export interface NoteFolder {
   id: string
