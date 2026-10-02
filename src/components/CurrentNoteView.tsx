@@ -1,5 +1,5 @@
 import { toast } from '../lib/toast'
-import { t } from '@/lib/i18n'
+import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2, Trash2 } from 'lucide-react'
 import storage from '@/lib/storage'
@@ -44,15 +44,22 @@ const badgeClassDe = (g: AnnotationGrade): string => GRADE_BADGE_CLASS[g[0] as A
 const texteClassDe = (g: AnnotationGrade): string => GRADE_TEXT_CLASS[g[0] as AnnotationLettre]
 const afficherGrade = (g: AnnotationGrade): string => g.replace('-', '−')
 
-const OUTCOME_LABEL: Record<TradeOutcome, string> = { gain: 'Gain', perte: 'Perte', be: 'BE' }
+// Des clés : l'étiquette se traduit au rendu (`t(OUTCOME_LABEL[o])`).
+const OUTCOME_LABEL: Record<TradeOutcome, CleI18n> = { gain: 'trade.gain', perte: 'trade.perte', be: 'trade.be' }
 const OUTCOME_CLASS: Record<TradeOutcome, string> = {
   gain: 'text-green-600 dark:text-green-400',
   perte: 'text-red-600 dark:text-red-400',
   be: 'text-muted-foreground',
 }
 
+/** Le R tel qu'on l'écrit : virgule en français (« 1,5 R »), point en anglais.
+ *  La saisie accepte les deux (handleSaveTradeR), seul l'affichage change. */
+function ecrireR(r: number): string {
+  return locale().startsWith('fr') ? String(r).replace('.', ',') : String(r)
+}
+
 function formatTradeTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 interface CurrentNoteViewProps {
@@ -275,7 +282,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       onNoteUpdate?.()
     } catch (error) {
       console.error('[CurrentNoteView] Renommage impossible:', error)
-      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+      toast.error(error instanceof Error ? error.message : t('historique.renommageImpossible'))
     } finally {
       // Toujours sortir du mode édition, même en erreur : sinon l'input reste
       // ouvert sans que rien n'indique l'échec
@@ -323,7 +330,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         await loadNote()
         onNoteUpdate?.()
       } else {
-        toast.info('Pas de tags proposés (note trop courte, ou IA indisponible).')
+        toast.info(t('note.pasDeTags'))
       }
     } finally {
       setTagsAutoEnCours(false)
@@ -420,7 +427,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     try {
       const tradeId = await storage.grouperSousTrade(noteId, [...selection])
       if (!tradeId) {
-        toast.error('Aucun bloc à grouper (déjà rattachés à un trade ?)')
+        toast.error(t('note.aucunBlocAGrouper'))
         return
       }
       setSelection(null)
@@ -429,7 +436,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       onNoteUpdate?.()
     } catch (error) {
       console.error('[CurrentNoteView] Groupement impossible:', error)
-      toast.error('Impossible de grouper ces blocs')
+      toast.error(t('note.groupementImpossible'))
     } finally {
       setGroupementEnCours(false)
     }
@@ -580,12 +587,12 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   if (!note) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground mb-4">Note introuvable</p>
+        <p className="text-muted-foreground mb-4">{t('note.introuvable')}</p>
         <button
           onClick={() => window.location.reload()}
           className="btn-secondary"
         >
-          Actualiser
+          {t('note.actualiser')}
         </button>
       </div>
     )
@@ -596,12 +603,12 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       {/* Bandeau : mise à jour distante en attente */}
       {remoteUpdatePending && (
         <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400">
-          <span>Note mise à jour dans une autre fenêtre.</span>
+          <span>{t('note.majAilleurs')}</span>
           <button
             onClick={() => { setRemoteUpdatePending(false); loadNote() }}
             className="font-medium underline underline-offset-2 hover:no-underline flex-shrink-0"
           >
-            Recharger
+            {t('erreur.recharger')}
           </button>
         </div>
       )}
@@ -621,8 +628,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               }}
               className="flex-1 text-sm font-semibold bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
-            <button onClick={saveTitle} className="p-1 text-green-600 hover:text-green-700 rounded flex-shrink-0" aria-label="Sauvegarder"><Check size={13} /></button>
-            <button onClick={() => setEditingTitle(false)} className="p-1 text-muted-foreground hover:text-foreground rounded flex-shrink-0" aria-label="Annuler"><X size={13} /></button>
+            <button onClick={saveTitle} className="p-1 text-green-600 hover:text-green-700 rounded flex-shrink-0" aria-label={t('commun.sauvegarder')}><Check size={13} /></button>
+            <button onClick={() => setEditingTitle(false)} className="p-1 text-muted-foreground hover:text-foreground rounded flex-shrink-0" aria-label={t('commun.annuler')}><X size={13} /></button>
           </>
         ) : (
           <>
@@ -630,8 +637,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             <button
               onClick={() => { setTitleDraft(note.title); setEditingTitle(true) }}
               className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-              title="Modifier le titre"
-              aria-label="Modifier le titre"
+              title={t('historique.modifierTitre')}
+              aria-label={t('historique.modifierTitre')}
             >
               <Edit3 size={13} />
             </button>
@@ -646,11 +653,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   setTagPickerOpen(true)
                 }}
                 className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
-                title="Ajouter un tag"
-                aria-label="Ajouter un tag"
+                title={t('note.ajouterTag')}
+                aria-label={t('note.ajouterTag')}
               >
                 <Plus size={10} />
-                <span>tag</span>
+                <span>{t('note.tag')}</span>
               </button>
             )}
             {note.tags.length === 0 && (
@@ -658,11 +665,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 onClick={handleTagsAuto}
                 disabled={tagsAutoEnCours}
                 className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0 disabled:opacity-100"
-                title="Tags automatiques : l'IA lit la note et propose des tags"
-                aria-label="Tags automatiques"
+                title={t('note.tagsAutoPropose')}
+                aria-label={t('note.tagsAuto')}
               >
                 {tagsAutoEnCours ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                <span>tags auto</span>
+                <span>{t('note.tagsAutoCourt')}</span>
               </button>
             )}
             <button
@@ -676,8 +683,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   ? badgeClassDe(noteAnnotation.grade)
                   : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
               }`}
-              title={noteAnnotation ? `${afficherGrade(noteAnnotation.grade)} — ${noteAnnotation.phrase}` : 'Noter (A/B/C, ± pour nuancer)'}
-              aria-label={noteAnnotation ? `Notation ${afficherGrade(noteAnnotation.grade)}, modifier` : 'Noter cette note'}
+              title={noteAnnotation ? `${afficherGrade(noteAnnotation.grade)} - ${noteAnnotation.phrase}` : t('note.noterAide')}
+              aria-label={noteAnnotation ? t('note.notationModifier', { grade: afficherGrade(noteAnnotation.grade) }) : t('note.noterNote')}
             >
               {noteAnnotation ? afficherGrade(noteAnnotation.grade) : '±'}
             </button>
@@ -699,8 +706,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               <button
                 onClick={() => handleRemoveTag(tag)}
                 className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
-                title="Retirer ce tag"
-                aria-label={`Retirer le tag ${tag}`}
+                title={t('note.retirerTag')}
+                aria-label={t('note.retirerTagNomme', { tag })}
               >
                 <X size={9} />
               </button>
@@ -713,20 +720,20 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               setTagPickerOpen(true)
             }}
             className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
-            title="Ajouter un tag"
+            title={t('note.ajouterTag')}
           >
             <Plus size={10} />
-            <span>tag</span>
+            <span>{t('note.tag')}</span>
           </button>
           <button
             onClick={handleTagsAuto}
             disabled={tagsAutoEnCours}
             className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100 disabled:opacity-100"
-            title="Tags automatiques : l'IA lit la note et complète les tags"
-            aria-label="Tags automatiques"
+            title={t('note.tagsAutoComplete')}
+            aria-label={t('note.tagsAuto')}
           >
             {tagsAutoEnCours ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-            <span>auto</span>
+            <span>{t('note.auto')}</span>
           </button>
         </div>
       )}
@@ -749,7 +756,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             setNotationTarget({})
           }}
           className="flex items-baseline gap-1.5 text-left w-full rounded hover:bg-muted/30 px-1 py-0.5 -mx-1 transition-colors"
-          title="Modifier la notation"
+          title={t('note.modifierNotation')}
         >
           <span className={`text-[11px] font-semibold flex-shrink-0 ${texteClassDe(noteAnnotation.grade)}`}>
             {afficherGrade(noteAnnotation.grade)}
@@ -839,7 +846,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 <div key={`trade-${trade.id}`} className="group/trade flex items-center gap-2 pt-1">
                   <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
                     <Crosshair size={10} />
-                    Trade {n} · {formatTradeTime(trade.startedAt)}
+                    {t('trade.marqueur', { n, heure: formatTradeTime(trade.startedAt) })}
                   </span>
                   <span className="flex-1 border-t border-blue-500/20" />
                   {closingTradeId === trade.id ? (
@@ -850,25 +857,25 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                           onClick={() => handleCloseTrade(trade.id, o)}
                           className={`text-[10px] px-2 py-0.5 rounded-full border border-border hover:bg-muted transition-colors ${OUTCOME_CLASS[o]}`}
                         >
-                          {OUTCOME_LABEL[o]}
+                          {t(OUTCOME_LABEL[o])}
                         </button>
                       ))}
                       <button
                         onClick={() => setClosingTradeId(null)}
                         className="p-0.5 text-muted-foreground/60 hover:text-foreground"
-                        aria-label="Annuler"
+                        aria-label={t('commun.annuler')}
                       >
                         <X size={10} />
                       </button>
                     </span>
                   ) : !trade.closedAt ? (
                     <>
-                      <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70">en cours</span>
+                      <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70">{t('trade.enCours')}</span>
                       <button
                         onClick={() => setClosingTradeId(trade.id)}
                         className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       >
-                        Clore
+                        {t('trade.clore')}
                       </button>
                     </>
                   ) : (
@@ -879,9 +886,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                            était trop pâle — un cran de contraste, teinte neutre
                            gardée (une vraie couleur passerait par un labo). */
                         className={`text-[10px] font-medium hover:underline underline-offset-2 ${trade.outcome ? OUTCOME_CLASS[trade.outcome] : 'text-muted-foreground'}`}
-                        title="Modifier le résultat"
+                        title={t('trade.modifierResultat')}
                       >
-                        {trade.outcome ? OUTCOME_LABEL[trade.outcome] : 'Résultat ?'}
+                        {trade.outcome ? t(OUTCOME_LABEL[trade.outcome]) : t('trade.resultatInconnu')}
                       </button>
                       {/* Le R : la donnée qui rend le mentor chiffré (espérance,
                           coût des B). Optionnel — une pastille discrète. */}
@@ -895,14 +902,14 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                             if (e.key === 'Enter') { e.preventDefault(); handleSaveTradeR(trade.id) }
                             if (e.key === 'Escape') setEditingRTradeId(null)
                           }}
-                          placeholder="+1,5"
+                          placeholder={t('trade.rPlaceholder')}
                           className="w-12 px-1 py-0 text-[10px] text-center bg-muted/40 border border-border rounded-full focus:outline-none focus:border-primary/50"
-                          aria-label={`Résultat en R du trade ${n}`}
+                          aria-label={t('trade.rDuTrade', { n })}
                         />
                       ) : (
                         <button
                           onClick={() => {
-                            setRDraft(trade.r !== undefined ? String(trade.r).replace('.', ',') : '')
+                            setRDraft(trade.r !== undefined ? ecrireR(trade.r) : '')
                             setEditingRTradeId(trade.id)
                           }}
                           className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
@@ -914,10 +921,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                                   : 'bg-muted text-muted-foreground'
                               : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                           }`}
-                          title={trade.r !== undefined ? 'Résultat en R — modifier' : 'Résultat en R (multiple du risque, ex. +1,5)'}
+                          title={trade.r !== undefined ? t('trade.rModifier') : t('trade.rAide')}
                         >
                           {trade.r !== undefined
-                            ? `${trade.r > 0 ? '+' : ''}${String(trade.r).replace('.', ',')} R`
+                            ? `${trade.r > 0 ? '+' : ''}${ecrireR(trade.r)} R`
                             : 'R ?'}
                         </button>
                       )}
@@ -932,8 +939,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                             ? badgeClassDe(tradeAnnotation.grade)
                             : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
-                        title={tradeAnnotation ? `${afficherGrade(tradeAnnotation.grade)} — ${tradeAnnotation.phrase}` : 'Noter ce trade'}
-                        aria-label={tradeAnnotation ? `Notation ${afficherGrade(tradeAnnotation.grade)} du trade ${n}` : `Noter le trade ${n}`}
+                        title={tradeAnnotation ? `${afficherGrade(tradeAnnotation.grade)} - ${tradeAnnotation.phrase}` : t('trade.noter')}
+                        aria-label={tradeAnnotation ? t('trade.notationDuTrade', { grade: afficherGrade(tradeAnnotation.grade), n }) : t('trade.noterLeTrade', { n })}
                       >
                         {tradeAnnotation ? afficherGrade(tradeAnnotation.grade) : '±'}
                       </button>
@@ -948,8 +955,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                             : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
-                        title={trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson) ? 'Cooldown fait — modifier' : 'Cooldown du trade (débrief mental)'}
-                        aria-label="Cooldown du trade"
+                        title={trade.cooldown && (trade.cooldown.emotion || trade.cooldown.error || trade.cooldown.lesson) ? t('trade.cooldownFait') : t('trade.cooldownAide')}
+                        aria-label={t('trade.cooldown')}
                       >
                         <Moon size={11} />
                       </button>
@@ -960,8 +967,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                     <button
                       onClick={() => setTradeASupprimer(trade.id)}
                       className="flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/trade:opacity-100 focus-visible:opacity-100 transition-opacity"
-                      title="Supprimer ce trade (ses blocs restent dans la note)"
-                      aria-label={`Supprimer le trade ${n}`}
+                      title={t('trade.supprimerAide')}
+                      aria-label={t('trade.supprimerLabel', { n })}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -1094,9 +1101,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
 
       <ConfirmDialog
         isOpen={tradeASupprimer !== null}
-        title="Supprimer ce trade ?"
-        message="Le trade disparaît, pas ce qu'il contient : ses blocs restent dans la note, à leur place, comme des blocs normaux. Son résultat, son R, son cooldown et sa notation sont supprimés."
-        confirmLabel="Supprimer le trade"
+        title={t('trade.supprimerTitre')}
+        message={t('trade.supprimerMessage')}
+        confirmLabel={t('trade.supprimerConfirme')}
         onConfirm={() => tradeASupprimer && handleSupprimerTrade(tradeASupprimer)}
         onCancel={() => setTradeASupprimer(null)}
       />
@@ -1121,7 +1128,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       {lightboxIndex !== null && noteImages.length > 0 && (
         <ImageLightbox
           src={noteImages[lightboxIndex]}
-          alt="Note image"
+          alt={t('note.imageAlt')}
           onClose={() => setLightboxIndex(null)}
           images={noteImages}
           currentIndex={lightboxIndex}
@@ -1132,7 +1139,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       {/* Concepts — extraits par la smart capture, corrigeables à la main */}
       {note.concepts.length > 0 && (
         <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-          <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">Concepts</h3>
+          <h3 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">{t('note.concepts')}</h3>
           <div className="flex flex-wrap items-center gap-1.5">
             {note.concepts.map((concept) => (
               <span
@@ -1143,8 +1150,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 <button
                   onClick={() => handleRemoveConcept(concept)}
                   className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
-                  title="Retirer ce concept"
-                  aria-label={`Retirer le concept ${concept}`}
+                  title={t('note.retirerConcept')}
+                  aria-label={t('note.retirerConceptNomme', { concept })}
                 >
                   <X size={9} />
                 </button>
@@ -1160,14 +1167,14 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   if (e.key === 'Enter') { e.preventDefault(); handleAddConcept() }
                   if (e.key === 'Escape') { setAddingConcept(false); setConceptDraft('') }
                 }}
-                placeholder="concept…"
+                placeholder={t('note.conceptPlaceholder')}
                 className="px-2 py-0.5 text-xs bg-blue-500/10 rounded-full border border-blue-500/30 focus:outline-none focus:ring-1 focus:ring-blue-500/20 w-24 text-blue-700 dark:text-blue-300"
               />
             ) : (
               <button
                 onClick={() => setAddingConcept(true)}
                 className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-blue-600/50 dark:text-blue-400/50 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors"
-                title="Ajouter un concept"
+                title={t('note.ajouterConcept')}
               >
                 <Plus size={10} />
               </button>
@@ -1180,13 +1187,13 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
       {/* Screenshots si présentes */}
       {note.screenshots && note.screenshots.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Captures d'écran</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t('reglages.captures')}</h3>
           <div className="grid grid-cols-2 gap-3">
             {note.screenshots.map((screenshot, index) => (
               <img
                 key={index}
                 src={screenshot.dataUrl}
-                alt={`Capture ${index + 1}`}
+                alt={t('note.captureAlt', { n: index + 1 })}
                 className="rounded-lg border border-border cursor-zoom-in hover:opacity-80 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1208,15 +1215,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         <div className="sticky bottom-2 z-30 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-popover shadow-lg">
           <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
             {selection.size === 0
-              ? 'Aucun bloc sélectionné'
-              : `${selection.size} bloc${selection.size > 1 ? 's' : ''} sélectionné${selection.size > 1 ? 's' : ''}`}
+              ? t('note.aucunBlocSelectionne')
+              : tp('note.blocSelectionneUn', 'note.blocsSelectionnesPlur', selection.size)}
           </span>
           <button
             onClick={() => setSelection(null)}
             disabled={groupementEnCours}
             className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors disabled:opacity-50 flex-shrink-0"
           >
-            Annuler
+            {t('commun.annuler')}
           </button>
           <button
             onClick={() => void handleGrouperSousTrade()}
@@ -1224,7 +1231,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           >
             {groupementEnCours ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />}
-            Grouper sous un trade
+            {t('note.grouperSousTrade')}
           </button>
         </div>
       )}
@@ -1265,7 +1272,7 @@ function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) =
       setEditing(false)
     } catch (error) {
       console.error('[InsertPoint] Insertion impossible:', error)
-      toast.error('Impossible d\'insérer ici')
+      toast.error(t('note.insertionImpossible'))
     } finally {
       setSaving(false)
     }
@@ -1279,7 +1286,7 @@ function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) =
       <div
         className={`group/ins relative z-10 -my-1 h-2.5 flex items-center ${inactif ? 'pointer-events-none' : 'cursor-pointer'}`}
         onClick={() => { if (!inactif) setEditing(true) }}
-        title={inactif ? undefined : 'Insérer du texte ou une capture ici'}
+        title={inactif ? undefined : t('note.insererIci')}
       >
         {/* Révélation par opacité (jamais display : artefacts de peinture).
             Le ＋ est OPAQUE depuis le 01/09 : la bande fait 10 px pour un
@@ -1314,7 +1321,7 @@ function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) =
           if (e.key === 'Escape') setEditing(false)
         }}
         className="min-h-[24px] text-sm text-foreground/90 leading-relaxed focus:outline-none"
-        data-placeholder="Écris ton annotation, ou colle une capture…"
+        data-placeholder={t('note.insertPlaceholder')}
       />
       <div className="flex items-center gap-2 mt-1.5">
         <button
@@ -1322,16 +1329,16 @@ function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) =
           disabled={saving}
           className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
         >
-          <Check size={12} /> Insérer
+          <Check size={12} /> {t('note.inserer')}
         </button>
         <button
           onClick={() => setEditing(false)}
           disabled={saving}
           className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50"
         >
-          <X size={12} /> Annuler
+          <X size={12} /> {t('commun.annuler')}
         </button>
-        <span className="text-[10px] text-muted-foreground/50 ml-auto">⏎ insérer · ⇧⏎ nouvelle ligne</span>
+        <span className="text-[10px] text-muted-foreground/50 ml-auto">{t('note.insertRaccourcis')}</span>
       </div>
     </div>
   )

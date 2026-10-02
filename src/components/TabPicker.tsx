@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { X, Globe, Loader2 } from 'lucide-react'
+import { t, tp } from '@/lib/i18n'
 
 interface TabInfo {
   id: number
@@ -20,8 +21,8 @@ function TabPicker({
   isOpen,
   onSelect,
   onCancel,
-  title = 'Choisir un onglet',
-  description = "S\u00e9lectionnez l'onglet \u00e0 capturer"
+  title = t('onglets.titre'),
+  description = t('onglets.description')
 }: TabPickerProps) {
   const [tabs, setTabs] = useState<TabInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -42,7 +43,7 @@ function TabPicker({
         )
         .map(tab => ({
           id: tab.id!,
-          title: tab.title || 'Sans titre',
+          title: tab.title || t('commun.sansTitre'),
           url: tab.url!,
           favIconUrl: tab.favIconUrl
         }))
@@ -89,7 +90,7 @@ function TabPicker({
           <button
             onClick={onCancel}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            aria-label="Fermer"
+            aria-label={t('commun.fermer')}
           >
             <X size={16} />
           </button>
@@ -103,7 +104,7 @@ function TabPicker({
             </div>
           ) : tabs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Aucun onglet disponible
+              {t('onglets.aucun')}
             </div>
           ) : (
             tabs.map(tab => (
@@ -140,7 +141,7 @@ function TabPicker({
         {/* Footer */}
         <div className="p-3 border-t border-border text-center">
           <p className="text-xs text-muted-foreground">
-            {tabs.length} onglet{tabs.length > 1 ? 's' : ''} disponible{tabs.length > 1 ? 's' : ''}
+            {tp('onglets.disponibleUn', 'onglets.disponiblesPlur', tabs.length)}
           </p>
         </div>
       </div>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchUserTags } from '@/lib/sync'
 import type { UserTag } from '@/lib/sync'
+import { t as tr } from '@/lib/i18n'
+
+// `tr` et pas `t` : les filtres de ce composant nomment déjà `t` chaque tag.
 
 interface TagPickerPopupProps {
   position: { top: number; bottom: number; left: number }
@@ -112,7 +115,7 @@ function TagPickerPopup({ position, currentTags, onAdd, onRemove, onClose }: Tag
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           onKeyDown={handleInputKeyDown}
-          placeholder="Rechercher ou créer un tag..."
+          placeholder={tr('tags.rechercher')}
           className="flex-1 text-xs bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
         />
       </div>
@@ -120,13 +123,13 @@ function TagPickerPopup({ position, currentTags, onAdd, onRemove, onClose }: Tag
       {/* Existing tags list — grouped by category */}
       <div className="max-h-44 overflow-y-auto py-1">
         {filteredTags.length === 0 && !canCreate && (
-          <p className="px-3 py-2 text-xs text-muted-foreground/60">Aucun tag trouvé</p>
+          <p className="px-3 py-2 text-xs text-muted-foreground/60">{tr('tags.aucun')}</p>
         )}
         {categories.map(category => (
           <div key={category || '__none__'}>
             {hasCategories && (
               <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none">
-                {category || 'Autres'}
+                {category || tr('tags.autres')}
               </p>
             )}
             {grouped[category].map(tag => {
@@ -160,7 +163,7 @@ function TagPickerPopup({ position, currentTags, onAdd, onRemove, onClose }: Tag
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors text-left border-t border-border/30 mt-1"
           >
             <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-            <span className="text-foreground/60">Créer</span>
+            <span className="text-foreground/60">{tr('tags.creer')}</span>
             <span className="font-medium text-foreground truncate">"{inputValue.trim()}"</span>
           </button>
         )}

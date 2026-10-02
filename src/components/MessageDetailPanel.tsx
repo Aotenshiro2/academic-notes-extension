@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react'
 import { X, Edit3, Trash2, Save } from 'lucide-react'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ConfirmDialog from './ConfirmDialog'
+import { t } from '@/lib/i18n'
 import type { NoteMessage } from '@/types/academic'
 
 interface MessageDetailPanelProps {
@@ -75,7 +76,7 @@ function MessageDetailPanel({
             {panelTitle ? (
               <p className="text-sm font-semibold text-foreground truncate">{panelTitle}</p>
             ) : (
-              <span className="text-sm font-medium text-muted-foreground">Contenu capturé</span>
+              <span className="text-sm font-medium text-muted-foreground">{t('bloc.contenuCapture')}</span>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -89,12 +90,12 @@ function MessageDetailPanel({
                   className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                 >
                   <Edit3 size={12} />
-                  <span>Modifier</span>
+                  <span>{t('bloc.modifierCourt')}</span>
                 </button>
                 <button
                   onClick={handleDelete}
                   className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-colors"
-                  aria-label="Supprimer"
+                  aria-label={t('commun.supprimer')}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -108,20 +109,20 @@ function MessageDetailPanel({
                   className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   <Save size={12} />
-                  <span>{isSaving ? '...' : 'Sauver'}</span>
+                  <span>{isSaving ? '...' : t('bloc.sauver')}</span>
                 </button>
                 <button
                   onClick={() => setIsEditing(false)}
                   className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                 >
-                  Annuler
+                  {t('commun.annuler')}
                 </button>
               </>
             )}
             <button
               onClick={onClose}
               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-              aria-label="Fermer"
+              aria-label={t('commun.fermer')}
             >
               <X size={16} />
             </button>
@@ -156,8 +157,8 @@ function MessageDetailPanel({
 
       <ConfirmDialog
         isOpen={confirmDelete}
-        title="Supprimer ce bloc ?"
-        message="Ce contenu sera retiré de la note. Action définitive."
+        title={t('bloc.supprimerBlocTitre')}
+        message={t('bloc.supprimerBlocMessage')}
         onConfirm={confirmDeleteNow}
         onCancel={() => setConfirmDelete(false)}
       />

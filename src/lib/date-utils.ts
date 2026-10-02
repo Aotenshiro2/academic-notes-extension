@@ -1,7 +1,12 @@
 /**
  * Smart date formatting utility
  * "Aujourd'hui à HH:MM", "Hier à HH:MM", "DD mois à HH:MM"
+ *
+ * Langue (01/10/2026) : les mots passent par le dictionnaire (clés `date.*`)
+ * et les noms de mois par la locale de la langue courante. En français, le
+ * rendu est inchangé.
  */
+import { t, locale } from './i18n'
 
 function isSameDay(d1: Date, d2: Date): boolean {
   return d1.getFullYear() === d2.getFullYear() &&
@@ -21,25 +26,26 @@ function isYesterday(date: Date, now: Date): boolean {
 export function formatSmartDate(timestamp: number): string {
   const date = new Date(timestamp)
   const now = new Date()
-  const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const loc = locale()
+  const time = date.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
 
   if (isSameDay(date, now)) {
-    return `Aujourd'hui à ${time}`
+    return t('date.aujourdhuiA', { heure: time })
   }
 
   if (isYesterday(date, now)) {
-    return `Hier à ${time}`
+    return t('date.hierA', { heure: time })
   }
 
   if (date.getFullYear() === now.getFullYear()) {
     const day = date.getDate()
-    const month = date.toLocaleDateString('fr-FR', { month: 'short' })
-    return `${day} ${month} à ${time}`
+    const month = date.toLocaleDateString(loc, { month: 'short' })
+    return t('date.jourMoisA', { jour: day, mois: month, heure: time })
   }
 
   const day = date.getDate()
-  const month = date.toLocaleDateString('fr-FR', { month: 'short' })
-  return `${day} ${month} ${date.getFullYear()} à ${time}`
+  const month = date.toLocaleDateString(loc, { month: 'short' })
+  return t('date.jourMoisAnneeA', { jour: day, mois: month, annee: date.getFullYear(), heure: time })
 }
 
 /**
@@ -48,24 +54,25 @@ export function formatSmartDate(timestamp: number): string {
 export function formatCompactDate(timestamp: number): string {
   const date = new Date(timestamp)
   const now = new Date()
-  const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const loc = locale()
+  const time = date.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
 
   if (isSameDay(date, now)) {
     return time
   }
 
   if (isYesterday(date, now)) {
-    return `Hier ${time}`
+    return t('date.hier', { heure: time })
   }
 
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
   if (diffInDays < 7) {
-    return `${diffInDays}j`
+    return t('date.ilYaJours', { n: diffInDays })
   }
 
   if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return date.toLocaleDateString(loc, { day: 'numeric', month: 'short' })
   }
 
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+  return date.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })
 }

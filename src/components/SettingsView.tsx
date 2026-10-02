@@ -12,6 +12,7 @@ import {
 import { micPermissionState, listMicrophones, openMicPermissionPage } from '@/lib/dictation'
 import type { Settings as SettingsType } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
+import { t, LANGUES, getLangue, setLangue, type Langue } from '@/lib/i18n'
 import StorageHealth from './StorageHealth'
 
 interface SettingsViewProps {
@@ -87,21 +88,21 @@ function SettingsView({
     <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
       <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center">
         <Settings size={20} className="mr-2" />
-        Configuration
+        {t('reglages.titre')}
       </h2>
-      
+
       {/* Capture automatique */}
       <div className="mb-6">
         <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Zap size={16} className="mr-2" />
-          Capture automatique
+          {t('reglages.captureAuto')}
         </h3>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Capture automatique</p>
-              <p className="text-sm text-muted-foreground">Capturer automatiquement les pages visitées</p>
+              <p className="font-medium text-foreground">{t('reglages.captureAuto')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.captureAutoDesc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -116,8 +117,8 @@ function SettingsView({
           
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Captures d'écran</p>
-              <p className="text-sm text-muted-foreground">Inclure des captures d'écran dans les notes</p>
+              <p className="font-medium text-foreground">{t('reglages.captures')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.capturesDesc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -132,8 +133,8 @@ function SettingsView({
 
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Afficher les métadonnées de capture</p>
-              <p className="text-sm text-muted-foreground">Montrer la ligne date • page • URL dans les notes (masquée par défaut)</p>
+              <p className="font-medium text-foreground">{t('reglages.meta')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.metaDesc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -148,8 +149,8 @@ function SettingsView({
           
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Extraction intelligente</p>
-              <p className="text-sm text-muted-foreground">Extraire uniquement le contenu principal</p>
+              <p className="font-medium text-foreground">{t('reglages.extraction')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.extractionDesc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -168,38 +169,38 @@ function SettingsView({
       <div className="mb-6">
         <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Mic size={16} className="mr-2" />
-          Dictée vocale
+          {t('reglages.dictee')}
         </h3>
         <div className="p-3 bg-muted/50 rounded-lg space-y-2">
           {micGranted ? (
             <>
-              <p className="font-medium text-foreground">Microphone utilisé</p>
+              <p className="font-medium text-foreground">{t('reglages.micro')}</p>
               <select
                 value={settings.dictationDeviceId ?? ''}
                 onChange={e => onChange({ dictationDeviceId: e.target.value || undefined })}
                 className="w-full text-sm bg-background border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
-                <option value="">Micro par défaut du système</option>
+                <option value="">{t('reglages.microDefaut')}</option>
                 {microphones.map(m => (
                   <option key={m.deviceId} value={m.deviceId}>{m.label}</option>
                 ))}
               </select>
               <p className="text-sm text-muted-foreground">
-                Whisper tourne 100 % en local : ta voix ne quitte jamais ta machine.
+                {t('reglages.whisper')}
               </p>
             </>
           ) : (
             <>
-              <p className="font-medium text-foreground">Micro non autorisé</p>
+              <p className="font-medium text-foreground">{t('reglages.microRefuse')}</p>
               <p className="text-sm text-muted-foreground">
-                Chrome ne peut demander la permission que depuis un onglet, pas depuis ce panneau.
+                {t('reglages.microOnglet')}
               </p>
               <button
                 onClick={() => openMicPermissionPage()}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <Mic size={14} />
-                Autoriser le micro
+                {t('reglages.autoriserMicro')}
               </button>
             </>
           )}
@@ -215,7 +216,7 @@ function SettingsView({
       <div className="mb-6">
         <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <FileText size={16} className="mr-2" />
-          Sauvegarde des données
+          {t('reglages.sauvegarde')}
         </h3>
         
         <div className="grid grid-cols-2 gap-3">
@@ -224,7 +225,7 @@ function SettingsView({
             className="flex items-center justify-center space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
           >
             <Upload size={16} className="text-blue-600 dark:text-blue-400" />
-            <span className="text-blue-700 dark:text-blue-300 font-medium">Exporter</span>
+            <span className="text-blue-700 dark:text-blue-300 font-medium">{t('reglages.exporter')}</span>
           </button>
 
           <button
@@ -232,7 +233,7 @@ function SettingsView({
             className="flex items-center justify-center space-x-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
           >
             <Download size={16} className="text-green-600 dark:text-green-400" />
-            <span className="text-green-700 dark:text-green-300 font-medium">Importer</span>
+            <span className="text-green-700 dark:text-green-300 font-medium">{t('reglages.importer')}</span>
           </button>
         </div>
         
@@ -246,8 +247,7 @@ function SettingsView({
         
         <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            <strong>Note :</strong> L'export inclut toutes vos notes, captures et paramètres. 
-            L'import remplacera les données existantes.
+            <strong>{t('reglages.noteLabel')}</strong> {t('reglages.noteImport')}
           </p>
         </div>
       </div>
@@ -256,21 +256,30 @@ function SettingsView({
       <div className="mb-6">
         <h3 className="text-md font-medium text-foreground mb-3 flex items-center">
           <Globe size={16} className="mr-2" />
-          Préférences
+          {t('reglages.preferences')}
         </h3>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground/80 mb-1">
-              Langue de l'interface
+              {t('reglages.langue')}
             </label>
+            {/* Ce sélecteur écrivait `settings.language`, que rien ne lit : il
+                ne changeait pas la langue (01/10/2026). Il pilote maintenant la
+                même langue que le globe du pied de panneau, et garde le réglage
+                à jour pour ne rien casser chez qui le lirait un jour. */}
             <select
-              value={settings.language}
-              onChange={(e) => onChange({ language: e.target.value as 'fr' | 'en' })}
+              value={getLangue()}
+              onChange={(e) => {
+                const langue = e.target.value as Langue
+                setLangue(langue)
+                onChange({ language: langue })
+              }}
               className="input-field"
             >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              {LANGUES.map(l => (
+                <option key={l.code} value={l.code}>{l.nom}</option>
+              ))}
             </select>
           </div>
 
@@ -279,8 +288,8 @@ function SettingsView({
               déjà posé reste affiché même interrupteur coupé. */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
-              <p className="font-medium text-foreground">Noter jusqu’à D</p>
-              <p className="text-sm text-muted-foreground">Ajoute le grade D sous le C dans la notation des trades. Pour les élèves qui en ont l’usage.</p>
+              <p className="font-medium text-foreground">{t('reglages.noterD')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.noterDDesc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input

@@ -7,12 +7,27 @@ import { ArrowLeft, Link2, Info, Lock, Check } from 'lucide-react'
 import type { Settings as SettingsType, AnalysisProvider } from '@/types/academic'
 import { PROVIDER_LIST } from '@/lib/analysis-providers'
 import { fetchAccesCaptureIA, type ModeleEtudeAffiche, type NiveauIA } from '@/lib/sync'
+import { t, tp, getLangue, type CleI18n } from '@/lib/i18n'
 
 /** Ce qu'on écrit sur le cadenas d'un modèle hors palier. */
-const LIBELLE_PALIER: Record<'libre' | 'premium' | 'club', string> = {
-  libre: 'Membre',
-  premium: 'Carnet Premium',
-  club: 'Live Club',
+const LIBELLE_PALIER: Record<'libre' | 'premium' | 'club', CleI18n> = {
+  libre: 'ia.palierMembre',
+  premium: 'ia.palierPremium',
+  club: 'ia.palierClub',
+}
+
+/** La phrase de chaque modèle vient du serveur, en français. Pour une autre
+ *  langue, on la remplace par la nôtre quand on connaît le modèle ; un modèle
+ *  ajouté côté serveur et pas encore ici garde la phrase du serveur. */
+const DETAIL_MODELE: Record<string, CleI18n> = {
+  'claude-opus-5': 'ia.detailOpus',
+  'claude-sonnet-5': 'ia.detailSonnet',
+  'claude-haiku-4-5': 'ia.detailHaiku',
+}
+
+function detailModele(m: ModeleEtudeAffiche): string {
+  const cle = DETAIL_MODELE[m.id]
+  return getLangue() !== 'fr' && cle ? t(cle) : m.detail
 }
 
 interface AiConfigViewProps {
@@ -69,12 +84,12 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
         <button
           onClick={onBack}
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          aria-label="Retour"
+          aria-label={t('commun.retour')}
         >
           <ArrowLeft size={16} />
         </button>
         <Link2 size={16} className="text-purple-500 flex-shrink-0" />
-        <h2 className="text-sm font-semibold text-foreground">Configurer son IA</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t('menu.configurerIA')}</h2>
       </div>
 
       {/* ── Modèle employé par « Étudier la note » ──────────────────────────
@@ -87,15 +102,15 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
           La CAPTURE n'apparaît pas ici : elle tourne sur le même modèle pour
           tout le monde, il n'y a rien à y choisir. */}
       <section className="mb-4">
-        <h3 className="text-xs font-semibold text-foreground mb-1">Modèle pour « Étudier la note »</h3>
+        <h3 className="text-xs font-semibold text-foreground mb-1">{t('ia.modeleEtude')}</h3>
         <p className="text-[11px] text-muted-foreground mb-2">
           {chargementModeles
-            ? 'Lecture de ton forfait…'
+            ? t('ia.lectureForfait')
             : niveau === 'aucun'
-              ? 'Connecte-toi à ton compte AOKnowledge pour voir ce que ton forfait débloque.'
+              ? t('ia.connecteToi')
               : etudeOuverte
-                ? 'Tu peux descendre en gamme quand tu veux : c’est moins fin, mais ça multiplie le nombre d’études qui tiennent dans ton quota.'
-                : 'L’étude fait partie du Carnet Premium. La capture, elle, reste à toi.'}
+                ? t('ia.descendre')
+                : t('ia.etudePremium')}
         </p>
 
         <div className="space-y-2">
@@ -114,7 +129,7 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
                       ? 'border-amber-500/60 bg-amber-500/10'
                       : 'border-border hover:bg-muted'
                 }`}
-                title={m.debloque ? `Utiliser ${m.nom}` : `${m.nom} fait partie du forfait ${LIBELLE_PALIER[m.requis]}`}
+                title={m.debloque ? t('ia.utiliser', { nom: m.nom }) : t('ia.horsPalier', { nom: m.nom, palier: t(LIBELLE_PALIER[m.requis]) })}
               >
                 <span className="flex items-center gap-2">
                   {m.debloque
@@ -123,16 +138,16 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
                   <span className="text-xs font-medium text-foreground">{m.nom}</span>
                   {!m.debloque && (
                     <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                      {LIBELLE_PALIER[m.requis]}
+                      {t(LIBELLE_PALIER[m.requis])}
                     </span>
                   )}
                   {m.debloque && m.etudesRestantes !== null && (
                     <span className="ml-auto text-[10px] text-muted-foreground">
-                      ≈ {m.etudesRestantes} étude{m.etudesRestantes > 1 ? 's' : ''}
+                      ≈ {tp('ia.etudeUn', 'ia.etudePlur', m.etudesRestantes)}
                     </span>
                   )}
                 </span>
-                <span className="block text-[11px] text-muted-foreground mt-1 pl-[21px]">{m.detail}</span>
+                <span className="block text-[11px] text-muted-foreground mt-1 pl-[21px]">{detailModele(m)}</span>
               </button>
             )
           })}
@@ -140,7 +155,7 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
 
         {etudeOuverte && modeles.some(m => m.debloque && m.etudesRestantes !== null) && (
           <p className="text-[10px] text-muted-foreground mt-2">
-            Ordres de grandeur, calculés sur ce qu’il te reste dans les 30 derniers jours. Une page avec capture d’écran coûte un peu plus qu’un article court.
+            {t('ia.ordresGrandeur')}
           </p>
         )}
       </section>
@@ -149,7 +164,7 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
         <div className="flex items-start space-x-2">
           <Info size={14} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-blue-700 dark:text-blue-300">
-            Colle ici l'URL d'une conversation ouverte — tes notes y seront envoyées directement au lieu d'ouvrir une nouvelle fenêtre. Astuce : ouvre ta conversation dans un onglet, puis clique 📎.
+            {t('ia.threadInfo')}
           </p>
         </div>
       </div>
@@ -161,13 +176,13 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
             <div className="flex gap-2">
               <input
                 type="url"
-                placeholder={`URL d'une conversation ${p.label}`}
+                placeholder={t('ia.urlPlaceholder', { provider: p.label })}
                 value={settings.providerThreadUrls?.[p.id] || ''}
                 onChange={e => onChange({ providerThreadUrls: { ...settings.providerThreadUrls, [p.id]: e.target.value } })}
                 className="flex-1 text-xs px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/20 placeholder:text-muted-foreground"
               />
               <button
-                title={`Définir depuis l'onglet ${p.label} actif`}
+                title={t('ia.depuisOnglet', { provider: p.label })}
                 onClick={() => setThreadUrlFromCurrentTab(p.id, p.url)}
                 className="px-2 py-1.5 rounded border border-border bg-muted hover:bg-muted/80 text-sm transition-colors"
               >
@@ -177,7 +192,7 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
                 <button
                   onClick={() => onChange({ providerThreadUrls: { ...settings.providerThreadUrls, [p.id]: '' } })}
                   className="px-2 py-1.5 rounded border border-border bg-muted hover:bg-muted/80 text-muted-foreground text-xs transition-colors"
-                  title="Effacer"
+                  title={t('commun.effacer')}
                 >
                   ✕
                 </button>
@@ -185,7 +200,7 @@ function AiConfigView({ settings, onChange, onBack }: AiConfigViewProps) {
             </div>
             {tabUrlErrors[p.id] && (
               <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                Ouvre d'abord une conversation {p.label} dans le navigateur.
+                {t('ia.ouvreDabord', { provider: p.label })}
               </p>
             )}
           </div>
