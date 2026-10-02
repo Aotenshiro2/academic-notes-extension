@@ -1,5 +1,6 @@
 import React from 'react'
 import { Search, X } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 interface SearchBarProps {
   value: string
@@ -7,7 +8,7 @@ interface SearchBarProps {
   placeholder?: string
 }
 
-function SearchBar({ value, onChange, placeholder = "Rechercher vos notes..." }: SearchBarProps) {
+function SearchBar({ value, onChange, placeholder = t('recherche.placeholder') }: SearchBarProps) {
   return (
     <div className="relative group">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -26,7 +27,7 @@ function SearchBar({ value, onChange, placeholder = "Rechercher vos notes..." }:
         <button
           onClick={() => onChange('')}
           className="absolute inset-y-0 right-0 pr-3 flex items-center group hover:bg-muted/50 rounded-r-md aoknowledge-transition"
-          title="Effacer la recherche"
+          title={t('recherche.effacer')}
         >
           <X size={16} className="text-muted-foreground hover:text-foreground aoknowledge-transition" />
         </button>

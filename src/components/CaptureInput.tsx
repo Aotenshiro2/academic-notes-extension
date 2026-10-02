@@ -154,11 +154,11 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       })
       pendingAudioRef.current = null
       if (text) insertTranscription(text)
-      else toast.info('Rien à transcrire : enregistrement trop court ou silencieux.')
+      else toast.info(t('dictee.rien'))
       setDictationState('idle')
     } catch (error) {
       console.error('[CaptureInput] Transcription impossible:', error)
-      toast.error('Transcription échouée — ton audio est CONSERVÉ. Re-clique le micro pour réessayer.')
+      toast.error(t('dictee.echec'))
       setDictationState('retry')
     } finally {
       setDownloadPct(null)
@@ -191,7 +191,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
       try {
         recorderRef.current = await startRecording({
           onAutoStop: () => {
-            toast.info('Limite de 5 minutes atteinte : la transcription démarre, rien n\'est perdu.')
+            toast.info(t('dictee.limite'))
             void finishDictation()
           },
         })
@@ -205,9 +205,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         const state = await micPermissionState()
         if (state !== 'granted') {
           openMicPermissionPage()
-          toast.info('Autorise le micro dans l\'onglet qui vient de s\'ouvrir, puis relance la dictée.')
+          toast.info(t('dictee.autoriser'))
         } else {
-          toast.error('Micro inaccessible : vérifie qu\'il est branché et libre, ou choisis-en un autre dans les Paramètres.')
+          toast.error(t('dictee.inaccessible'))
         }
       }
       return
@@ -540,14 +540,14 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
             `}
             title={
               dictationState === 'recording'
-                ? 'Arrêter et transcrire'
+                ? t('dictee.arreterTranscrire')
                 : dictationState === 'processing'
-                  ? (downloadPct !== null ? `Téléchargement du modèle… ${downloadPct} %` : 'Transcription…')
+                  ? (downloadPct !== null ? t('dictee.telechargement', { pct: downloadPct }) : t('dictee.transcription'))
                   : dictationState === 'retry'
-                    ? 'Réessayer la transcription (ton audio est conservé)'
-                    : 'Dicter (Whisper, 100 % local)'
+                    ? t('dictee.reessayerAide')
+                    : t('dictee.dicterAide')
             }
-            aria-label={dictationState === 'recording' ? 'Arrêter la dictée' : dictationState === 'retry' ? 'Réessayer la transcription' : 'Dicter'}
+            aria-label={dictationState === 'recording' ? t('dictee.arreter') : dictationState === 'retry' ? t('dictee.reessayer') : t('dictee.dicter')}
           >
             {dictationState === 'recording'
               ? <Square size={13} fill="currentColor" />
@@ -576,8 +576,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
               type="button"
               onClick={discardDictation}
               className="w-5 h-8 flex items-center justify-center text-muted-foreground/50 hover:text-red-500 transition-colors"
-              title="Abandonner cet audio"
-              aria-label="Abandonner l'audio en attente"
+              title={t('dictee.abandonner')}
+              aria-label={t('dictee.abandonnerAria')}
             >
               <X size={12} />
             </button>
@@ -595,8 +595,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                   : 'text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10'
                 }
               `}
-              title={hasActiveTrade ? 'Trade en cours — cliquer démarre le suivant' : 'Je prends un trade'}
-              aria-label="Démarrer un trade"
+              title={hasActiveTrade ? t('trade.enCoursSuivant') : t('trade.jePrends')}
+              aria-label={t('trade.demarrer')}
             >
               <Crosshair size={16} />
             </button>
@@ -615,8 +615,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }
               `}
-              title="Ajouter un fichier ou capture"
-              aria-label="Ajouter un fichier ou capture"
+              title={t('capture.ajouter')}
+              aria-label={t('capture.ajouter')}
             >
               <Plus size={18} />
             </button>
@@ -647,8 +647,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                         : <Camera size={18} className="text-emerald-500 flex-shrink-0" />
                       }
                       <div className="text-left">
-                        <div className="font-medium">{isCapturingScreenshot ? 'Capture...' : 'Capture d\'écran'}</div>
-                        <div className="text-xs text-muted-foreground">Photo de la page</div>
+                        <div className="font-medium">{isCapturingScreenshot ? t('capture.enCours') : t('capture.ecran')}</div>
+                        <div className="text-xs text-muted-foreground">{t('capture.ecranSous')}</div>
                       </div>
                     </button>
                   )}
@@ -702,8 +702,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                           onClick={e => { e.stopPropagation(); setLangueLecture(langueAnalyseSuivante()) }}
                           className="flex-shrink-0 mr-2 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 border border-border/60 transition-colors"
                           title={langueLecture === 'contenu'
-                            ? 'Lecture rendue dans la langue de la page — clique pour imposer une langue'
-                            : `Lecture rendue en ${libelleLangueAnalyse(langueLecture)} — clique pour changer`}
+                            ? t('capture.langueLecturePage')
+                            : t('capture.langueLectureImposee', { langue: libelleLangueAnalyse(langueLecture) })}
                         >
                           {libelleLangueAnalyse(langueLecture)}
                         </button>
@@ -728,8 +728,8 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
                 : 'text-muted-foreground/40 cursor-not-allowed'
               }
             `}
-            title="Envoyer (Entrée)"
-            aria-label="Envoyer"
+            title={t('capture.envoyerAide')}
+            aria-label={t('commun.envoyer')}
           >
             <ArrowUp size={18} />
           </button>
@@ -745,9 +745,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         className={`flex items-center justify-end px-3 pt-1.5 h-[26px] pointer-events-none transition-opacity duration-150 ${isFocused ? 'opacity-100' : 'opacity-0'}`}
       >
         <div className="text-[11px] text-muted-foreground/60">
-          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⏎</kbd> envoyer
+          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⏎</kbd> {t('capture.raccourciEnvoyer')}
           <span className="mx-1.5">·</span>
-          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⇧⏎</kbd> nouvelle ligne
+          <kbd className="bg-muted/50 px-1 py-0.5 rounded text-[10px]">⇧⏎</kbd> {t('capture.raccourciLigne')}
         </div>
       </div>
     </div>

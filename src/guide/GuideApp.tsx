@@ -10,61 +10,78 @@ import {
   Map,
 } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
+import { t, getLangue, subscribeLangue, type Langue, type CleI18n } from '@/lib/i18n'
 
 const version = chrome.runtime.getManifest().version
 
-const SHORTCUTS = [
-  { keys: ['Ctrl', 'Shift', 'A'], mac: ['Cmd', 'Shift', 'A'], desc: 'Ouvrir / fermer le panneau latéral' },
-  { keys: ['Alt', 'Shift', 'C'], mac: ['Opt', 'Shift', 'C'], desc: 'Capture rapide de la page courante' },
-  { keys: ['Ctrl', 'B'], mac: ['Cmd', 'B'], desc: 'Mettre en gras' },
-  { keys: ['Ctrl', 'I'], mac: ['Cmd', 'I'], desc: 'Mettre en italique' },
-  { keys: ['Ctrl', 'U'], mac: ['Cmd', 'U'], desc: 'Souligner' },
-  { keys: ['Ctrl', 'Shift', 'S'], mac: ['Cmd', 'Shift', 'S'], desc: 'Capture d\'\u00e9cran' },
-  { keys: ['Ctrl', 'Shift', 'I'], mac: ['Cmd', 'Shift', 'I'], desc: 'Ins\u00e9rer une image' },
-  { keys: ['Entr\u00e9e'], mac: ['Entr\u00e9e'], desc: 'Envoyer le message' },
-  { keys: ['Shift', 'Entr\u00e9e'], mac: ['Shift', 'Entr\u00e9e'], desc: 'Nouvelle ligne' },
-  { keys: ['\u00c9chap'], mac: ['\u00c9chap'], desc: 'Fermer un dialog' },
+// Langue (01/10/2026) : le guide passe par le dictionnaire (clés `guide.*`),
+// SAUF l'historique des versions (CHANGELOG plus bas), qui reste rédigé en
+// français. Le traduire voudrait dire écrire chaque release note en deux
+// langues à l'avenir : c'est une décision de Brice, pas un détail de code.
+// En anglais, une ligne le dit au-dessus de l'historique.
+//
+// Les constantes portent des CLÉS, pas des textes : la page suit le drapeau du
+// panneau sans être rechargée, et un texte figé au chargement du module ne
+// changerait pas de langue.
+
+// Les touches nommées changent de nom avec la langue (Entrée / Enter).
+const TOUCHES: Record<string, CleI18n> = {
+  'Entrée': 'guide.toucheEntree',
+  'Échap': 'guide.toucheEchap',
+}
+
+const SHORTCUTS: { keys: string[]; mac: string[]; desc: CleI18n }[] = [
+  { keys: ['Ctrl', 'Shift', 'A'], mac: ['Cmd', 'Shift', 'A'], desc: 'guide.raccourciPanneau' },
+  { keys: ['Alt', 'Shift', 'C'], mac: ['Opt', 'Shift', 'C'], desc: 'guide.raccourciCapture' },
+  { keys: ['Ctrl', 'B'], mac: ['Cmd', 'B'], desc: 'guide.raccourciGras' },
+  { keys: ['Ctrl', 'I'], mac: ['Cmd', 'I'], desc: 'guide.raccourciItalique' },
+  { keys: ['Ctrl', 'U'], mac: ['Cmd', 'U'], desc: 'guide.raccourciSouligner' },
+  { keys: ['Ctrl', 'Shift', 'S'], mac: ['Cmd', 'Shift', 'S'], desc: 'guide.raccourciEcran' },
+  { keys: ['Ctrl', 'Shift', 'I'], mac: ['Cmd', 'Shift', 'I'], desc: 'guide.raccourciImage' },
+  { keys: ['Entrée'], mac: ['Entrée'], desc: 'guide.raccourciEnvoyer' },
+  { keys: ['Shift', 'Entrée'], mac: ['Shift', 'Entrée'], desc: 'guide.raccourciLigne' },
+  { keys: ['Échap'], mac: ['Échap'], desc: 'guide.raccourciFermer' },
 ]
 
 // Page « Bonnes pratiques » passée au tutoiement le 02/10/2026, comme le reste
 // de l'app, en même temps que la réécriture de « Analyser une note avec une
 // IA » (les types neutre / mentor / action / libre n'existaient plus).
-const WORKFLOWS = [
+const WORKFLOWS: { title: CleI18n; steps: CleI18n[] }[] = [
   {
-    title: 'Capturer une note',
+    title: 'guide.flowCapture',
     steps: [
-      'Ouvre le panneau avec Ctrl+Shift+A',
-      'Tape ton texte dans la barre d\'écriture, en bas',
-      'Ajoute une capture d\'écran si besoin (menu +)',
-      'Appuie sur Entrée pour enregistrer',
+      'guide.flowCapture1',
+      'guide.flowCapture2',
+      'guide.flowCapture3',
+      'guide.flowCapture4',
     ],
   },
   {
-    title: 'Mode plein écran',
+    title: 'guide.flowPleinEcran',
     steps: [
-      'Clique sur l\'icône d\'agrandissement, en haut du panneau',
-      'Navigue entre tes notes dans la colonne de gauche',
-      'Modifie le titre, ajoute des blocs, exporte en PDF',
+      'guide.flowPleinEcran1',
+      'guide.flowPleinEcran2',
+      'guide.flowPleinEcran3',
     ],
   },
   {
-    title: 'Analyser une note avec une IA',
+    title: 'guide.flowAnalyse',
     steps: [
-      'Ouvre la note, puis clique sur l\'icône étincelles en haut du panneau',
-      'Choisis la consigne : « Lancer la conversation » la première fois, « Débriefer une séance » ensuite dans la même conversation, « L\'avis Ao Knowledge » pour notre lecture de ta note, ou un prompt libre',
-      'Choisis l\'IA (ChatGPT, Claude, Gemini, Perplexity, Grok), puis une nouvelle conversation ou une conversation existante',
-      'Elle s\'ouvre dans un nouvel onglet, sur ton compte, avec ta note jointe. Le prompt est aussi copié dans ton presse-papier, au cas où',
-      'Si le mentor t\'est ouvert, la destination « Mentor AOK » range la note dans ton fil de mentorat, sans quitter le carnet',
+      'guide.flowAnalyse1',
+      'guide.flowAnalyse2',
+      'guide.flowAnalyse3',
+      'guide.flowAnalyse4',
+      'guide.flowAnalyse5',
     ],
   },
 ]
 
-const TIPS = [
-  'Donne à chaque note un titre clair pour la retrouver facilement dans l\'historique.',
-  'Utilise les tags pour ranger tes notes par thème ou par séance.',
-  'Capture d\'abord, analyse ensuite, sans perdre le momentum.',
-  'Exporte en PDF pour archiver une version figée de ta note.',
-  'L\'analyse IA copie toujours le prompt dans ton presse-papier, au cas où.',
+const TIPS: CleI18n[] = [
+  'guide.conseil1',
+  'guide.conseil2',
+  'guide.conseil3',
+  'guide.conseil4',
+  'guide.conseil5',
 ]
 
 // Ce que deviennent les données de l'élève. Réécrit le 02/10/2026 : l'ancienne
@@ -76,14 +93,16 @@ const TIPS = [
 // que depuis qu'elle coupe vraiment l'envoi automatique (1.8.10, voir
 // envoiAutoPermis dans storage.ts). Mêmes engagements que la politique de
 // confidentialité publiée (privacy-policy.html) : les tenir alignés.
-const CONFIDENTIALITE = [
-  'Sans compte, tes notes, tes captures et tes trades restent dans ton navigateur, sur ton appareil, et rien n\'en sort, sauf ce que tu envoies toi-même à une IA avec « Analyser avec une IA ».',
-  'Connecté à ton compte AOKnowledge, tes notes sont copiées dans ton Journal d\'Études, sur nos serveurs : texte, images, tags, trades et jugements. C\'est ce qui te permet de les retrouver dans le journal et de les faire lire au mentor. Tu peux couper cette synchronisation dans ton Compte : tes notes restent alors sur ton appareil.',
-  'La capture intelligente, l\'approfondissement d\'une note, les tags automatiques, le mentor et l\'assistant du support passent par nos serveurs, qui envoient le contenu concerné à Claude, le modèle d\'Anthropic, pour l\'analyser. Le mentor ne lit que les dossiers que tu lui as ouverts.',
-  '« Analyser avec une IA » ouvre l\'IA de ton choix dans un nouvel onglet, sur ton propre compte : ta note part directement chez elle, sans passer par nos serveurs.',
-  'La dictée vocale tourne entièrement sur ton appareil : ta voix ne quitte jamais ton ordinateur.',
-  'Ce que reçoit ton journal nous sert aussi à mesurer l\'usage de nos apps, par exemple tes jours d\'activité, pour les améliorer et mieux accompagner nos membres.',
-  'Ton adresse email sert à ton compte et à vérifier ton forfait. L\'extension n\'embarque aucun outil de mesure d\'audience ni aucun traceur publicitaire, et tes données ne sont pas revendues.',
+// Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `7`) :
+// toute modification de fond se fait des deux côtés, FR puis EN.
+const CONFIDENTIALITE: CleI18n[] = [
+  'guide.confidentialite1',
+  'guide.confidentialite2',
+  'guide.confidentialite3',
+  'guide.confidentialite4',
+  'guide.confidentialite5',
+  'guide.confidentialite6',
+  'guide.confidentialite7',
 ]
 
 const CHANGELOG = [
@@ -620,29 +639,24 @@ function Section({ icon: Icon, title, children }: { icon: typeof Keyboard; title
 // business. Alimentée au fil des livraisons (source interne : TODO.md).
 // Rafraîchie le 20/09/2026 : les quatre chantiers précédents (mentorat, capture
 // IA, transcription vidéo, forfaits) sont livrés depuis la 1.8.x.
-const ROADMAP = [
-  {
-    title: 'Pas de 1.9 avant que l\'IA soit alignée',
-    desc: 'Les 1.8.x servent à ça : la capture intelligente, le mentor et les tags auto s\'ajustent sur tes retours. La prochaine grande fonctionnalité n\'entre qu\'après.',
-  },
-  {
-    title: 'Exporter par tag ou par concept',
-    desc: 'Sortir d\'un coup toutes les notes qui portent un tag ou un concept, pour les relire ou les travailler ailleurs.',
-  },
-  {
-    title: 'Les imports de trades, suite',
-    desc: 'TopstepX puis Quantower, et le rapprochement entre tes trades importés dans le journal et ceux du carnet : le R se calculera tout seul.',
-  },
-  {
-    title: 'Le Journal d\'Études continue',
-    desc: 'Le 0.2 « Observer les concepts » avance : les liens entre tes notes et les concepts se poseront sans corvée, et chaque concept aura sa fiche. Toujours en bêta ouverte, sans date.',
-  },
+const ROADMAP: { title: CleI18n; desc: CleI18n }[] = [
+  { title: 'guide.route1', desc: 'guide.route1Desc' },
+  { title: 'guide.route2', desc: 'guide.route2Desc' },
+  { title: 'guide.route3', desc: 'guide.route3Desc' },
+  { title: 'guide.route4', desc: 'guide.route4Desc' },
 ]
 
 type GuidePage = 'pratiques' | 'versions'
 
 export default function GuideApp() {
   const isMac = navigator.platform.toUpperCase().includes('MAC')
+
+  // Le guide s'ouvre dans un onglet à part : il suit le drapeau du panneau
+  // sans rechargement (subscribeLangue écoute aussi les autres documents).
+  const [langue, setLangueVue] = useState<Langue>(getLangue)
+  useEffect(() => subscribeLangue(setLangueVue), [])
+  // La langue déclarée de la page suit, pour les lecteurs d'écran.
+  useEffect(() => { document.documentElement.lang = langue }, [langue])
 
   // DEUX ÉCRANS distincts (retour Brice 28/08 : pas une ancre, deux pages) :
   // « Bonnes pratiques » (raccourcis, utilisation typique, bonnes pratiques)
@@ -665,15 +679,15 @@ export default function GuideApp() {
             <button
               onClick={() => window.close()}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Fermer"
-              aria-label="Fermer"
+              title={t('commun.fermer')}
+              aria-label={t('commun.fermer')}
             >
               <ArrowLeft size={18} />
             </button>
             <div>
               <h1 className="text-xl font-bold text-foreground">Le Carnet du Trader</h1>
               <p className="text-xs text-muted-foreground">
-                {page === 'versions' ? 'Versions et feuille de route' : 'Guide d\'utilisation'} — v{version}
+                {page === 'versions' ? t('menu.versions') : t('guide.sousTitre')} - v{version}
               </p>
             </div>
           </div>
@@ -683,13 +697,13 @@ export default function GuideApp() {
                 onClick={() => setPage('pratiques')}
                 className={`px-3 py-1 text-xs rounded-md transition-colors ${page === 'pratiques' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                Bonnes pratiques
+                {t('menu.bonnesPratiques')}
               </button>
               <button
                 onClick={() => setPage('versions')}
                 className={`px-3 py-1 text-xs rounded-md transition-colors ${page === 'versions' ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                Versions
+                {t('guide.versions')}
               </button>
             </div>
             <ThemeToggle />
@@ -702,16 +716,16 @@ export default function GuideApp() {
 
         {page === 'pratiques' && (<>
         {/* Raccourcis clavier */}
-        <Section icon={Keyboard} title="Raccourcis clavier">
+        <Section icon={Keyboard} title={t('guide.raccourcis')}>
           <div className="space-y-3">
             {SHORTCUTS.map((s, i) => (
               <div key={i} className="flex items-center justify-between gap-4">
-                <span className="text-sm text-muted-foreground">{s.desc}</span>
+                <span className="text-sm text-muted-foreground">{t(s.desc)}</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {(isMac ? s.mac : s.keys).map((k, j) => (
                     <React.Fragment key={j}>
                       {j > 0 && <span className="text-muted-foreground/40 text-xs">+</span>}
-                      <Kbd>{k === 'Cmd' ? '\u2318' : k}</Kbd>
+                      <Kbd>{k === 'Cmd' ? '\u2318' : TOUCHES[k] ? t(TOUCHES[k]) : k}</Kbd>
                     </React.Fragment>
                   ))}
                 </div>
@@ -721,16 +735,16 @@ export default function GuideApp() {
         </Section>
 
         {/* Utilisation typique */}
-        <Section icon={BookOpen} title="Utilisation typique">
+        <Section icon={BookOpen} title={t('guide.utilisation')}>
           <div className="space-y-5">
             {WORKFLOWS.map((w, i) => (
               <div key={i}>
-                <h3 className="text-sm font-semibold text-foreground mb-2">{w.title}</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-2">{t(w.title)}</h3>
                 <ol className="space-y-1.5 ml-4">
                   {w.steps.map((step, j) => (
                     <li key={j} className="text-sm text-muted-foreground flex items-start gap-2">
                       <span className="text-xs font-medium text-muted-foreground/60 mt-0.5 flex-shrink-0">{j + 1}.</span>
-                      <span>{step}</span>
+                      <span>{t(step)}</span>
                     </li>
                   ))}
                 </ol>
@@ -740,12 +754,12 @@ export default function GuideApp() {
         </Section>
 
         {/* Bonnes pratiques */}
-        <Section icon={Lightbulb} title="Bonnes pratiques">
+        <Section icon={Lightbulb} title={t('menu.bonnesPratiques')}>
           <ul className="space-y-2.5">
             {TIPS.map((tip, i) => (
               <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                 <Command size={14} className="text-muted-foreground/40 flex-shrink-0 mt-0.5" />
-                <span>{tip}</span>
+                <span>{t(tip)}</span>
               </li>
             ))}
           </ul>
@@ -754,22 +768,27 @@ export default function GuideApp() {
 
         {page === 'versions' && (<>
         {/* Feuille de route */}
-        <Section icon={Map} title="Feuille de route">
+        <Section icon={Map} title={t('guide.feuilleDeRoute')}>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ce qui arrive dans les prochaines versions. La liste bouge au rythme de vos retours.
+              {t('guide.feuilleDeRouteIntro')}
             </p>
             {ROADMAP.map((r, i) => (
               <div key={i}>
-                <h3 className="text-sm font-semibold text-foreground mb-1">{r.title}</h3>
-                <p className="text-sm text-muted-foreground ml-4">{r.desc}</p>
+                <h3 className="text-sm font-semibold text-foreground mb-1">{t(r.title)}</h3>
+                <p className="text-sm text-muted-foreground ml-4">{t(r.desc)}</p>
               </div>
             ))}
           </div>
         </Section>
 
-        {/* Changelog */}
-        <Section icon={Clock} title="Historique des versions">
+        {/* Changelog : reste en français (voir l'en-tête du fichier). La
+            ligne d'avertissement n'a pas de texte en français : elle ne
+            s'affiche que dans les autres langues. */}
+        <Section icon={Clock} title={t('guide.historiqueVersions')}>
+          {langue !== 'fr' && t('guide.historiqueEnFrancais') && (
+            <p className="text-sm text-muted-foreground italic mb-4">{t('guide.historiqueEnFrancais')}</p>
+          )}
           <div className="space-y-5">
             {CHANGELOG.map((entry, i) => (
               <div key={i}>
@@ -793,12 +812,12 @@ export default function GuideApp() {
 
         {/* Confidentialité */}
         {page === 'pratiques' && (
-        <Section icon={Shield} title="Confidentialité">
+        <Section icon={Shield} title={t('guide.confidentialite')}>
           <div className="space-y-2.5">
-            {CONFIDENTIALITE.map((text, i) => (
+            {CONFIDENTIALITE.map((cle, i) => (
               <p key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                 <Shield size={14} className="text-green-500/60 flex-shrink-0 mt-0.5" />
-                <span>{text}</span>
+                <span>{t(cle)}</span>
               </p>
             ))}
           </div>

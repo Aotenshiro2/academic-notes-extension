@@ -9,6 +9,11 @@ import { generateAnalysisPdfBlob, generateMultiNoteAnalysisPdfBlob } from '@/lib
 import { openProviderWithContent } from '@/lib/provider-injector'
 import { PROVIDERS, PROVIDER_LIST } from '@/lib/analysis-providers'
 import storage from '@/lib/storage'
+import { t, tp } from '@/lib/i18n'
+
+// Langue (01/10/2026) : seule l'INTERFACE de ce dialogue est traduite. Les
+// prompts ci-dessous et le texte de la note qui part avec (noteToPlainText)
+// restent en français, comme les socles côté serveur.
 
 interface AnalyzeNoteDialogProps {
   isOpen: boolean
@@ -203,11 +208,11 @@ function AnalyzeNoteDialog({
       const corps = consigne ? `${consigne}\n\n---\n\n${noteSeule}` : noteSeule
       const titre = isMultiNote ? `${selectedNoteIds.length} notes` : (note?.title ?? 'une note')
       await joindreNoteAuMentor(noteMentorat.id, titre, corps)
-      toast.success(`Ajoutée au fil du mentor : ${titre}`)
+      toast.success(t('analyse.ajouteeMentor', { titre }))
       return true
     } catch (err) {
       console.error('[analyse] envoi au mentor impossible', err)
-      toast.error('Impossible d’ajouter la note au fil du mentor.')
+      toast.error(t('analyse.echecMentor'))
       return false
     }
   }
@@ -469,10 +474,10 @@ function AnalyzeNoteDialog({
   const isLoading = status === 'loading'
 
   const PHASE_MESSAGES: Record<LoadingPhase, string> = {
-    preparing: 'Préparation du contexte...',
-    opening:   `Ouverture de ${providerConfig.label}...`,
-    loading:   `Chargement de ${providerConfig.label}...`,
-    injecting: 'Injection du prompt...',
+    preparing: t('analyse.phasePreparation'),
+    opening:   t('analyse.phaseOuverture', { provider: providerConfig.label }),
+    loading:   t('analyse.phaseChargement', { provider: providerConfig.label }),
+    injecting: t('analyse.phaseInjection'),
   }
 
   const PHASE_PROGRESS: Record<LoadingPhase, string> = {
@@ -483,10 +488,10 @@ function AnalyzeNoteDialog({
   }
 
   const PROMPT_OPTIONS: { type: PromptType; label: string; subtitle: string; icon: typeof MessageSquare }[] = [
-    { type: 'custom', label: 'Prompt libre', subtitle: 'Écris ta propre consigne', icon: PenLine },
-    { type: 'init', label: '1. Lancer la conversation', subtitle: 'Pose le rôle de l\'IA + premier état des lieux', icon: MessageSquare },
-    { type: 'update', label: '2. Débriefer une séance', subtitle: 'Dans une conversation déjà lancée : évolutions et angles morts', icon: Target },
-    { type: 'aok', label: '3. L\'avis Ao Knowledge', subtitle: 'Ce qu\'on en penserait, nous — pas l\'avis générique de l\'IA', icon: GraduationCap },
+    { type: 'custom', label: t('analyse.libre'), subtitle: t('analyse.libreSous'), icon: PenLine },
+    { type: 'init', label: t('analyse.init'), subtitle: t('analyse.initSous'), icon: MessageSquare },
+    { type: 'update', label: t('analyse.update'), subtitle: t('analyse.updateSous'), icon: Target },
+    { type: 'aok', label: t('analyse.aok'), subtitle: t('analyse.aokSous'), icon: GraduationCap },
   ]
 
   const pickerNotes = availableNotes.filter(n =>
@@ -494,8 +499,8 @@ function AnalyzeNoteDialog({
   )
 
   const buttonLabel = isMultiNote
-    ? `Analyser les ${selectedNoteIds.length} notes`
-    : 'Analyser'
+    ? t('analyse.boutonPlusieurs', { n: selectedNoteIds.length })
+    : t('analyse.bouton')
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -506,13 +511,13 @@ function AnalyzeNoteDialog({
           <div className="flex items-center gap-2">
             <Sparkles size={20} className="text-purple-600 dark:text-purple-400" />
             <h3 className="text-base font-semibold text-foreground">
-              {isMultiNote ? `Analyser ${selectedNoteIds.length} notes` : 'Analyser cette note'}
+              {isMultiNote ? t('analyse.titrePlusieurs', { n: selectedNoteIds.length }) : t('analyse.titre')}
             </h3>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            aria-label="Fermer"
+            aria-label={t('commun.fermer')}
           >
             <X size={16} />
           </button>
@@ -532,7 +537,7 @@ function AnalyzeNoteDialog({
                 <div className="flex items-center gap-2">
                   <FileText size={13} className="text-muted-foreground flex-shrink-0" />
                   <span className="text-sm text-foreground">
-                    {selectedNoteIds.length} note{selectedNoteIds.length > 1 ? 's' : ''} incluse{selectedNoteIds.length > 1 ? 's' : ''}
+                    {tp('analyse.inclusesUn', 'analyse.inclusesPlur', selectedNoteIds.length)}
                   </span>
                 </div>
                 <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-150 ${showNotePicker ? 'rotate-180' : ''}`} />
@@ -547,7 +552,7 @@ function AnalyzeNoteDialog({
                         onClick={() => setPickerFolderFilter(null)}
                         className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${pickerFolderFilter === null ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
                       >
-                        Toutes
+                        {t('commun.toutes')}
                       </button>
                       {folders.map(f => (
                         <button
@@ -568,7 +573,7 @@ function AnalyzeNoteDialog({
                       onClick={() => selectFolder(pickerFolderFilter)}
                       className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 border-b border-border transition-colors"
                     >
-                      + Sélectionner tout « {folders.find(f => f.id === pickerFolderFilter)?.name} »
+                      {t('analyse.selectionnerDossier', { dossier: folders.find(f => f.id === pickerFolderFilter)?.name ?? '' })}
                     </button>
                   )}
 
@@ -593,7 +598,7 @@ function AnalyzeNoteDialog({
                           <p className="text-[10px] text-muted-foreground">{formatCompactDate(n.timestamp)}</p>
                         </div>
                         {n.id === note.id && (
-                          <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">actuelle</span>
+                          <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">{t('analyse.actuelle')}</span>
                         )}
                       </label>
                     ))}
@@ -610,27 +615,25 @@ function AnalyzeNoteDialog({
           {sendMode === 'mentor' && (
             <div className="px-5">
               <label htmlFor="consigne-mentor" className="block text-xs text-muted-foreground mb-2">
-                Ce que tu veux qu’il regarde <span className="text-muted-foreground/60">(facultatif)</span> :
+                {t('analyse.consigneLabel')} <span className="text-muted-foreground/60">{t('analyse.facultatif')}</span>{t('analyse.deuxPoints')}
               </label>
               <textarea
                 id="consigne-mentor"
                 value={consigneMentor}
                 onChange={e => setConsigneMentor(e.target.value)}
                 rows={2}
-                placeholder="Sans rien écrire, il lit la note et réagit à ce qu’il y trouve."
+                placeholder={t('analyse.consignePlaceholder')}
                 className="w-full text-xs px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/20 placeholder:text-muted-foreground resize-y"
               />
               <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
-                Pas de type d’analyse ici : le mentor connaît déjà son rôle, le cadre de
-                la méthode et ton brief chiffré. Les quatre prompts servent à cadrer une
-                IA extérieure, qui elle ne sait rien de toi.
+                {t('analyse.pasDeType')}
               </p>
             </div>
           )}
 
           {/* Prompt options */}
           <div className={`px-5 space-y-2 ${sendMode === 'mentor' ? 'hidden' : ''}`}>
-            <p className="text-xs text-muted-foreground mb-2">Choisissez un type d'analyse :</p>
+            <p className="text-xs text-muted-foreground mb-2">{t('analyse.choisirType')}</p>
 
             {PROMPT_OPTIONS.map(({ type, label, subtitle, icon: Icon }) => (
               <button
@@ -655,7 +658,7 @@ function AnalyzeNoteDialog({
               <textarea
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="Écrivez votre prompt ici..."
+                placeholder={t('analyse.promptPlaceholder')}
                 className="w-full mt-2 p-3 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/40 resize-none"
                 rows={3}
                 autoFocus
@@ -668,7 +671,7 @@ function AnalyzeNoteDialog({
           <div className={`px-5 mt-4 ${sendMode === 'mentor' ? 'hidden' : ''}`}>
             <div className="flex items-center gap-3">
               <label htmlFor="provider-select" className="text-xs text-muted-foreground whitespace-nowrap">
-                Provider :
+                {t('analyse.provider')}
               </label>
               <select
                 id="provider-select"
@@ -687,7 +690,7 @@ function AnalyzeNoteDialog({
           {/* Thread mode segmented control */}
           {(hasThreadUrl || mentorDisponible) && (
             <div className="px-5 mt-3 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Envoyer dans :</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{t('analyse.envoyerDans')}</span>
               <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
                 <button
                   onClick={() => setSendMode('new')}
@@ -698,7 +701,7 @@ function AnalyzeNoteDialog({
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Nouvelle conv.
+                  {t('analyse.nouvelleConv')}
                 </button>
                 <button
                   onClick={() => setSendMode('thread')}
@@ -709,7 +712,7 @@ function AnalyzeNoteDialog({
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Conv. existante
+                  {t('analyse.convExistante')}
                 </button>
                 {mentorDisponible && (
                   <button
@@ -720,10 +723,10 @@ function AnalyzeNoteDialog({
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
-                    title="Ajouter cette note à ton fil de mentorat, sans quitter le carnet"
+                    title={t('analyse.mentorAide')}
                   >
                     <GraduationCap size={12} className="text-amber-600 dark:text-amber-400" />
-                    Mentor AOK
+                    {t('analyse.mentor')}
                   </button>
                 )}
               </div>
@@ -732,8 +735,7 @@ function AnalyzeNoteDialog({
 
           {sendMode === 'mentor' && (
             <p className="px-5 mt-2 text-[11px] text-muted-foreground leading-relaxed">
-              La note rejoint ton fil « Mentorat AOK ». Rien ne part tout de suite :
-              le mentor répondra quand tu cliqueras « Demander au mentor » dans ce fil.
+              {t('analyse.mentorExplication')}
             </p>
           )}
 
@@ -742,9 +744,7 @@ function AnalyzeNoteDialog({
             <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
               <MessageSquare size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                À envoyer une seule fois, pour ouvrir la conversation : ta note part avec et
-                sert de premier état des lieux. Ensuite, utilise « 2. Débriefer une séance »
-                dans cette même conversation.
+                {t('analyse.ouvertureUneFois')}
               </p>
             </div>
           )}
@@ -755,7 +755,7 @@ function AnalyzeNoteDialog({
             <div className="mx-5 mt-3 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg flex items-start gap-2">
               <ImageIcon size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-purple-700 dark:text-purple-300">
-                Images détectées — un PDF sera généré et envoyé automatiquement.
+                {t('analyse.imagesDetectees')}
               </p>
             </div>
           )}
@@ -765,10 +765,9 @@ function AnalyzeNoteDialog({
             <div className="mx-5 mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-start gap-2">
               <FileText size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                {selectedNoteIds.length} notes incluses —{' '}
                 {hasImages
-                  ? 'un PDF combiné sera généré avec toutes les images.'
-                  : 'envoyées en texte concaténé (aucune image détectée).'}
+                  ? t('analyse.multiPdf', { n: selectedNoteIds.length })
+                  : t('analyse.multiTexte', { n: selectedNoteIds.length })}
               </p>
             </div>
           )}
@@ -806,16 +805,16 @@ function AnalyzeNoteDialog({
                   <span className="text-green-600 dark:text-green-400">
                     {isMultiNote
                       ? hasImages
-                        ? `PDF combiné envoyé (${selectedNoteIds.length} notes)`
-                        : `${selectedNoteIds.length} notes envoyées`
-                      : hasImages ? 'PDF envoyé' : 'Envoyé'}
+                        ? t('analyse.pdfCombineEnvoye', { n: selectedNoteIds.length })
+                        : t('analyse.notesEnvoyees', { n: selectedNoteIds.length })
+                      : hasImages ? t('analyse.pdfEnvoye') : t('analyse.envoye')}
                   </span>
                 </>
               )}
               {(status === 'fallback' || status === 'thread-fallback') && (
                 <>
                   <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
-                  <span className="text-amber-600 dark:text-amber-400">Ouvert</span>
+                  <span className="text-amber-600 dark:text-amber-400">{t('analyse.ouvert')}</span>
                 </>
               )}
             </button>
@@ -839,8 +838,8 @@ function AnalyzeNoteDialog({
               <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
                 <Copy size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Le prompt a été copié — collez avec <kbd className="px-1 py-0.5 bg-amber-500/10 rounded text-[10px] font-mono">Ctrl+V</kbd>.
-                  {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
+                  {t('analyse.promptCopie')} <kbd className="px-1 py-0.5 bg-amber-500/10 rounded text-[10px] font-mono">Ctrl+V</kbd>.
+                  {pdfBlob && t('analyse.glissezPdf')}
                 </p>
               </div>
               {pdfBlob && (
@@ -849,7 +848,7 @@ function AnalyzeNoteDialog({
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium transition-colors"
                 >
                   <Download size={14} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">Télécharger le PDF</span>
+                  <span className="text-muted-foreground">{t('analyse.telechargerPdf')}</span>
                 </button>
               )}
             </div>
@@ -861,8 +860,8 @@ function AnalyzeNoteDialog({
               <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
                 <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Conv. existante indisponible — une nouvelle conversation a été ouverte.
-                  {pdfBlob && ' Glissez le PDF ci-dessous dans la conversation.'}
+                  {t('analyse.convIndisponible')}
+                  {pdfBlob && t('analyse.glissezPdf')}
                 </p>
               </div>
               {pdfBlob && (
@@ -871,7 +870,7 @@ function AnalyzeNoteDialog({
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-sm font-medium transition-colors"
                 >
                   <Download size={14} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">Télécharger le PDF</span>
+                  <span className="text-muted-foreground">{t('analyse.telechargerPdf')}</span>
                 </button>
               )}
             </div>
@@ -882,7 +881,7 @@ function AnalyzeNoteDialog({
             <div className="mx-5 mb-4 p-3 bg-green-500/5 border border-green-500/20 rounded-lg flex items-center gap-2">
               <Copy size={14} className="text-green-600 dark:text-green-400 flex-shrink-0" />
               <p className="text-xs text-green-700 dark:text-green-300">
-                Le prompt a aussi été copié dans le presse-papier.
+                {t('analyse.promptAussiCopie')}
               </p>
             </div>
           )}

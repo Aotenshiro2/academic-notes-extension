@@ -40,7 +40,7 @@ import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
 import { poserBlocsDeCapture } from '@/lib/capture-blocs'
 import { fetchAccesCaptureIA } from '@/lib/sync'
 import { obtenirNoteMentorat, desepinglerSiPlusDeMentorat } from '@/lib/note-mentorat'
-import { t, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
+import { t, tp, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
 import { getSession } from '@/lib/auth'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
@@ -409,7 +409,7 @@ function App() {
       }, 100) // Délai légèrement plus long pour laisser le temps au contenu de se mettre à jour
     } catch (error) {
       console.error('Error adding content:', error)
-      toast.error('Erreur lors de l\'ajout du contenu')
+      toast.error(t('pleinEcran.erreurAjout'))
     }
   }
 
@@ -545,7 +545,7 @@ function App() {
       const currentTab = tabs[0]
 
       if (!currentTab) {
-        toast.error('Impossible de récupérer les informations de la page')
+        toast.error(t('panneau.infosPageImpossible'))
         return
       }
 
@@ -602,7 +602,7 @@ function App() {
       await loadData()
     } catch (error) {
       console.error('Error capturing page:', error)
-      toast.error('Erreur lors de la capture de la page')
+      toast.error(t('panneau.erreurCapturePage'))
     } finally {
       setIsCapturing(false)
     }
@@ -647,7 +647,7 @@ function App() {
       const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE' })
 
       if (!result?.success) {
-        throw new Error(result?.error || 'Extraction échouée')
+        throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
       }
 
       // Capturer le screenshot de la page
@@ -716,7 +716,7 @@ function App() {
     try {
       const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE' })
       if (!result?.success) {
-        throw new Error(result?.error || 'Extraction échouée')
+        throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
       }
 
       // Le screenshot est pris AVANT le tri : sur un graphique, c'est lui qui
@@ -758,7 +758,7 @@ function App() {
       }, 100)
     } catch (error) {
       console.error('Smart capture to current note error:', error)
-      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture')
+      setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -778,7 +778,7 @@ function App() {
       await exportNoteToPDF(fresh)
     } catch (error) {
       console.error('Error exporting PDF:', error)
-      toast.error('Erreur lors de l\'export PDF')
+      toast.error(t('panneau.erreurPdf'))
     } finally {
       setIsExporting(false)
     }
@@ -792,7 +792,7 @@ function App() {
       await exportNoteToDocx(fresh)
     } catch (error) {
       console.error('Error exporting DOCX:', error)
-      toast.error('Erreur lors de l\'export Google Docs')
+      toast.error(t('panneau.erreurDocs'))
     } finally {
       setIsExporting(false)
     }
@@ -806,7 +806,7 @@ function App() {
       await exportNoteToDrive(fresh)
     } catch (error) {
       console.error('Error exporting to Drive:', error)
-      toast.error('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
+      toast.error(t('pleinEcran.erreurDrive', { erreur: error instanceof Error ? error.message : t('pleinEcran.erreurInconnue') }))
     } finally {
       setIsExporting(false)
     }
@@ -831,7 +831,7 @@ function App() {
       window.close()
     } catch (error) {
       console.error('Error opening fullscreen view:', error)
-      toast.error('Erreur lors de l\'ouverture de la vue étendue')
+      toast.error(t('panneau.erreurVueEtendue'))
     }
   }
 
@@ -841,7 +841,7 @@ function App() {
         <div className="flex items-center justify-center h-full animate-fade-in-up">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Chargement de vos notes...</p>
+            <p className="text-muted-foreground">{t('pleinEcran.chargement')}</p>
           </div>
         </div>
       </div>
@@ -893,7 +893,7 @@ function App() {
       )
 
       if (refus === 'reservee') {
-        toast.info(message || 'L’étude fait partie du Carnet Premium.')
+        toast.info(message || t('note.approfondirRefus'))
         setShowMentorat(true)
         return
       }
@@ -1059,12 +1059,12 @@ function App() {
                 <button
                   onClick={() => setShowSettings(false)}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                  title="Retour"
-                  aria-label="Retour"
+                  title={t('commun.retour')}
+                  aria-label={t('commun.retour')}
                 >
                   <ArrowLeft size={18} />
                 </button>
-                <h2 className="text-lg font-semibold text-foreground">Paramètres</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t('menu.parametres')}</h2>
               </div>
               <SettingsView
                 settings={settings!}
@@ -1089,15 +1089,15 @@ function App() {
                     const text = await file.text()
                     const result = await storage.importData(text)
                     if (result.success) {
-                      toast.success('Import réussi !')
+                      toast.success(t('reglages.importReussi'))
                       await loadData()
                     } else {
-                      toast.error('Erreur import : ' + result.error)
+                      toast.error(t('reglages.importErreur', { erreur: String(result.error) }))
                     }
                   }
                 }}
                 onSyncToJournal={() => {
-                  toast.info('Sync Journal non implémenté')
+                  toast.info(t('reglages.syncNonImplemente'))
                 }}
               />
             </div>
@@ -1156,10 +1156,10 @@ function App() {
             <button
               onClick={handleRitualWarmup}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-              title="Lancer un warmup — il s'ajoute dans le fil au moment du clic"
+              title={t('panneau.warmupAide')}
             >
               <Sunrise size={13} className="flex-shrink-0" />
-              Lancer un warmup
+              {t('capture.warmup')}
             </button>
           </div>
         )}
@@ -1172,7 +1172,7 @@ function App() {
               ref={editorRef}
               value={editorContent}
               onChange={setEditorContent}
-              placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
+              placeholder={currentNoteId ? t('capture.placeholderNote') : t('capture.placeholder')}
               onInsertScreenshot={handleScreenshot}
               onInsertExternalScreenshot={handleExternalScreenshot}
               onScreenshotToNote={handleScreenshotToNote}
@@ -1223,17 +1223,17 @@ function App() {
                 }`}
                 title={
                   isAuthed === false
-                    ? 'Non connecté — les notes ne partent pas vers le journal. Cliquer pour se connecter.'
+                    ? t('sync.nonConnecteAide')
                     : pendingSyncCount > 0
-                      ? `${pendingSyncCount} note${pendingSyncCount > 1 ? 's' : ''} pas encore dans le journal. Cliquer pour synchroniser.`
-                      : 'Toutes les notes sont dans le journal'
+                      ? tp('sync.enAttenteUn', 'sync.enAttentePlur', pendingSyncCount)
+                      : t('sync.toutEstLa')
                 }
               >
                 {isAuthed === false
-                  ? '⚠ sync hors ligne'
+                  ? t('sync.horsLigne')
                   : pendingSyncCount > 0
-                    ? `${pendingSyncCount} à synchroniser`
-                    : '✓ sync'}
+                    ? `${pendingSyncCount} ${t('sync.aFaire')}`
+                    : `✓ ${t('sync.ok')}`}
               </button>
             </div>
             <div className="flex items-center gap-1">
@@ -1244,16 +1244,16 @@ function App() {
               <button
                 onClick={() => { setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
-                title="Contacter le support"
-                aria-label="Contacter le support"
+                title={t('panneau.contacterSupport')}
+                aria-label={t('panneau.contacterSupport')}
               >
                 <LifeBuoy size={14} />
               </button>
               <button
                 onClick={() => { setShowMentorat(!showMentorat); setShowSupport(false); setShowAccount(false); setShowSettings(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showMentorat ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
-                title="Mode mentorat"
-                aria-label="Mode mentorat"
+                title={t('mentorat.titre')}
+                aria-label={t('mentorat.titre')}
               >
                 <GraduationCap size={14} />
               </button>
@@ -1330,9 +1330,9 @@ function App() {
                           setSettingsMenuOpen(false)
                           try {
                             await navigator.clipboard.writeText('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic')
-                            toast.success('Lien de l\'extension copié — partage-le !')
+                            toast.success(t('panneau.lienCopie'))
                           } catch {
-                            toast.error('Copie impossible.')
+                            toast.error(t('mentorat.copieImpossible'))
                           }
                         }}
                         className={item}

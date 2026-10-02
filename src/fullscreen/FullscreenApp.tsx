@@ -49,9 +49,24 @@ import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { collectNoteImages } from '@/lib/note-images'
 import { noterConsultation } from '@/lib/consultations'
+import { t, getLangue, subscribeLangue, type Langue } from '@/lib/i18n'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
+// Langue (01/10/2026) : l'interface suit la langue du panneau. Les textes qui
+// deviennent des DONNÉES (titre par défaut d'une note, « Page sans titre »)
+// restent en français, comme dans le panneau.
+
 function FullscreenApp() {
+  // La langue se change depuis le panneau latéral : on la suit sans recharger
+  // la page (subscribeLangue écoute aussi les autres documents).
+  const [langue, setLangueVue] = useState<Langue>(getLangue)
+  useEffect(() => subscribeLangue(setLangueVue), [])
+  // L'onglet aussi : son titre et la langue déclarée (lecteurs d'écran).
+  useEffect(() => {
+    document.documentElement.lang = langue
+    document.title = t('pleinEcran.titreVue')
+  }, [langue])
+
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   // Résumés uniquement : cf. sidepanel/App.tsx
   const [notes, setNotes] = useState<NoteSummary[]>([])
@@ -263,14 +278,14 @@ function FullscreenApp() {
       }, 100)
     } catch (error) {
       console.error('Error adding content:', error)
-      toast.error('Erreur lors de l\'ajout du contenu')
+      toast.error(t('pleinEcran.erreurAjout'))
     }
   }
 
   // Capture d'écran — avec Tab Picker en fullscreen
   const handleScreenshot = async (): Promise<string | null> => {
     try {
-      const targetTabId = await selectTab('Capture d\'écran', 'Choisissez la page à capturer')
+      const targetTabId = await selectTab(t('capture.ecran'), t('pleinEcran.choisirCapture'))
       if (!targetTabId) return null
 
       const response = await chrome.runtime.sendMessage({
@@ -290,7 +305,7 @@ function FullscreenApp() {
 
     try {
       // Sélectionner l'onglet cible via le Tab Picker
-      const targetTabId = await selectTab('Capture intelligente', 'Choisissez la page à analyser')
+      const targetTabId = await selectTab(t('capture.intelligente'), t('pleinEcran.choisirAnalyse'))
       if (!targetTabId) return
 
       setIsSmartCapturing(true)
@@ -298,7 +313,7 @@ function FullscreenApp() {
       // Extraction du contenu depuis l'onglet cible
       const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: targetTabId })
       if (!result?.success) {
-        throw new Error(result?.error || 'Extraction échouée')
+        throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
       }
 
       // Screenshot ciblé via le service worker (switch d'onglet temporaire)
@@ -350,7 +365,7 @@ function FullscreenApp() {
       await loadData()
     } catch (error) {
       console.error('Smart capture error:', error)
-      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture intelligente')
+      setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -363,14 +378,14 @@ function FullscreenApp() {
 
     try {
       // Sélectionner l'onglet cible via le Tab Picker
-      const targetTabId = await selectTab('Capture intelligente', 'Choisissez la page à analyser')
+      const targetTabId = await selectTab(t('capture.intelligente'), t('pleinEcran.choisirAnalyse'))
       if (!targetTabId) return
 
       setIsSmartCapturing(true)
 
       const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: targetTabId })
       if (!result?.success) {
-        throw new Error(result?.error || 'Extraction échouée')
+        throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
       }
 
       // Le screenshot d'abord : sur un graphique, c'est lui qui porte
@@ -408,7 +423,7 @@ function FullscreenApp() {
       }, 100)
     } catch (error) {
       console.error('Smart capture to current note error:', error)
-      setSmartCaptureError(error instanceof Error ? error.message : 'Erreur lors de la capture')
+      setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -518,7 +533,7 @@ function FullscreenApp() {
       await loadData()
     } catch (error) {
       console.error('[FullscreenApp] Renommage impossible:', error)
-      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+      toast.error(error instanceof Error ? error.message : t('historique.renommageImpossible'))
     } finally {
       setIsEditingTitle(false)
       savingTitle.current = false
@@ -573,7 +588,7 @@ function FullscreenApp() {
       await exportNoteToDrive(fresh)
     } catch (error) {
       console.error('Error exporting to Drive:', error)
-      toast.error('Erreur lors de l\'export Google Drive : ' + (error instanceof Error ? error.message : 'Erreur inconnue'))
+      toast.error(t('pleinEcran.erreurDrive', { erreur: error instanceof Error ? error.message : t('pleinEcran.erreurInconnue') }))
     } finally {
       setIsExporting(false)
     }
@@ -624,7 +639,7 @@ function FullscreenApp() {
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Chargement de vos notes...</p>
+          <p className="text-muted-foreground">{t('pleinEcran.chargement')}</p>
         </div>
       </div>
     )
@@ -640,7 +655,7 @@ function FullscreenApp() {
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1 rounded-md hover:bg-muted"
-              aria-label="Fermer la sidebar"
+              aria-label={t('pleinEcran.fermerSidebar')}
             >
               <X size={16} />
             </button>
@@ -651,7 +666,7 @@ function FullscreenApp() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <input
               type="text"
-              placeholder="Rechercher dans vos notes..."
+              placeholder={t('pleinEcran.rechercher')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -669,7 +684,7 @@ function FullscreenApp() {
                     : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Toutes
+                {t('commun.toutes')}
               </button>
               {folders.map(f => (
                 <button
@@ -697,7 +712,7 @@ function FullscreenApp() {
               className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border mb-2"
             >
               <Plus size={16} className="text-muted-foreground" />
-              <span className="text-muted-foreground">Nouvelle note</span>
+              <span className="text-muted-foreground">{t('pleinEcran.nouvelleNote')}</span>
             </button>
 
             {filteredNotes.map((note) => (
@@ -726,8 +741,8 @@ function FullscreenApp() {
                     role="button"
                     onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id) }}
                     className="p-1 mt-0.5 text-muted-foreground hover:text-destructive rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-                    title="Supprimer"
-                    aria-label="Supprimer la note"
+                    title={t('commun.supprimer')}
+                    aria-label={t('historique.supprimerNote')}
                   >
                     <Trash2 size={14} />
                   </span>
@@ -747,8 +762,8 @@ function FullscreenApp() {
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="p-2 rounded-md hover:bg-muted"
-                title="Ouvrir la sidebar"
-                aria-label="Ouvrir la sidebar"
+                title={t('pleinEcran.ouvrirSidebar')}
+                aria-label={t('pleinEcran.ouvrirSidebar')}
               >
                 <Menu size={16} />
               </button>
@@ -773,16 +788,16 @@ function FullscreenApp() {
                     <button
                       onClick={saveTitle}
                       className="p-1 text-primary hover:bg-primary/10 rounded"
-                      title="Sauvegarder"
-                      aria-label="Sauvegarder le titre"
+                      title={t('commun.sauvegarder')}
+                      aria-label={t('pleinEcran.sauvegarderTitre')}
                     >
                       <Check size={16} />
                     </button>
                     <button
                       onClick={() => setIsEditingTitle(false)}
                       className="p-1 text-muted-foreground hover:bg-muted rounded"
-                      title="Annuler"
-                      aria-label="Annuler la modification"
+                      title={t('commun.annuler')}
+                      aria-label={t('pleinEcran.annulerModif')}
                     >
                       <X size={16} />
                     </button>
@@ -791,19 +806,19 @@ function FullscreenApp() {
                   <h2
                     className="text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
                     onClick={startEditingTitle}
-                    title="Cliquer pour modifier le titre"
+                    title={t('pleinEcran.cliquerTitre')}
                   >
                     {currentNote.title}
                   </h2>
                 )
               ) : (
                 <h2 className="text-lg font-semibold text-foreground">
-                  Le Carnet du Trader - Vue Étendue
+                  {t('pleinEcran.titreVue')}
                 </h2>
               )}
               {currentNote && !isEditingTitle && (
                 <p className="text-sm text-muted-foreground">
-                  Modifié {formatSmartDate(currentNote.timestamp)}
+                  {t('pleinEcran.modifie', { date: formatSmartDate(currentNote.timestamp) })}
                 </p>
               )}
             </div>
@@ -815,8 +830,8 @@ function FullscreenApp() {
                 <button
                   onClick={() => handleDeleteNote()}
                   className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-md transition-colors"
-                  title="Supprimer la note"
-                  aria-label="Supprimer la note"
+                  title={t('historique.supprimerNote')}
+                  aria-label={t('historique.supprimerNote')}
                 >
                   <Trash2 size={18} />
                 </button>
@@ -828,8 +843,8 @@ function FullscreenApp() {
                 onClick={() => { if (currentNote && !isExporting) setShowExportMenu(p => !p) }}
                 disabled={!currentNote || isExporting}
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title={isExporting ? 'Export en cours…' : 'Exporter la note'}
-                aria-label="Exporter la note"
+                title={isExporting ? t('entete.exporterEnCours') : t('entete.exporter')}
+                aria-label={t('entete.exporter')}
               >
                 {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
               </button>
@@ -840,21 +855,21 @@ function FullscreenApp() {
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                   >
                     <FileDown size={14} className="text-red-500 flex-shrink-0" />
-                    Exporter en PDF
+                    {t('entete.exportPdf')}
                   </button>
                   <button
                     onClick={() => { setShowExportMenu(false); handleExportDocx() }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                   >
                     <FileText size={14} className="text-blue-500 flex-shrink-0" />
-                    Google Docs (.docx)
+                    {t('entete.exportDocx')}
                   </button>
                   <button
                     onClick={() => { setShowExportMenu(false); handleExportDrive() }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                   >
                     <GoogleDriveIcon size={14} />
-                    Google Drive
+                    {t('entete.exportDrive')}
                   </button>
                 </div>
               )}
@@ -871,8 +886,8 @@ function FullscreenApp() {
                   ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-500/10'
                   : 'text-muted-foreground/40 cursor-not-allowed'
               }`}
-              title={currentNote ? "Analyser avec une IA" : "Sélectionnez une note pour analyser"}
-              aria-label="Analyser avec une IA"
+              title={currentNote ? t('entete.analyser') : t('entete.analyserAucune')}
+              aria-label={t('entete.analyser')}
             >
               <Sparkles size={18} />
             </button>
@@ -880,8 +895,8 @@ function FullscreenApp() {
             <button
               onClick={handleNativeFullscreen}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Activer plein écran natif"
-              aria-label="Plein écran"
+              title={t('pleinEcran.natif')}
+              aria-label={t('pleinEcran.pleinEcran')}
             >
               <Maximize size={18} />
             </button>
@@ -889,8 +904,8 @@ function FullscreenApp() {
             <button
               onClick={handleOpenWebsite}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              title="Ouvrir Journal d'Études"
-              aria-label="Ouvrir Journal d'Études"
+              title={t('pleinEcran.ouvrirJournal')}
+              aria-label={t('pleinEcran.ouvrirJournal')}
             >
               <ExternalLink size={18} />
             </button>
@@ -900,10 +915,10 @@ function FullscreenApp() {
             <button
               onClick={handleBackToSidepanel}
               className="px-3 py-2 text-sm bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-md transition-colors flex items-center space-x-2"
-              title="Retour au mode compact"
+              title={t('pleinEcran.retourCompact')}
             >
               <SidebarClose size={16} />
-              <span>Mode compact</span>
+              <span>{t('pleinEcran.modeCompact')}</span>
             </button>
           </div>
         </div>
@@ -925,16 +940,16 @@ function FullscreenApp() {
                 {isSmartCapturing ? (
                   <div className="text-center">
                     <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
-                    <p className="text-muted-foreground">Analyse de la page en cours...</p>
+                    <p className="text-muted-foreground">{t('smart.analyse')}</p>
                   </div>
                 ) : (
                   <>
                     <BookOpen size={64} className="text-muted-foreground mb-6" />
                     <h3 className="text-2xl font-semibold text-foreground mb-4">
-                      Bienvenue dans Le Carnet du Trader
+                      {t('pleinEcran.bienvenue')}
                     </h3>
                     <p className="text-muted-foreground max-w-md mb-6">
-                      Sélectionnez une note dans la sidebar ou écrivez dans la zone ci-dessous.
+                      {t('pleinEcran.bienvenueSous')}
                     </p>
                     {smartCaptureError && (
                       <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md">
@@ -954,7 +969,7 @@ function FullscreenApp() {
             ref={editorRef}
             value={editorContent}
             onChange={setEditorContent}
-            placeholder={currentNoteId ? "Ajouter du contenu..." : "Écrivez ou capturez..."}
+            placeholder={currentNoteId ? t('capture.placeholderNote') : t('capture.placeholder')}
             onInsertScreenshot={handleScreenshot}
             onInsertExternalScreenshot={handleExternalScreenshot}
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
@@ -970,8 +985,8 @@ function FullscreenApp() {
         isOpen={!!deleteConfirmNoteId}
         onConfirm={confirmDeleteNote}
         onCancel={() => setDeleteConfirmNoteId(null)}
-        title="Supprimer la note"
-        message="Cette action est irréversible."
+        title={t('historique.supprimerNoteTitre')}
+        message={t('confirmer.irreversible')}
         isLoading={isDeleting}
       />
 

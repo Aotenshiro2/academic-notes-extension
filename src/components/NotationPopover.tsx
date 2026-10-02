@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeOutcome } from '@/types/academic'
+import { t, type CleI18n } from '@/lib/i18n'
 
 interface NotationPopoverProps {
   position: { top: number; bottom: number; left: number }
@@ -13,12 +14,13 @@ interface NotationPopoverProps {
   avecD?: boolean
 }
 
-type GradeOption = { value: AnnotationLettre; hint: string; selectedClass: string }
+// `hint` est une clé du dictionnaire : le texte se traduit au rendu.
+type GradeOption = { value: AnnotationLettre; hint: CleI18n; selectedClass: string }
 
 const GRADES: GradeOption[] = [
-  { value: 'A', hint: 'je le reprendrais sans hésiter', selectedClass: 'border-green-600 bg-green-500/15 text-green-600 dark:text-green-400' },
-  { value: 'B', hint: 'ça a marché mais c\'était flou', selectedClass: 'border-amber-600 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-  { value: 'C', hint: 'forcé, émotionnel', selectedClass: 'border-red-600 bg-red-500/15 text-red-600 dark:text-red-400' },
+  { value: 'A', hint: 'notation.aideA', selectedClass: 'border-green-600 bg-green-500/15 text-green-600 dark:text-green-400' },
+  { value: 'B', hint: 'notation.aideB', selectedClass: 'border-amber-600 bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  { value: 'C', hint: 'notation.aideC', selectedClass: 'border-red-600 bg-red-500/15 text-red-600 dark:text-red-400' },
 ]
 
 // Le D, opt-in (24/09/2026, entretien Brice avec Florent) : un plancher sous
@@ -27,7 +29,7 @@ const GRADES: GradeOption[] = [
 // gradation lisible. ⚠️ Couleur choisie par défaut, à faire valider par Brice.
 const GRADE_D: GradeOption = {
   value: 'D',
-  hint: 'ton plancher, sous le C',
+  hint: 'notation.aideD',
   selectedClass: 'border-red-800 bg-red-800/15 text-red-800 dark:text-red-300',
 }
 
@@ -38,10 +40,10 @@ const GRADE_D: GradeOption = {
 const lettreDe = (g: AnnotationGrade): AnnotationLettre => g[0] as AnnotationLettre
 const modDe = (g: AnnotationGrade): '+' | '-' | '' => (g.length > 1 ? (g[1] as '+' | '-') : '')
 
-const CAUSES: { value: AnnotationCause; label: string }[] = [
-  { value: 'technique', label: 'technique' },
-  { value: 'connaissance', label: 'connaissance' },
-  { value: 'emotionnel', label: 'émotionnel' },
+const CAUSES: { value: AnnotationCause; label: CleI18n }[] = [
+  { value: 'technique', label: 'notation.causeTechnique' },
+  { value: 'connaissance', label: 'notation.causeConnaissance' },
+  { value: 'emotionnel', label: 'notation.causeEmotionnel' },
 ]
 
 const POPUP_WIDTH = 264
@@ -76,6 +78,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
   }, [onClose])
 
   const canSave = grade !== null && phrase.trim().length > 0
+  const aideCourante = grade ? grades.find(g => g.value === lettreDe(grade))?.hint : undefined
 
   const handleSave = useCallback(() => {
     if (!grade || !phrase.trim()) return
@@ -126,7 +129,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
                 className={`w-[26%] text-xs flex items-center justify-center transition-opacity ${
                   mod === '-' ? 'opacity-100 font-semibold' : 'opacity-40 hover:opacity-100 hover:bg-muted/40'
                 }`}
-                aria-label={`Grade ${g.value} moins`}
+                aria-label={t('notation.moins', { lettre: g.value })}
               >
                 −
               </button>
@@ -135,7 +138,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
                 className={`flex-1 text-base font-medium flex items-center justify-center ${
                   active && mod === '' ? '' : active ? 'opacity-80' : 'hover:bg-muted/40'
                 }`}
-                aria-label={`Grade ${g.value} — ${g.hint}`}
+                aria-label={t('notation.neutre', { lettre: g.value, aide: t(g.hint) })}
               >
                 {g.value}
               </button>
@@ -144,7 +147,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
                 className={`w-[26%] text-xs flex items-center justify-center transition-opacity ${
                   mod === '+' ? 'opacity-100 font-semibold' : 'opacity-40 hover:opacity-100 hover:bg-muted/40'
                 }`}
-                aria-label={`Grade ${g.value} plus`}
+                aria-label={t('notation.plus', { lettre: g.value })}
               >
                 +
               </button>
@@ -154,8 +157,8 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
       </div>
       <p className="text-[10px] leading-snug text-muted-foreground/70 px-0.5">
         {grade
-          ? grades.find(g => g.value === lettreDe(grade))?.hint
-          : `A — sans hésiter · B — flou · C — forcé${afficherD ? ' · D — plancher' : ''} (± pour nuancer)`}
+          ? (aideCourante ? t(aideCourante) : null)
+          : `${t('notation.legende')}${afficherD ? t('notation.legendeD') : ''}${t('notation.legendeFin')}`}
       </p>
 
       {/* La phrase — l'exercice canonique */}
@@ -168,10 +171,10 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
         }}
         placeholder={
           grade && modDe(grade) === '+'
-            ? 'Pourquoi ce + ?'
+            ? t('notation.pourquoiPlus')
             : grade && modDe(grade) === '-'
-              ? 'Pourquoi ce − ?'
-              : 'Pourquoi cette note ? (une phrase)'
+              ? t('notation.pourquoiMoins')
+              : t('notation.pourquoi')
         }
         className="w-full px-2.5 py-1.5 text-xs bg-muted/40 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50"
       />
@@ -179,7 +182,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
       {/* Cause — LE jugement des SL (MC1/Tendler), mis en avant sur une perte */}
       {outcome === 'perte' && (
         <p className="text-[10px] font-medium text-red-600 dark:text-red-400 px-0.5">
-          Cause du stop loss ?
+          {t('notation.causeStop')}
         </p>
       )}
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -193,7 +196,7 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
                 : 'border-border text-muted-foreground/70 hover:text-foreground'
             }`}
           >
-            {c.label}
+            {t(c.label)}
           </button>
         ))}
       </div>
@@ -205,19 +208,19 @@ function NotationPopover({ position, existing, outcome, onSave, onRemove, onClos
           <button
             onClick={() => { onRemove(); onClose() }}
             className="text-[10px] text-red-500/70 hover:text-red-500 hover:underline underline-offset-2 transition-colors"
-            title="Retirer ce jugement (le trade redevient non noté)"
+            title={t('notation.retirerAide')}
           >
-            Retirer la note
+            {t('notation.retirer')}
           </button>
         ) : (
-          <span className="text-[10px] text-muted-foreground/60">Relecture dans 14 j</span>
+          <span className="text-[10px] text-muted-foreground/60">{t('notation.relecture')}</span>
         )}
         <button
           onClick={handleSave}
           disabled={!canSave}
           className="px-3 py-1 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Noter
+          {t('notation.noter')}
         </button>
       </div>
     </div>

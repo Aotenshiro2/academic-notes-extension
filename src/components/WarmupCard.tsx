@@ -1,17 +1,19 @@
 import React, { useState } from 'react'
 import { Sunrise, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
+import { t, type CleI18n } from '@/lib/i18n'
 import type { NoteWarmup } from '@/types/academic'
 
 // Warmup de séance, lancé DANS la note quand on est prêt à trader (le pendant du
 // cooldown-par-trade). Non imposé : une note de cours l'ignore. Le débrief de fin,
 // lui, est attaché à chaque trade (CooldownPopover).
 
-const FIELDS: { key: 'physical' | 'emotional' | 'dominantThought' | 'objective'; label: string; hint: string }[] = [
-  { key: 'physical', label: 'État physique', hint: 'Fatigué ? En forme ? Tendu ? Bien dormi ?' },
-  { key: 'emotional', label: 'État émotionnel', hint: 'Anxieux, excité, détendu, irritable…' },
-  { key: 'dominantThought', label: 'Pensée dominante', hint: 'Un objectif ? Une peur ? Une attente ?' },
-  { key: 'objective', label: 'Objectif du jour (qualitatif)', hint: 'Respecter mon plan, exécuter — pas un chiffre.' },
+// Clés du dictionnaire, traduites au rendu.
+const FIELDS: { key: 'physical' | 'emotional' | 'dominantThought' | 'objective'; label: CleI18n; hint: CleI18n }[] = [
+  { key: 'physical', label: 'warmup.physique', hint: 'warmup.physiqueAide' },
+  { key: 'emotional', label: 'warmup.emotionnel', hint: 'warmup.emotionnelAide' },
+  { key: 'dominantThought', label: 'warmup.pensee', hint: 'warmup.penseeAide' },
+  { key: 'objective', label: 'warmup.objectif', hint: 'warmup.objectifAide' },
 ]
 
 function hasContent(w?: NoteWarmup): boolean {
@@ -30,7 +32,7 @@ function isBlank(w?: NoteWarmup): boolean {
 
 function gaugeStyle(v: number) {
   const color = v < 34 ? '#22c55e' : v < 67 ? '#f59e0b' : '#ef4444'
-  const label = v < 34 ? 'Calme' : v < 67 ? 'Modéré' : 'Chargé'
+  const label = v < 34 ? t('warmup.calme') : v < 67 ? t('warmup.modere') : t('warmup.charge')
   return { color, label }
 }
 
@@ -67,8 +69,8 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
         className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/5 transition-colors"
       >
         <Sunrise size={15} className="flex-shrink-0" />
-        <span className="text-xs font-medium">Lancer mon warmup</span>
-        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">te situer avant d'ouvrir les graphiques</span>
+        <span className="text-xs font-medium">{t('warmup.lancer')}</span>
+        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{t('warmup.lancerAide')}</span>
       </button>
     )
   }
@@ -91,8 +93,8 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
           <button
             onClick={requestDelete}
             className="ml-1.5 p-1 flex-shrink-0 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Supprimer ce warmup"
-            aria-label="Supprimer ce warmup"
+            title={t('warmup.supprimer')}
+            aria-label={t('warmup.supprimer')}
           >
             <Trash2 size={12} />
           </button>
@@ -103,11 +105,11 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
         <div className="px-3 pb-3 space-y-2.5">
           {FIELDS.map(f => (
             <div key={f.key}>
-              <div className="text-[11px] font-medium mb-0.5 text-blue-600 dark:text-blue-400">{f.label}</div>
+              <div className="text-[11px] font-medium mb-0.5 text-blue-600 dark:text-blue-400">{t(f.label)}</div>
               <textarea
                 defaultValue={warmup?.[f.key] ?? ''}
                 onBlur={e => { const v = e.target.value; if (v !== (warmup?.[f.key] ?? '')) onSave({ [f.key]: v }) }}
-                placeholder={f.hint}
+                placeholder={t(f.hint)}
                 rows={1}
                 className="w-full resize-y rounded-md px-2.5 py-1.5 text-[13px] bg-background border border-border text-foreground outline-none focus:border-primary"
                 style={{ minHeight: 34 }}
@@ -116,7 +118,7 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
           ))}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">Émotion accumulée au démarrage</span>
+              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{t('warmup.emotionAccumulee')}</span>
               <span className="text-[11px] font-semibold" style={{ color: g.color }}>{gauge} · {g.label}</span>
             </div>
             <input
@@ -126,15 +128,15 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
               onBlur={() => onSave({ emotionLevel: gauge })}
               className="w-full" style={{ accentColor: g.color }}
             />
-            <p className="text-[10px] mt-0.5 text-muted-foreground">Tu ne repars pas de zéro : ce que tu portes d'hier pèse sur aujourd'hui.</p>
+            <p className="text-[10px] mt-0.5 text-muted-foreground">{t('warmup.pasDeZero')}</p>
           </div>
         </div>
       )}
 
       <ConfirmDialog
         isOpen={confirmDelete}
-        title="Supprimer ce warmup ?"
-        message="Ce que tu as noté sur ton état au démarrage sera perdu. Action définitive."
+        title={t('warmup.supprimerTitre')}
+        message={t('warmup.supprimerMessage')}
         onConfirm={() => { setConfirmDelete(false); onDelete?.() }}
         onCancel={() => setConfirmDelete(false)}
       />

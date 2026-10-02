@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react'
 import { X, ZoomIn, ZoomOut, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 interface ImageLightboxProps {
   src: string
@@ -84,8 +85,8 @@ function ImageLightbox({
         <button
           onClick={() => setScale(s => Math.max(s - 0.25, 0.5))}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-          title="Zoom out (-)"
-          aria-label="Zoom arrière"
+          title={t('lightbox.zoomArriereAide')}
+          aria-label={t('lightbox.zoomArriere')}
         >
           <ZoomOut size={20} />
         </button>
@@ -95,8 +96,8 @@ function ImageLightbox({
         <button
           onClick={() => setScale(s => Math.min(s + 0.25, 3))}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-          title="Zoom in (+)"
-          aria-label="Zoom avant"
+          title={t('lightbox.zoomAvantAide')}
+          aria-label={t('lightbox.zoomAvant')}
         >
           <ZoomIn size={20} />
         </button>
@@ -104,16 +105,16 @@ function ImageLightbox({
         <button
           onClick={handleDownload}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-          title="Download"
-          aria-label="Télécharger l'image"
+          title={t('lightbox.telecharger')}
+          aria-label={t('lightbox.telechargerImage')}
         >
           <Download size={20} />
         </button>
         <button
           onClick={onClose}
           className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-          title="Close (Esc)"
-          aria-label="Fermer"
+          title={t('lightbox.fermerAide')}
+          aria-label={t('commun.fermer')}
         >
           <X size={20} />
         </button>
@@ -125,14 +126,14 @@ function ImageLightbox({
           <button
             onClick={(e) => { e.stopPropagation(); goTo(currentIndex - 1) }}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-            aria-label="Image précédente"
+            aria-label={t('lightbox.precedente')}
           >
             <ChevronLeft size={24} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); goTo(currentIndex + 1) }}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-            aria-label="Image suivante"
+            aria-label={t('lightbox.suivante')}
           >
             <ChevronRight size={24} />
           </button>
@@ -164,7 +165,7 @@ function ImageLightbox({
           </span>
         )}
         <span className="text-white/50 text-xs">
-          Esc pour fermer • +/- pour zoomer{hasNavigation ? ' • ←/→ pour naviguer' : ''} • Clic extérieur pour fermer
+          {t('lightbox.aideBase')}{hasNavigation ? t('lightbox.aideNav') : ''}{t('lightbox.aideFin')}
         </span>
       </div>
     </div>

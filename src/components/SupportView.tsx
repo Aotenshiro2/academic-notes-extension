@@ -8,6 +8,7 @@ import { toast } from '@/lib/toast'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowLeft, LifeBuoy, Send, Loader2, User } from 'lucide-react'
 import { sendSupportMessage, escalateSupport, fetchSupportThread } from '@/lib/sync'
+import { t } from '@/lib/i18n'
 
 interface ChatMessage {
   // 'human' = une vraie personne de l'équipe a répondu depuis le cockpit.
@@ -34,7 +35,7 @@ function Linkified({ text }: { text: string }) {
             key={i}
             onClick={e => { e.stopPropagation(); chrome.tabs.create({ url }) }}
             className="underline underline-offset-2 text-blue-600 dark:text-blue-400 hover:opacity-80 break-all"
-            title={`Ouvrir ${url}`}
+            title={t('support.ouvrirLien', { url })}
           >
             {part}
           </button>
@@ -82,7 +83,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
       threadIdRef.current = res.threadId ?? threadIdRef.current
       setMessages(prev => [...prev, { role: 'assistant', content: res.reply! }])
     } else {
-      toast.error(res.error ?? 'Support indisponible.')
+      toast.error(res.error ?? t('support.indisponible'))
     }
   }, [input, sending])
 
@@ -92,16 +93,21 @@ function SupportView({ onBack }: { onBack: () => void }) {
     // réponse arrivera ICI, dans ce fil. Le mailto ne sert plus que de
     // secours quand le backend n'a pas pu envoyer (clé absente, panne).
     if (notified) {
-      toast.success('L’équipe est prévenue. Tu recevras la réponse ici, dans cette conversation.')
+      toast.success(t('support.equipePrevenue'))
       return
     }
+    // Le brouillon d'email est écrit dans la langue de l'élève : c'est lui qui
+    // le complète. L'objet, lui, reste fixe : il sert à l'équipe pour trier.
+    const role = (r: string) =>
+      r === 'user' ? t('support.roleMoi') : r === 'human' ? t('support.roleEquipe') : t('support.roleAssistant')
     const transcript = messages
-      .map(m => `${m.role === 'user' ? 'Moi' : m.role === 'human' ? 'Équipe' : 'Assistant'} : ${m.content}`)
+      .map(m => `${role(m.role)} : ${m.content}`)
       .join('\n\n')
       .slice(0, 1400)
+    const entree = `${t('support.mailBonjour')}\n\n${t('support.mailDecris')}`
     const body = transcript
-      ? `Bonjour,\n\n[Décris ton problème ici]\n\n--- Échange avec l'assistant ---\n${transcript}`
-      : 'Bonjour,\n\n[Décris ton problème ici]'
+      ? `${entree}\n\n${t('support.mailEchange')}\n${transcript}`
+      : entree
     const url = `mailto:${email}?subject=${encodeURIComponent('Support — Le Carnet du Trader')}&body=${encodeURIComponent(body)}`
     chrome.tabs.create({ url })
   }, [messages])
@@ -113,20 +119,19 @@ function SupportView({ onBack }: { onBack: () => void }) {
         <button
           onClick={onBack}
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          aria-label="Retour"
+          aria-label={t('commun.retour')}
         >
           <ArrowLeft size={16} />
         </button>
         <LifeBuoy size={16} className="text-blue-500 flex-shrink-0" />
-        <h2 className="flex-1 text-sm font-semibold text-foreground">Support</h2>
+        <h2 className="flex-1 text-sm font-semibold text-foreground">{t('support.titre')}</h2>
       </div>
 
       {/* Fil */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {messages.length === 0 && (
           <div className="text-sm text-muted-foreground leading-relaxed p-3 bg-muted/40 rounded-lg">
-            Pose ta question sur l'extension, le Journal d'Études ou ton compte AOK.
-            L'assistant répond tout de suite, et « Parler à un humain » reste toujours là.
+            {t('support.accueil')}
           </div>
         )}
         {messages.map((m, i) => (
@@ -144,7 +149,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
             {m.role === 'human' && (
               <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 mb-0.5">
                 <User size={10} />
-                L'équipe AOK
+                {t('support.equipeAOK')}
               </span>
             )}
             {m.role === 'user' ? m.content : <Linkified text={m.content} />}
@@ -153,7 +158,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
         {sending && (
           <div className="mr-auto flex items-center gap-2 px-3 py-2 text-muted-foreground">
             <Loader2 size={14} className="animate-spin" />
-            <span className="text-xs">L'assistant écrit…</span>
+            <span className="text-xs">{t('support.ecrit')}</span>
           </div>
         )}
         <div ref={bottomRef} />
@@ -164,10 +169,10 @@ function SupportView({ onBack }: { onBack: () => void }) {
       <button
         onClick={talkToHuman}
         className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-border/60 bg-muted/30 shadow-sm text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-        title="Envoyer un email à l'équipe avec la transcription de cet échange"
+        title={t('support.humainAide')}
       >
         <User size={12} />
-        Parler à un humain
+        {t('support.humain')}
       </button>
 
       {/* Saisie */}
@@ -181,7 +186,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
               void send()
             }
           }}
-          placeholder="Ta question…"
+          placeholder={t('support.placeholder')}
           rows={1}
           className="flex-1 resize-none text-sm bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary max-h-24"
         />
@@ -189,7 +194,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
           onClick={() => void send()}
           disabled={sending || !input.trim()}
           className="w-9 h-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0"
-          aria-label="Envoyer"
+          aria-label={t('commun.envoyer')}
         >
           <Send size={15} />
         </button>

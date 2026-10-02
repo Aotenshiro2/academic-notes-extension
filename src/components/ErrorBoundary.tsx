@@ -1,5 +1,6 @@
 import React from 'react'
 import { AlertTriangle, RotateCw } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 interface ErrorBoundaryProps {
   children: React.ReactNode
@@ -37,10 +38,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       <div className="flex flex-col items-center justify-center gap-3 h-full min-h-[280px] p-6 text-center">
         <AlertTriangle size={28} className="text-amber-500" />
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">Le carnet s'est interrompu</p>
+          <p className="text-sm font-semibold text-foreground">{t('erreur.titre')}</p>
           <p className="text-xs text-muted-foreground max-w-[280px]">
-            Tes notes sont intactes, elles sont enregistrées en local. Recharge
-            pour repartir là où tu en étais.
+            {t('erreur.texte')}
           </p>
         </div>
         <button
@@ -48,11 +48,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <RotateCw size={12} />
-          Recharger
+          {t('erreur.recharger')}
         </button>
         <details className="w-full max-w-[320px] text-left">
           <summary className="text-[10px] text-muted-foreground/60 cursor-pointer hover:text-muted-foreground">
-            Détail technique
+            {t('erreur.detail')}
           </summary>
           <pre className="mt-1.5 p-2 text-[10px] text-muted-foreground/70 bg-muted/40 rounded overflow-auto max-h-32 whitespace-pre-wrap break-words">
             {error.message}

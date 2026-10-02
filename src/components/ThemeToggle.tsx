@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -61,13 +62,13 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const getThemeLabel = () => {
     switch (theme) {
       case 'light':
-        return 'Clair'
+        return t('theme.clair')
       case 'dark':
-        return 'Sombre'
+        return t('theme.sombre')
       case 'system':
-        return 'Système'
+        return t('theme.systeme')
       default:
-        return 'Système'
+        return t('theme.systeme')
     }
   }
 
@@ -80,8 +81,8 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
       <button
         onClick={cycleTheme}
         className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-        title={`Thème: ${getThemeLabel()}`}
-        aria-label={`Changer le thème (${getThemeLabel()})`}
+        title={t('theme.titreCompact', { theme: getThemeLabel() })}
+        aria-label={t('theme.changerCompact', { theme: getThemeLabel() })}
       >
         {getThemeIcon()}
       </button>
@@ -92,8 +93,8 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
     <button
       onClick={cycleTheme}
       className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium aoknowledge-transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
-      title={`Changer de thème (actuellement: ${getThemeLabel()})`}
-      aria-label={`Changer de thème, actuellement ${getThemeLabel()}`}
+      title={t('theme.changer', { theme: getThemeLabel() })}
+      aria-label={t('theme.changerAria', { theme: getThemeLabel() })}
     >
       <span className="text-muted-foreground" aria-hidden="true">{getThemeIcon()}</span>
       <span className="text-muted-foreground">{getThemeLabel()}</span>

@@ -16,13 +16,12 @@ import {
 import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
 import type { NoteFolder, AnnotationLettre } from '@/types/academic'
-import { OFFRES } from '@/lib/offres'
+import { OFFRES, formatPrix } from '@/lib/offres'
+import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 
-const PERIODS = [
-  { days: 30, label: '30 j' },
-  { days: 90, label: '90 j' },
-  { days: 180, label: '180 j' },
-]
+// Le libellé se calcule au rendu (clé `mentorat.jours`) : la langue peut
+// changer pendant que l'écran est ouvert.
+const PERIODS = [30, 90, 180]
 
 // D (24/09/2026) : même teinte que la notation (rouge plus sombre que le C),
 // couleur par défaut à faire valider par Brice.
@@ -33,10 +32,10 @@ const GRADE_CLASS: Record<AnnotationLettre, string> = {
   D: 'bg-red-800/15 text-red-800 dark:text-red-300',
 }
 
-const CAUSE_LABEL: Record<string, string> = {
-  technique: 'Technique',
-  connaissance: 'Connaissance',
-  emotionnel: 'Émotionnel',
+const CAUSE_LABEL: Record<string, CleI18n> = {
+  technique: 'mentorat.causeTechnique',
+  connaissance: 'mentorat.causeConnaissance',
+  emotionnel: 'mentorat.causeEmotionnel',
 }
 
 // Le plan sort en markdown léger (## titres, **gras**) : on le rend proprement
@@ -51,15 +50,15 @@ function PlanText({ text }: { text: string }) {
   return (
     <div className="space-y-1">
       {text.split('\n').map((line, i) => {
-        const t = line.trim()
-        if (!t) return <div key={i} className="h-1.5" />
-        if (t.startsWith('## ')) {
-          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{t.slice(3)}</p>
+        const ligne = line.trim()
+        if (!ligne) return <div key={i} className="h-1.5" />
+        if (ligne.startsWith('## ')) {
+          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{ligne.slice(3)}</p>
         }
-        if (t.startsWith('# ')) {
-          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{t.slice(2)}</p>
+        if (ligne.startsWith('# ')) {
+          return <p key={i} className="text-[11px] font-semibold text-foreground uppercase tracking-wide pt-1.5">{ligne.slice(2)}</p>
         }
-        return <p key={i} className="text-[11px] leading-relaxed text-foreground/80">{renderBold(t)}</p>
+        return <p key={i} className="text-[11px] leading-relaxed text-foreground/80">{renderBold(ligne)}</p>
       })}
     </div>
   )
@@ -206,7 +205,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
       setTours(fil)
     }
     if (enAttenteDeReponse(fil).length === 0) {
-      toast.info('Écris quelque chose avant de demander au mentor.')
+      toast.info(t('mentorat.ecrisAvant'))
       return
     }
 
@@ -217,15 +216,15 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
         days
       )
       if (!reply) {
-        if (statut === 403) toast.info(error || 'Le mode mentorat fait partie du Carnet Premium.')
-        else toast.error(error || 'Le mentor est indisponible pour le moment.')
+        if (statut === 403) toast.info(error || t('mentorat.reservePremium'))
+        else toast.error(error || t('mentorat.indisponible'))
         return
       }
       await ecrireReponseMentor(noteMentoratId, reply)
       await relireFil(noteMentoratId)
     } catch (err) {
       console.error('[mentorat] echec', err)
-      toast.error('Le mentor est indisponible pour le moment.')
+      toast.error(t('mentorat.indisponible'))
     } finally {
       setEnvoiEnCours(false)
     }
@@ -253,7 +252,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
     setError(null)
     const res = await fetchMentoratBrief(d)
     if (res.brief) setBrief(res.brief)
-    else setError(res.error ?? 'Brief indisponible')
+    else setError(res.error ?? t('mentorat.briefIndisponible'))
     setLoading(false)
   }, [])
 
@@ -263,9 +262,9 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
     if (!brief) return
     try {
       await navigator.clipboard.writeText(brief.text)
-      toast.success('Brief copié — colle-le dans ta conversation IA.')
+      toast.success(t('mentorat.briefCopie'))
     } catch {
-      toast.error('Copie impossible.')
+      toast.error(t('mentorat.copieImpossible'))
     }
   }
 
@@ -282,13 +281,14 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
     setPlanLoading(false)
     if (res.plan) {
       setLastPlan({ id: '', periodDays: days, plan: res.plan, status: res.status ?? 'proposed', createdAt: new Date().toISOString() })
-      toast.success('Proposition de plan générée.')
+      toast.success(t('mentorat.planGenere'))
     } else {
-      toast.error(res.error ?? 'Plan indisponible.')
+      toast.error(res.error ?? t('mentorat.planIndisponible'))
     }
   }
 
-  const t = brief?.trades
+  // `stats` et pas `t` : `t` est la fonction de traduction.
+  const stats = brief?.trades
 
   return (
     <div className="p-4 space-y-4">
@@ -297,24 +297,24 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
         <button
           onClick={onBack}
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          aria-label="Retour"
+          aria-label={t('commun.retour')}
         >
           <ArrowLeft size={16} />
         </button>
         <GraduationCap size={16} className="text-muted-foreground flex-shrink-0" />
-        <h2 className="flex-1 text-sm font-semibold text-foreground">Mode mentorat</h2>
+        <h2 className="flex-1 text-sm font-semibold text-foreground">{t('mentorat.titre')}</h2>
         {gate === 'ok' && (
           <>
             <div className="flex items-center gap-0.5 rounded-lg bg-muted/50 p-0.5">
               {PERIODS.map(p => (
                 <button
-                  key={p.days}
-                  onClick={() => setDays(p.days)}
+                  key={p}
+                  onClick={() => setDays(p)}
                   className={`px-2 py-0.5 text-[11px] rounded-md transition-colors ${
-                    days === p.days ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                    days === p ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {p.label}
+                  {t('mentorat.jours', { n: p })}
                 </button>
               ))}
             </div>
@@ -324,9 +324,9 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 coches.length ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
               title={coches.length
-                ? `Le mentor ne lit que ${coches.length} dossier${coches.length > 1 ? 's' : ''}`
-                : 'Le mentor lit tout le carnet'}
-              aria-label="Choisir les dossiers que le mentor peut lire"
+                ? tp('mentorat.litDossierUn', 'mentorat.litDossiersPlur', coches.length)
+                : t('mentorat.litTout')}
+              aria-label={t('mentorat.choisirDossiers')}
             >
               <FolderTree size={14} />
             </button>
@@ -334,8 +334,8 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               onClick={() => load(days)}
               disabled={loading}
               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
-              title="Recalculer"
-              aria-label="Recalculer le brief"
+              title={t('mentorat.recalculer')}
+              aria-label={t('mentorat.recalculerBrief')}
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -353,16 +353,15 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
       {gate === 'anon' && (
         <div className="p-4 border border-border rounded-xl space-y-3 text-center">
           <User size={22} className="mx-auto text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">Connecte-toi pour accéder au mentorat</p>
+          <p className="text-sm font-semibold text-foreground">{t('mentorat.connecteToi')}</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Le mode mentorat est lié à ton compte AOKnowledge : c'est lui qui porte
-            ton suivi et tes droits d'accès.
+            {t('mentorat.lieAuCompte')}
           </p>
           <button
             onClick={onOpenAccount}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
-            Se connecter
+            {t('mentorat.seConnecter')}
           </button>
         </div>
       )}
@@ -379,7 +378,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">Carnet Premium</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                lancement
+                {t('forfait.lancement')}
               </span>
             </div>
 
@@ -388,18 +387,16 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
             <div className="flex items-center gap-2.5">
               <Unlock size={24} className="text-muted-foreground flex-shrink-0" strokeWidth={1.7} />
               <span className="text-[34px] leading-none font-bold tracking-tight text-foreground">
-                {OFFRES.an.montant}
+                {formatPrix(OFFRES.an.prix)}
               </span>
               <span className="flex flex-col leading-tight">
-                <span className="text-[11px] text-muted-foreground">{OFFRES.an.unite}</span>
-                <span className="text-[11px] text-muted-foreground/60 line-through">{OFFRES.mois.montant}</span>
+                <span className="text-[11px] text-muted-foreground">{t('forfait.parMois')}</span>
+                <span className="text-[11px] text-muted-foreground/60 line-through">{formatPrix(OFFRES.mois.prix)}</span>
               </span>
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Le mode boosté de ton carnet : ton suivi de progression chiffré, un plan
-              d'évolution rédigé à partir de TES trades, et un mentor à qui tu peux
-              répondre. Le carnet gratuit reste entier, Premium s'ajoute par-dessus.
+              {t('mentorat.modeBooste')}
             </p>
 
             <button
@@ -407,30 +404,31 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-foreground text-background hover:opacity-90 text-sm font-semibold transition-opacity"
             >
               <Unlock size={15} strokeWidth={2.2} />
-              Débloquer
+              {t('forfait.debloquer')}
             </button>
           </div>
 
-          {/* Les autres portes : déjà incluses dans ces offres */}
+          {/* Les autres portes : déjà incluses dans ces offres. La phrase est
+              coupée autour de ses trois liens, d'où trois clés. */}
           <div className="p-3 border border-border/60 rounded-xl space-y-1.5">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Aussi inclus avec</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('mentorat.aussiInclus')}</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Le mode mentorat est offert aux membres du{' '}
-              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com/live-club' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">Live Club</button>,
-              aux niveaux Premium et VIP, et aux élèves des{' '}
-              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">formations complètes</button>.
-              Et pour travailler tes notes en profondeur, il y a le{' '}
-              <button onClick={() => chrome.tabs.create({ url: 'https://journal.aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">Journal d'Études</button>.
+              {t('mentorat.inclusDebut')}{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com/live-club' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">Live Club</button>
+              {t('mentorat.inclusMilieu')}{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">{t('mentorat.formations')}</button>
+              {t('mentorat.inclusFin')}{' '}
+              <button onClick={() => chrome.tabs.create({ url: 'https://journal.aoknowledge.com' })} className="underline underline-offset-2 text-foreground/80 hover:text-foreground">{t('outils.journalNom')}</button>.
             </p>
           </div>
 
           <button
             onClick={onOpenSupport}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-            title="Ton accès existe peut-être sous un autre email"
+            title={t('mentorat.autreEmail')}
           >
             <LifeBuoy size={12} />
-            Déjà membre ? Contacte le support
+            {t('mentorat.dejaMembre')}
           </button>
         </div>
       )}
@@ -438,17 +436,16 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
       {gate === 'gate-error' && (
         <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-700 dark:text-amber-400">
           <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-          <span>Impossible de vérifier ton accès (réseau ?). Reviens sur l'écran et réessaie.</span>
+          <span>{t('mentorat.verifImpossible')}</span>
         </div>
       )}
 
       {gate === 'ok' && cadrageOuvert && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-foreground mb-1">Que peut lire le mentor ?</p>
+            <p className="text-sm font-semibold text-foreground mb-1">{t('mentorat.cadrageTitre')}</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Tu n'utilises sans doute pas ton carnet que pour le trading. Coche les dossiers
-              que le mentor a le droit de regarder. Si tu ne coches rien, il lit tout.
+              {t('mentorat.cadrageTexte')}
             </p>
           </div>
 
@@ -470,30 +467,28 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
             >
               <Check size={13} strokeWidth={2.4} />
               {coches.length === 0
-                ? 'Lire tout le carnet'
-                : `Ne lire que ${coches.length} dossier${coches.length > 1 ? 's' : ''}`}
+                ? t('mentorat.lireTout')
+                : tp('mentorat.lireDossierUn', 'mentorat.lireDossiersPlur', coches.length)}
             </button>
             {coches.length > 0 && (
               <button
                 onClick={() => setCoches([])}
                 className="px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                Tout décocher
+                {t('mentorat.toutDecocher')}
               </button>
             )}
           </div>
 
           <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-            Cocher un dossier prend aussi ses sous-dossiers. Tu peux revenir sur ce choix
-            à tout moment avec l'icône en haut à droite.
+            {t('mentorat.cadrageAide')}
           </p>
         </div>
       )}
 
       {gate === 'ok' && !cadrageOuvert && (<>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Ton brief : le condensé chiffré de tes {days} derniers jours, calculé depuis tes
-        notes, jugements et trades. C'est la matière du futur plan d'évolution.
+        {t('mentorat.briefIntro', { n: days })}
       </p>
 
       {loading ? (
@@ -505,26 +500,27 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
           <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
-      ) : brief && t ? (
+      ) : brief && stats ? (
         <>
           {/* Cartes chiffrées */}
           <div className="grid grid-cols-2 gap-2">
             <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Trades</p>
-              <p className="text-lg font-semibold text-foreground leading-none">{t.total}</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{t('mentorat.trades')}</p>
+              <p className="text-lg font-semibold text-foreground leading-none">{stats.total}</p>
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                {t.gain} gains · {t.perte} pertes · {t.be} BE{t.open > 0 ? ` · ${t.open} ouverts` : ''}
+                {tp('mentorat.gainUn', 'mentorat.gainPlur', stats.gain)} · {tp('mentorat.perteUn', 'mentorat.pertePlur', stats.perte)} · {t('mentorat.be', { n: stats.be })}
+                {stats.open > 0 ? ` · ${tp('mentorat.ouvertUn', 'mentorat.ouvertPlur', stats.open)}` : ''}
               </p>
             </div>
             <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Jugements</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{t('mentorat.jugements')}</p>
               <div className="flex items-center gap-1">
                 {(() => {
                   // Le D n'apparaît que s'il a servi : chez qui n'a jamais noté
                   // D, une pastille « 0 D » serait du bruit. Lecture optionnelle :
                   // tant que le journal n'est pas déployé, le serveur ne renvoie
                   // pas de clé D (le type MentoratBriefData ne la porte pas encore).
-                  const grades = t.grades as Partial<Record<AnnotationLettre, number>>
+                  const grades = stats.grades as Partial<Record<AnnotationLettre, number>>
                   const lettres: AnnotationLettre[] = (grades.D ?? 0) > 0 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C']
                   return lettres.map(g => (
                     <span key={g} className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${GRADE_CLASS[g]}`}>
@@ -534,19 +530,19 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 })()}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                {t.graded} notés sur {t.total}
+                {tp('mentorat.noteSurUn', 'mentorat.notesSurPlur', stats.graded, { total: stats.total })}
               </p>
             </div>
           </div>
 
           {/* Causes des erreurs */}
-          {(t.causes.technique + t.causes.connaissance + t.causes.emotionnel) > 0 && (
+          {(stats.causes.technique + stats.causes.connaissance + stats.causes.emotionnel) > 0 && (
             <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Causes des erreurs</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">{t('mentorat.causes')}</p>
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(t.causes).filter(([, n]) => n > 0).map(([cause, n]) => (
+                {Object.entries(stats.causes).filter(([, n]) => n > 0).map(([cause, n]) => (
                   <span key={cause} className="px-2 py-0.5 rounded-full bg-background border border-border text-[11px] text-foreground/80">
-                    {CAUSE_LABEL[cause] ?? cause} · {n}
+                    {CAUSE_LABEL[cause] ? t(CAUSE_LABEL[cause]) : cause} · {n}
                   </span>
                 ))}
               </div>
@@ -554,19 +550,19 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
           )}
 
           {/* Calibration : le découplage décision / résultat */}
-          {(t.calibration.A.perte > 0 || t.calibration.C.gain > 0) && (
+          {(stats.calibration.A.perte > 0 || stats.calibration.C.gain > 0) && (
             <div className="p-3 bg-muted/50 rounded-lg space-y-1">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Calibration</p>
-              {t.calibration.A.perte > 0 && (
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">{t('mentorat.calibration')}</p>
+              {stats.calibration.A.perte > 0 && (
                 <p className="text-[11px] text-foreground/80">
-                  <span className={`px-1 rounded font-semibold ${GRADE_CLASS.A}`}>{t.calibration.A.perte} A</span>{' '}
-                  perdants : bien joués, mauvais résultat. C'est le process qui compte.
+                  <span className={`px-1 rounded font-semibold ${GRADE_CLASS.A}`}>{stats.calibration.A.perte} A</span>{' '}
+                  {t('mentorat.calibrationA')}
                 </p>
               )}
-              {t.calibration.C.gain > 0 && (
+              {stats.calibration.C.gain > 0 && (
                 <p className="text-[11px] text-foreground/80">
-                  <span className={`px-1 rounded font-semibold ${GRADE_CLASS.C}`}>{t.calibration.C.gain} C</span>{' '}
-                  gagnants : le résultat a récompensé une mauvaise décision.
+                  <span className={`px-1 rounded font-semibold ${GRADE_CLASS.C}`}>{stats.calibration.C.gain} C</span>{' '}
+                  {t('mentorat.calibrationC')}
                 </p>
               )}
             </div>
@@ -576,7 +572,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
           {brief.reviewBacklog > 0 && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
               <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                {brief.reviewBacklog} relecture{brief.reviewBacklog > 1 ? 's' : ''} en retard : des jugements posés il y a plus de 2 semaines attendent leur second regard.
+                {tp('mentorat.retardUn', 'mentorat.retardPlur', brief.reviewBacklog)}
               </p>
             </div>
           )}
@@ -587,33 +583,31 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               `aura-ia` du bouton, qui le dit sans repeindre tout le panneau. */}
           <div className="p-3 bg-muted/40 border border-border rounded-lg space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Plan d'évolution</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('mentorat.plan')}</p>
               <button
                 onClick={generatePlan}
                 disabled={planLoading}
                 className="flex items-center gap-1 px-2 py-1 text-[11px] text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50"
               >
                 {planLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-                {lastPlan ? 'Regénérer' : 'Générer une proposition'}
+                {lastPlan ? t('mentorat.regenerer') : t('mentorat.generer')}
               </button>
             </div>
             {lastPlan ? (
               <>
                 <div className="flex items-center gap-1.5">
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                    {lastPlan.status === 'proposed' ? 'Proposition — en attente de validation' : lastPlan.status}
+                    {lastPlan.status === 'proposed' ? t('mentorat.enAttenteValidation') : lastPlan.status}
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">
-                    {new Date(lastPlan.createdAt).toLocaleDateString('fr-FR')}
+                    {new Date(lastPlan.createdAt).toLocaleDateString(locale())}
                   </span>
                 </div>
                 <PlanText text={lastPlan.plan} />
               </>
             ) : (
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                L'IA rédige une proposition de plan à partir de ton brief : où tu en es, le
-                chantier prioritaire, 3 actions pour 2 semaines, et le signal de passage.
-                Chaque proposition est validée par Brice avant d'être considérée comme un plan.
+                {t('mentorat.planExplication')}
               </p>
             )}
           </div>
@@ -621,14 +615,14 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
           {/* Le brief texte */}
           <div className="p-3 bg-muted/30 border border-border/50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Brief pour ton IA</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('mentorat.briefPourIA')}</p>
               <button
                 onClick={copyBrief}
                 className="flex items-center gap-1 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                title="Copier le brief pour le coller dans une conversation IA"
+                title={t('mentorat.copierAide')}
               >
                 <Copy size={11} />
-                Copier
+                {t('mentorat.copier')}
               </button>
             </div>
             <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/70 font-sans">{brief.text}</pre>
@@ -647,37 +641,36 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               réfléchit, puis on demande une fois. */}
           <div className="p-3 border border-border/50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ton fil avec le mentor</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('mentorat.fil')}</p>
               {tours.length > 0 && (
-                <span className="text-[10px] text-muted-foreground/60">note « {TITRE_NOTE_MENTORAT} »</span>
+                <span className="text-[10px] text-muted-foreground/60">{t('mentorat.noteFil', { titre: TITRE_NOTE_MENTORAT })}</span>
               )}
             </div>
 
             {tours.length === 0 ? (
               <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-                Écris ici ce que tu veux : une question, un doute, une observation de séance.
-                Rien ne part tant que tu ne cliques pas sur le bouton du mentor.
+                {t('mentorat.filVide')}
               </p>
             ) : (
               <div className="space-y-2 mb-3 max-h-72 overflow-y-auto scrollbar-thin pr-1">
-                {tours.map(t => (
+                {tours.map(tour => (
                   <div
-                    key={t.messageId}
+                    key={tour.messageId}
                     className={`p-2 rounded-lg text-[11px] leading-relaxed whitespace-pre-wrap ${
-                      t.pieceJointe
+                      tour.pieceJointe
                         ? 'bg-primary/5 border border-primary/20 text-foreground/80 italic'
-                        : t.role === 'assistant'
+                        : tour.role === 'assistant'
                           ? 'bg-amber-500/10 border border-amber-500/20 text-foreground'
                           : 'bg-muted/40 text-foreground/85'
                     }`}
                   >
                     <span className="block text-[9px] uppercase tracking-wide text-muted-foreground/70 mb-0.5">
-                      {t.pieceJointe ? 'Note jointe' : t.role === 'assistant' ? 'Mentor' : 'Toi'}
+                      {tour.pieceJointe ? t('mentorat.noteJointe') : tour.role === 'assistant' ? t('mentorat.mentor') : t('mentorat.toi')}
                     </span>
                     {/* Une note jointe n'est pas recopiée en entier dans le fil :
                         ça le rendrait illisible. Le mentor, lui, en reçoit tout
                         le contenu quand tu lui demandes. */}
-                    {apercuDuTour(t, t.pieceJointe)}
+                    {apercuDuTour(tour, tour.pieceJointe)}
                   </div>
                 ))}
               </div>
@@ -687,7 +680,7 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               value={brouillon}
               onChange={e => setBrouillon(e.target.value)}
               rows={3}
-              placeholder="Écris ici…"
+              placeholder={t('mentorat.ecrisIci')}
               className="w-full text-[11px] px-2 py-1.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/20 placeholder:text-muted-foreground resize-y"
             />
 
@@ -696,10 +689,10 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 onClick={ecrire}
                 disabled={!brouillon.trim() || envoiEnCours}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-muted text-foreground hover:bg-muted/70 transition-colors disabled:opacity-40"
-                title="Écrire dans la note, sans rien envoyer"
+                title={t('mentorat.ecrireAide')}
               >
                 <ArrowUp size={12} />
-                Écrire
+                {t('mentorat.ecrire')}
               </button>
 
               <button
@@ -708,16 +701,16 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors disabled:opacity-40 ${
                   envoiEnCours ? 'bg-muted text-muted-foreground cursor-wait' : 'aura-ia bg-background text-foreground hover:bg-muted'
                 }`}
-                title="Envoyer au mentor tout ce que tu as écrit depuis sa dernière réponse"
+                title={t('mentorat.demanderAide')}
               >
                 {envoiEnCours
-                  ? <><Loader2 size={12} className="animate-spin" /> Le mentor réfléchit…</>
-                  : <><Sparkles size={12} /> Demander au mentor</>}
+                  ? <><Loader2 size={12} className="animate-spin" /> {t('mentorat.reflechit')}</>
+                  : <><Sparkles size={12} /> {t('mentorat.demander')}</>}
               </button>
 
               {!envoiEnCours && enAttente.length > 0 && (
                 <span className="text-[10px] text-muted-foreground/70">
-                  {enAttente.length} message{enAttente.length > 1 ? 's' : ''} en attente
+                  {tp('mentorat.attenteUn', 'mentorat.attentePlur', enAttente.length)}
                 </span>
               )}
             </div>

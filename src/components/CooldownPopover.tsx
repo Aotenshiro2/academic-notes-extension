@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Moon } from 'lucide-react'
 import type { TradeCooldown } from '@/types/academic'
+import { t, type CleI18n } from '@/lib/i18n'
 
 interface CooldownPopoverProps {
   position: { top: number; bottom: number; left: number }
@@ -9,10 +10,11 @@ interface CooldownPopoverProps {
   onClose: () => void
 }
 
-const FIELDS: { key: 'emotion' | 'error' | 'lesson'; label: string; hint: string }[] = [
-  { key: 'emotion', label: 'Émotion', hint: 'Ce que j\'ai ressenti sur ce trade' },
-  { key: 'error', label: 'Erreur', hint: 'Une erreur (le cas échéant)' },
-  { key: 'lesson', label: 'Leçon', hint: 'Ce que j\'en retiens' },
+// Clés du dictionnaire, traduites au rendu.
+const FIELDS: { key: 'emotion' | 'error' | 'lesson'; label: CleI18n; hint: CleI18n }[] = [
+  { key: 'emotion', label: 'cooldown.emotion', hint: 'cooldown.emotionAide' },
+  { key: 'error', label: 'cooldown.erreur', hint: 'cooldown.erreurAide' },
+  { key: 'lesson', label: 'cooldown.lecon', hint: 'cooldown.leconAide' },
 ]
 
 const POPUP_WIDTH = 272
@@ -70,15 +72,15 @@ function CooldownPopover({ position, existing, onSave, onClose }: CooldownPopove
     >
       <div className="flex items-center gap-1.5">
         <Moon size={13} className="text-amber-500" />
-        <span className="text-xs font-medium text-foreground">Cooldown du trade</span>
+        <span className="text-xs font-medium text-foreground">{t('trade.cooldown')}</span>
       </div>
       {FIELDS.map(f => (
         <div key={f.key}>
-          <div className="text-[10px] font-medium text-muted-foreground mb-0.5">{f.label}</div>
+          <div className="text-[10px] font-medium text-muted-foreground mb-0.5">{t(f.label)}</div>
           <textarea
             value={values[f.key] ?? ''}
             onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-            placeholder={f.hint}
+            placeholder={t(f.hint)}
             rows={1}
             className="w-full px-2.5 py-1.5 text-xs bg-muted/40 border border-border rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/50 placeholder:text-muted-foreground/50"
             style={{ minHeight: 30 }}
@@ -86,13 +88,13 @@ function CooldownPopover({ position, existing, onSave, onClose }: CooldownPopove
         </div>
       ))}
       <div className="flex items-center justify-between pt-0.5">
-        <span className="text-[10px] text-muted-foreground/60">Le débrief, pas la note</span>
+        <span className="text-[10px] text-muted-foreground/60">{t('cooldown.pasLaNote')}</span>
         <button
           onClick={handleSave}
           disabled={!canSave}
           className="px-3 py-1 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Enregistrer
+          {t('cooldown.enregistrer')}
         </button>
       </div>
     </div>

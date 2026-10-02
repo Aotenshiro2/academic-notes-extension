@@ -6,7 +6,11 @@ import ConfirmDialog from './ConfirmDialog'
 import SearchBar from './SearchBar'
 import storage from '@/lib/storage'
 import { formatCompactDate } from '@/lib/date-utils'
+import { t as tr, tp } from '@/lib/i18n'
 import type { NoteSummary, NoteFolder } from '@/types/academic'
+
+// `tr` et pas `t` : ce composant nomme déjà `t` ses tags dans plusieurs
+// boucles (`n.tags.some(t => ...)`), et l'ombre ferait traduire un tag.
 
 interface HistoryDropdownProps {
   isOpen: boolean
@@ -127,7 +131,7 @@ function HistoryDropdown({
       onNotesUpdate?.()
     } catch (error) {
       console.error('[HistoryDropdown] Renommage impossible:', error)
-      toast.error(error instanceof Error ? error.message : 'Impossible de renommer la note')
+      toast.error(error instanceof Error ? error.message : tr('historique.renommageImpossible'))
     } finally {
       setEditingNoteId(null)
       setEditTitle('')
@@ -315,25 +319,25 @@ function HistoryDropdown({
                   className="flex-1 text-sm font-medium bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   autoFocus
                 />
-                <button onClick={e => { e.stopPropagation(); saveTitle(note.id) }} className="p-1 text-green-600 hover:text-green-700 rounded" title="Sauvegarder" aria-label="Sauvegarder"><Check size={12} /></button>
-                <button onClick={e => { e.stopPropagation(); cancelEditing() }} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Annuler" aria-label="Annuler"><XCircle size={12} /></button>
+                <button onClick={e => { e.stopPropagation(); saveTitle(note.id) }} className="p-1 text-green-600 hover:text-green-700 rounded" title={tr('commun.sauvegarder')} aria-label={tr('commun.sauvegarder')}><Check size={12} /></button>
+                <button onClick={e => { e.stopPropagation(); cancelEditing() }} className="p-1 text-muted-foreground hover:text-foreground rounded" title={tr('commun.annuler')} aria-label={tr('commun.annuler')}><XCircle size={12} /></button>
               </>
             ) : (
               <>
                 <h3 className="flex-1 font-medium text-foreground text-sm truncate">{truncateTitle(note.title)}</h3>
-                <button onClick={e => startEditingTitle(note, e)} className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100" title="Modifier le titre" aria-label="Modifier le titre"><Edit3 size={12} /></button>
+                <button onClick={e => startEditingTitle(note, e)} className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100" title={tr('historique.modifierTitre')} aria-label={tr('historique.modifierTitre')}><Edit3 size={12} /></button>
                 <button
                   onClick={e => {
                     e.stopPropagation()
                     storage.updateNote(note.id, { syncExcluded: !note.syncExcluded }).then(() => onNotesUpdate?.())
                   }}
                   className={`p-1 rounded opacity-0 group-hover:opacity-100 ${note.syncExcluded ? 'text-orange-500 !opacity-100' : 'text-muted-foreground hover:text-orange-500'}`}
-                  title={note.syncExcluded ? 'Réactiver la sync' : 'Exclure de la sync'}
-                  aria-label={note.syncExcluded ? 'Réactiver la sync' : 'Exclure de la sync'}
+                  title={note.syncExcluded ? tr('historique.reactiverSync') : tr('historique.exclureSync')}
+                  aria-label={note.syncExcluded ? tr('historique.reactiverSync') : tr('historique.exclureSync')}
                 >
                   <CloudOff size={12} />
                 </button>
-                <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(note.id) }} className="p-1 text-muted-foreground hover:text-destructive rounded opacity-0 group-hover:opacity-100" title="Supprimer" aria-label="Supprimer la note"><Trash2 size={12} /></button>
+                <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(note.id) }} className="p-1 text-muted-foreground hover:text-destructive rounded opacity-0 group-hover:opacity-100" title={tr('commun.supprimer')} aria-label={tr('historique.supprimerNote')}><Trash2 size={12} /></button>
               </>
             )}
           </div>
@@ -341,7 +345,7 @@ function HistoryDropdown({
             {formatCompactDate(note.timestamp)} • {note.metadata.domain}
             {note.syncExcluded && (
               <span className="inline-flex items-center gap-0.5 text-orange-500">
-                <CloudOff size={10} />exclue
+                <CloudOff size={10} />{tr('historique.exclue')}
               </span>
             )}
           </p>
@@ -370,16 +374,16 @@ function HistoryDropdown({
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center space-x-2">
             <Clock size={20} className="text-muted-foreground" />
-            <h2 className="font-semibold text-foreground">Historique des notes</h2>
+            <h2 className="font-semibold text-foreground">{tr('entete.historique')}</h2>
           </div>
-          <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors" aria-label="Fermer l'historique">
+          <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors" aria-label={tr('historique.fermer')}>
             <X size={18} />
           </button>
         </div>
 
         {/* Search */}
         <div className="px-3 py-2 border-b border-border">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Titre, tag…" />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder={tr('historique.recherche')} />
         </div>
 
         {/* Filtres de tri — file « à trier » + tags les plus utilisés */}
@@ -393,9 +397,9 @@ function HistoryDropdown({
                     ? 'border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-400'
                     : 'border-amber-500/30 text-amber-600/80 dark:text-amber-400/80 hover:bg-amber-500/10'
                 }`}
-                title="Notes sans tag ni notation — à reprendre"
+                title={tr('historique.aTrierAide')}
               >
-                À trier · {untriagedCount}
+                {tr('historique.aTrier', { n: untriagedCount })}
               </button>
             )}
             {topTags.map(tag => (
@@ -415,9 +419,9 @@ function HistoryDropdown({
               <button
                 onClick={() => setShowAllTags(v => !v)}
                 className="px-2 py-0.5 text-[11px] rounded-full border border-dashed border-border text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
-                title={showAllTags ? 'Ne garder que les tags les plus utilisés' : 'Afficher tous les tags'}
+                title={showAllTags ? tr('historique.moinsDeTags') : tr('historique.tousLesTags')}
               >
-                {showAllTags ? 'moins' : `+${hiddenTagCount}`}
+                {showAllTags ? tr('historique.moins') : `+${hiddenTagCount}`}
               </button>
             )}
           </div>
@@ -428,8 +432,8 @@ function HistoryDropdown({
           {notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center px-4">
               <FileText size={48} className="text-muted-foreground/40 mb-4" />
-              <p className="text-muted-foreground">Aucune note trouvée</p>
-              <p className="text-sm text-muted-foreground/80 mt-1">Créez votre première note pour commencer</p>
+              <p className="text-muted-foreground">{tr('historique.aucuneNote')}</p>
+              <p className="text-sm text-muted-foreground/80 mt-1">{tr('historique.premiereNote')}</p>
             </div>
           ) : hasFilters ? (
             // ── Mode recherche/filtre — liste plate ──
@@ -437,17 +441,17 @@ function HistoryDropdown({
               {filteredNotes.length === 0 ? (
                 <div className="flex flex-col items-center py-10 text-center px-4">
                   <Search size={32} className="text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">Aucun résultat</p>
+                  <p className="text-sm text-muted-foreground">{tr('historique.aucunResultat')}</p>
                   {searchQuery.trim() && (
-                    <p className="text-xs text-muted-foreground/60 mt-1">pour « {searchQuery} »</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">{tr('historique.pour', { q: searchQuery })}</p>
                   )}
                 </div>
               ) : (
                 <>
                   <p className="text-[11px] text-muted-foreground px-2 py-1">
                     {untriagedOnly
-                      ? `${filteredNotes.length} note${filteredNotes.length > 1 ? 's' : ''} à trier — ouvre, tague, note`
-                      : `${filteredNotes.length} résultat${filteredNotes.length > 1 ? 's' : ''}`}
+                      ? tp('historique.aTrierUn', 'historique.aTrierPlur', filteredNotes.length)
+                      : tp('historique.resultatUn', 'historique.resultatsPlur', filteredNotes.length)}
                   </p>
                   {filteredNotes.map(renderNoteItem)}
                 </>
@@ -463,11 +467,11 @@ function HistoryDropdown({
                     <button
                       onClick={toggleFoldersCollapsed}
                       className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-                      title={foldersCollapsed ? 'Afficher les dossiers' : 'Replier les dossiers'}
+                      title={foldersCollapsed ? tr('historique.afficherDossiers') : tr('historique.replierDossiers')}
                       aria-expanded={!foldersCollapsed}
                     >
                       {foldersCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                      Dossiers
+                      {tr('historique.dossiers')}
                       {folders.length > 0 && (
                         <span className="font-normal normal-case tracking-normal text-muted-foreground/60">
                           · {folders.length}
@@ -477,8 +481,8 @@ function HistoryDropdown({
                     <button
                       onClick={() => { setCreatingFolder(true); setNewFolderName(''); setFoldersCollapsed(false) }}
                       className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                      title="Nouveau dossier"
-                      aria-label="Nouveau dossier"
+                      title={tr('historique.nouveauDossier')}
+                      aria-label={tr('historique.nouveauDossier')}
                     >
                       <FolderPlus size={14} />
                     </button>
@@ -533,7 +537,7 @@ function HistoryDropdown({
                                 autoFocus
                                 onClick={e => e.stopPropagation()}
                               />
-                              <button onClick={e => { e.stopPropagation(); submitRenameFolder(folder.id) }} className="p-1 text-green-600 hover:text-green-700 rounded flex-shrink-0" aria-label="Valider"><Check size={12} /></button>
+                              <button onClick={e => { e.stopPropagation(); submitRenameFolder(folder.id) }} className="p-1 text-green-600 hover:text-green-700 rounded flex-shrink-0" aria-label={tr('commun.valider')}><Check size={12} /></button>
                             </>
                           ) : (
                             <>
@@ -548,8 +552,8 @@ function HistoryDropdown({
                                     setExpandedFolders(prev => new Set(prev).add(folder.id))
                                   }}
                                   className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
-                                  title="Nouveau sous-dossier"
-                                  aria-label="Nouveau sous-dossier"
+                                  title={tr('historique.nouveauSousDossier')}
+                                  aria-label={tr('historique.nouveauSousDossier')}
                                 >
                                   <FolderPlus size={12} />
                                 </button>
@@ -557,16 +561,16 @@ function HistoryDropdown({
                               <button
                                 onClick={e => startRenameFolder(folder, e)}
                                 className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
-                                title="Renommer"
-                                aria-label="Renommer le dossier"
+                                title={tr('historique.renommer')}
+                                aria-label={tr('historique.renommerDossier')}
                               >
                                 <Edit3 size={12} />
                               </button>
                               <button
                                 onClick={e => { e.stopPropagation(); setDeleteFolderConfirmId(folder.id) }}
                                 className="p-1 text-muted-foreground hover:text-destructive rounded opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
-                                title="Supprimer le dossier"
-                                aria-label="Supprimer le dossier"
+                                title={tr('historique.supprimerDossier')}
+                                aria-label={tr('historique.supprimerDossier')}
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -590,14 +594,14 @@ function HistoryDropdown({
                                     else if (e.key === 'Escape') { setCreatingSubfolderIn(null); setNewSubfolderName('') }
                                   }}
                                   onBlur={() => submitNewSubfolder(folder.id)}
-                                  placeholder="Nom du sous-dossier…"
+                                  placeholder={tr('historique.nomSousDossier')}
                                   className="flex-1 text-sm bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                   autoFocus
                                 />
                               </div>
                             )}
                             {folderNotes.length === 0 && subfolders.length === 0 && creatingSubfolderIn !== folder.id ? (
-                              <p className="text-xs text-muted-foreground/60 px-3 py-2 italic">Dossier vide</p>
+                              <p className="text-xs text-muted-foreground/60 px-3 py-2 italic">{tr('historique.dossierVide')}</p>
                             ) : (
                               folderNotes.map(renderNoteItem)
                             )}
@@ -623,7 +627,7 @@ function HistoryDropdown({
                           else if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName('') }
                         }}
                         onBlur={submitNewFolder}
-                        placeholder="Nom du dossier…"
+                        placeholder={tr('historique.nomDossier')}
                         className="flex-1 text-sm bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         autoFocus
                       />
@@ -639,7 +643,7 @@ function HistoryDropdown({
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors border border-dashed border-border/50 mb-1"
                 >
                   <FolderPlus size={14} />
-                  Nouveau dossier
+                  {tr('historique.nouveauDossier')}
                 </button>
               )}
 
@@ -656,7 +660,7 @@ function HistoryDropdown({
                       <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${
                         dragOverFolderId === '__free__' ? 'text-primary' : 'text-muted-foreground'
                       }`}>
-                        Notes
+                        {tr('historique.notes')}
                       </span>
                     </div>
                   )}
@@ -674,8 +678,8 @@ function HistoryDropdown({
         <div className="border-t border-border p-3 text-center">
           <p className="text-xs text-muted-foreground">
             {hasFilters
-              ? `${filteredNotes.length} / ${notes.length} note${notes.length > 1 ? 's' : ''}`
-              : `${notes.length} note${notes.length > 1 ? 's' : ''} au total${folders.length > 0 ? ` · ${folders.length} dossier${folders.length > 1 ? 's' : ''}` : ''}`
+              ? tp('historique.filtreUn', 'historique.filtrePlur', notes.length, { filtre: filteredNotes.length })
+              : `${tp('historique.totalUn', 'historique.totalPlur', notes.length)}${folders.length > 0 ? ` · ${tp('historique.dossierUn', 'historique.dossiersPlur', folders.length)}` : ''}`
             }
           </p>
         </div>
@@ -686,8 +690,8 @@ function HistoryDropdown({
         isOpen={!!deleteConfirmId}
         onConfirm={confirmDeleteNote}
         onCancel={() => setDeleteConfirmId(null)}
-        title="Supprimer la note"
-        message="Cette action est irréversible."
+        title={tr('historique.supprimerNoteTitre')}
+        message={tr('confirmer.irreversible')}
         isLoading={isDeleting}
       />
 
@@ -696,8 +700,8 @@ function HistoryDropdown({
         isOpen={!!deleteFolderConfirmId}
         onConfirm={confirmDeleteFolder}
         onCancel={() => setDeleteFolderConfirmId(null)}
-        title="Supprimer le dossier"
-        message="Le dossier sera supprimé. Les notes qu'il contient deviendront libres, et ses sous-dossiers remonteront à la racine."
+        title={tr('historique.supprimerDossierTitre')}
+        message={tr('historique.supprimerDossierMessage')}
         isLoading={isDeletingFolder}
       />
     </div>

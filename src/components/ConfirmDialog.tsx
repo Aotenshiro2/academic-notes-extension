@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -16,10 +17,11 @@ function ConfirmDialog({
   isOpen,
   onConfirm,
   onCancel,
-  title = 'Confirmer',
-  message = 'Êtes-vous sûr ?',
-  confirmLabel = 'Supprimer',
-  cancelLabel = 'Annuler',
+  // Valeurs par défaut évaluées à chaque rendu : elles suivent la langue.
+  title = t('confirmer.titre'),
+  message = t('confirmer.message'),
+  confirmLabel = t('commun.supprimer'),
+  cancelLabel = t('commun.annuler'),
   isLoading = false
 }: ConfirmDialogProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -55,7 +57,7 @@ function ConfirmDialog({
             className="px-4 py-2 text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isLoading && <Loader2 size={14} className="animate-spin" />}
-            {isLoading ? 'Suppression...' : confirmLabel}
+            {isLoading ? t('confirmer.enCours') : confirmLabel}
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { formatSmartDate } from '@/lib/date-utils'
 import storage from '@/lib/storage'
 import TagPickerPopup from './TagPickerPopup'
 import ConfirmDialog from './ConfirmDialog'
+import { t } from '@/lib/i18n'
 import type { NoteMessage } from '@/types/academic'
 
 const COLLAPSE_THRESHOLD = 800 // characters of plain text
@@ -114,7 +115,7 @@ function MessageBlock({
       setIsCollapsed(true)
     } catch (error) {
       console.error('Error saving message:', error)
-      toast.error('Erreur lors de la sauvegarde')
+      toast.error(t('bloc.erreurSauvegarde'))
     } finally {
       setIsSaving(false)
     }
@@ -274,7 +275,7 @@ function MessageBlock({
             ? 'bg-primary border-primary text-primary-foreground'
             : 'bg-popover border-border'
       }`}
-      title={!selectable ? 'Déjà rattaché à un trade' : selected ? 'Retirer de la sélection' : 'Ajouter à la sélection'}
+      title={!selectable ? t('bloc.dejaDansTrade') : selected ? t('bloc.retirerSelection') : t('bloc.ajouterSelection')}
       aria-hidden="true"
     >
       {!selectable ? <Crosshair size={9} /> : selected ? <Check size={11} strokeWidth={3} /> : null}
@@ -296,16 +297,16 @@ function MessageBlock({
           <button
             onClick={handleDelete}
             className="p-1 text-muted-foreground/40 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            title="Supprimer cette métadonnée"
-            aria-label="Supprimer cette métadonnée"
+            title={t('bloc.supprimerMeta')}
+            aria-label={t('bloc.supprimerMeta')}
           >
             <Trash2 size={11} />
           </button>
         )}
         <ConfirmDialog
           isOpen={confirmDelete}
-          title="Supprimer cette métadonnée ?"
-          message="La ligne de contexte (date, page, URL) sera retirée de la note."
+          title={t('bloc.supprimerMetaTitre')}
+          message={t('bloc.supprimerMetaMessage')}
           onConfirm={confirmDeleteNow}
           onCancel={() => setConfirmDelete(false)}
         />
@@ -332,8 +333,8 @@ function MessageBlock({
           <button
             onClick={handleDelete}
             className="absolute top-2 right-2 p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Supprimer cette image"
-            aria-label="Supprimer cette image"
+            title={t('bloc.supprimerImage')}
+            aria-label={t('bloc.supprimerImage')}
           >
             <Trash2 size={14} />
           </button>
@@ -366,8 +367,8 @@ function MessageBlock({
             cliquer la poubelle d'une image ne montrait RIEN (suppression impossible) */}
         <ConfirmDialog
           isOpen={confirmDelete}
-          title="Supprimer cette image ?"
-          message="L'image sera retirée de la note. Action définitive."
+          title={t('bloc.supprimerImageTitre')}
+          message={t('bloc.supprimerImageMessage')}
           onConfirm={confirmDeleteNow}
           onCancel={() => setConfirmDelete(false)}
         />
@@ -392,7 +393,7 @@ function MessageBlock({
           <div className="mt-1.5 flex-shrink-0">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-border/60 bg-background/70 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground/70">
               <FileText size={8} className="flex-shrink-0" />
-              {estimatedLines} lignes
+              {t('bloc.lignes', { n: estimatedLines })}
             </span>
           </div>
         </div>
@@ -402,7 +403,7 @@ function MessageBlock({
           <button
             onClick={(e) => { e.stopPropagation(); handleDelete() }}
             className="absolute -top-1.5 -right-1.5 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Supprimer ce message"
+            aria-label={t('bloc.supprimerMessage')}
           >
             <Trash2 size={11} />
           </button>
@@ -412,8 +413,8 @@ function MessageBlock({
             supprimer un long texte replié était silencieusement impossible */}
         <ConfirmDialog
           isOpen={confirmDelete}
-          title="Supprimer ce bloc ?"
-          message="Ce contenu sera retiré de la note. Action définitive."
+          title={t('bloc.supprimerBlocTitre')}
+          message={t('bloc.supprimerBlocMessage')}
           onConfirm={confirmDeleteNow}
           onCancel={() => setConfirmDelete(false)}
         />
@@ -430,8 +431,8 @@ function MessageBlock({
         <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
           <button
             className="p-1 text-muted-foreground hover:text-foreground rounded"
-            title="Glisser pour réorganiser"
-            aria-label="Réorganiser"
+            title={t('bloc.reorganiserAide')}
+            aria-label={t('bloc.reorganiser')}
           >
             <GripVertical size={14} />
           </button>
@@ -446,10 +447,10 @@ function MessageBlock({
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <FileText size={12} />
-            <span className="font-medium">Contenu coll\u00e9</span>
+            <span className="font-medium">{t('bloc.contenuColle')}</span>
             <ChevronUp size={12} />
           </button>
-          <span className="text-[10px] text-muted-foreground/50 pr-1">~{estimatedLines} lignes</span>
+          <span className="text-[10px] text-muted-foreground/50 pr-1">{t('bloc.environLignes', { n: estimatedLines })}</span>
         </div>
       )}
 
@@ -467,7 +468,7 @@ function MessageBlock({
           <h3 className={`text-sm font-semibold mb-2 ${
             roleBloc === 'points-cles' ? 'text-amber-600 dark:text-amber-400' : 'text-primary'
           }`}>
-            {roleBloc === 'points-cles' ? 'Points clés' : 'Résumé'}
+            {roleBloc === 'points-cles' ? t('note.pointsCles') : t('note.resume')}
           </h3>
         )}
         {/* `transition-colors` et SURTOUT PAS `transition-all` (corrigé le
@@ -513,10 +514,10 @@ function MessageBlock({
           onClick={openTagPicker}
           className="fixed z-50 flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md border border-border bg-popover text-foreground shadow-lg hover:bg-muted transition-colors -translate-x-1/2"
           style={{ top: Math.max(tagHint.top - 34, 4), left: tagHint.left }}
-          title="Taguer la sélection"
+          title={t('bloc.taguerSelection')}
         >
           <Tag size={11} />
-          Taguer
+          {t('bloc.taguer')}
         </button>
       )}
 
@@ -532,8 +533,8 @@ function MessageBlock({
 
       <ConfirmDialog
         isOpen={confirmDelete}
-        title="Supprimer ce bloc ?"
-        message="Ce contenu sera retiré de la note. Action définitive."
+        title={t('bloc.supprimerBlocTitre')}
+        message={t('bloc.supprimerBlocMessage')}
         onConfirm={confirmDeleteNow}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -547,7 +548,7 @@ function MessageBlock({
             className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
           >
             <Save size={12} />
-            <span>{isSaving ? '...' : 'Sauver'}</span>
+            <span>{isSaving ? '...' : t('bloc.sauver')}</span>
           </button>
           <button
             onClick={cancelEditing}
@@ -555,7 +556,7 @@ function MessageBlock({
             className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded disabled:opacity-50"
           >
             <X size={12} />
-            <span>Annuler</span>
+            <span>{t('commun.annuler')}</span>
           </button>
           <button
             onClick={handleDelete}
@@ -563,7 +564,7 @@ function MessageBlock({
             className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-50 ml-auto"
           >
             <Trash2 size={12} />
-            <span>Supprimer</span>
+            <span>{t('commun.supprimer')}</span>
           </button>
         </div>
       )}
@@ -631,8 +632,8 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         <button
           onClick={e => { e.stopPropagation(); e.currentTarget.blur(); onEnterSelection() }}
           className="p-0.5 text-muted-foreground/50 hover:text-primary rounded transition-colors"
-          title="Sélectionner des blocs"
-          aria-label="Sélectionner des blocs"
+          title={t('bloc.selectionner')}
+          aria-label={t('bloc.selectionner')}
         >
           <CheckSquare size={11} />
         </button>
@@ -641,8 +642,8 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         <button
           onClick={e => { e.stopPropagation(); onStartEdit() }}
           className="p-0.5 text-muted-foreground/50 hover:text-primary rounded transition-colors"
-          title="Modifier ce bloc (ou double-clic sur le texte)"
-          aria-label="Modifier ce bloc"
+          title={t('bloc.modifierAide')}
+          aria-label={t('bloc.modifier')}
         >
           <Pencil size={11} />
         </button>
@@ -686,17 +687,17 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
           className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/60 hover:border-primary/40 hover:text-primary transition-colors"
-          aria-label="Ajouter un tag"
+          aria-label={t('note.ajouterTag')}
         >
-          + tag
+          {t('bloc.plusTag')}
         </button>
         {boutonsActions}
         {onDelete && (
           <button
             onClick={e => { e.stopPropagation(); onDelete() }}
             className="p-0.5 text-muted-foreground/50 hover:text-red-500 rounded transition-colors"
-            title="Supprimer ce bloc"
-            aria-label="Supprimer ce bloc"
+            title={t('bloc.supprimerBloc')}
+            aria-label={t('bloc.supprimerBloc')}
           >
             <Trash2 size={11} />
           </button>
@@ -730,7 +731,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
             <button
               onClick={e => { e.stopPropagation(); onRemoveTag(tag) }}
               className="hover:text-red-400 transition-colors leading-none"
-              aria-label={`Retirer le tag ${tag}`}
+              aria-label={t('note.retirerTagNomme', { tag })}
             >
               ×
             </button>
@@ -743,9 +744,9 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
           className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-          aria-label="Ajouter un tag"
+          aria-label={t('note.ajouterTag')}
         >
-          + tag
+          {t('bloc.plusTag')}
         </button>
       )}
       {!isReadOnly && (onDelete || onStartEdit || onEnterSelection) && (
@@ -761,8 +762,8 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
             <button
               onClick={e => { e.stopPropagation(); onDelete() }}
               className="p-0.5 text-muted-foreground/50 hover:text-red-500 rounded transition-colors"
-              title="Supprimer ce bloc"
-              aria-label="Supprimer ce bloc"
+              title={t('bloc.supprimerBloc')}
+              aria-label={t('bloc.supprimerBloc')}
             >
               <Trash2 size={11} />
             </button>
