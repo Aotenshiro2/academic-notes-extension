@@ -105,6 +105,15 @@ du Guide », idée du parking « panneau d'activité façon Skool », retour d'u
   401 vérifié en lecture et en écriture). Requête essayée sur la vraie table
   dans une transaction annulée (insertion, remplacement du même jour, 0 ligne
   restante). Guide et politique disent que ces compteurs remontent.
+- **Analyse IA, PDF absent dans ChatGPT** (bug remonté par un élève, 08/10) :
+  le prompt part, pas le PDF. Cause vérifiée dans Chrome 154 : sans compte
+  connecté, chatgpt.com sert une autre interface dont les 3 champs fichier
+  n'acceptent que des images (« Ajouter des fichiers » demande une
+  connexion) ; `findFileInput` refuse à raison un champ image seule.
+  Désormais l'injecteur renvoie `imageOnly` et la fenêtre d'analyse affiche
+  « connecte-toi puis relance » (`analyse.connexionRequise`, FR et EN). Au
+  passage : une doctrine seule non jointe n'affiche plus « Envoyé » mais le
+  repli, et les deux phrases du repli passent au tutoiement.
 
 ### Reste à faire
 - Brice : recharger l'extension (le `dist` du dépôt est en 1.8.10), dogfood,

@@ -115,6 +115,7 @@ const CHANGELOG = [
       'La synchronisation avec ton Journal d\'Études se coupe vraiment : dans ton Compte, l\'interrupteur est activé par défaut, et si tu le coupes, une fenêtre te dit ce que ça change avant de valider. « Exclure de la sync » sur une note est aussi respecté quand tu la modifies.',
       'Avec la synchronisation, les compteurs de ton panneau d\'activité remontent aussi au journal : des nombres par jour, sans aucun contenu. Ils nous aident à voir comment nos apps sont utilisées, pour les améliorer.',
       'Bonnes pratiques : la section « Confidentialité » dit précisément ce qui reste sur ton appareil et ce qui passe par nos serveurs, et « Analyser une note avec une IA » décrit les consignes telles qu\'elles sont aujourd\'hui. La politique de confidentialité de l\'extension est mise à jour dans le même sens.',
+      'Analyser avec une IA : quand ChatGPT n\'accepte que des images (c\'est le cas si tu n\'es pas connecté à ton compte), le PDF de ta note ne peut pas partir. Le Carnet te le dit maintenant et t\'invite à te connecter, puis à relancer. Avant, le prompt partait seul, sans explication.',
     ],
   },
   {

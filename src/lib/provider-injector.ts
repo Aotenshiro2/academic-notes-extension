@@ -7,6 +7,14 @@ export interface InjectedFile {
   mime: string
 }
 
+export interface InjectionResult {
+  tabId: number
+  pdfUploaded: boolean
+  promptFilled: boolean
+  /** Fichiers non joints parce que la page n'accepte que des images (ChatGPT sans compte). */
+  imageOnly: boolean
+}
+
 /**
  * Fonction autonome injectée dans la page du provider.
  * Reçoit les sélecteurs en paramètres → provider-agnostique.
@@ -21,7 +29,7 @@ async function injectIntoProvider(
   fileInputSelectors: string[],
   textareaSelectors: string[],
   uploadTriggerSteps: string[][] | null
-): Promise<{ pdfUploaded: boolean; promptFilled: boolean }> {
+): Promise<{ pdfUploaded: boolean; promptFilled: boolean; imageOnly: boolean }> {
 
   function findEl(selectors: string[]): HTMLElement | null {
     for (const s of selectors) {
@@ -70,6 +78,22 @@ async function injectIntoProvider(
     return null
   }
 
+  /**
+   * Vrai quand la page n'expose QUE des champs fichier réservés aux images.
+   * C'est ChatGPT sans compte connecté (mode invité, constaté le 08/10/2026) :
+   * seules les photos passent, « Ajouter des fichiers » demande une connexion.
+   * Le PDF ne peut pas partir, et l'élève doit savoir pourquoi.
+   */
+  function onlyImageInputs(selectors: string[]): boolean {
+    const inputs = selectors
+      .flatMap(s => Array.from(document.querySelectorAll(s)))
+      .filter((el): el is HTMLInputElement => el instanceof HTMLInputElement && el.type === 'file')
+    return inputs.length > 0 && inputs.every(i => {
+      const types = (i.accept || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+      return types.length > 0 && types.every(t => t.startsWith('image/') || /^\.(png|jpe?g|gif|webp|avif|bmp|heic|heif|svg)$/.test(t))
+    })
+  }
+
   function waitForFileInput(selectors: string[], maxAttempts = 10, interval = 800): Promise<HTMLInputElement | null> {
     return new Promise((resolve) => {
       let attempts = 0
@@ -103,6 +127,7 @@ async function injectIntoProvider(
   // --- Upload des fichiers joints ---
 
   let pdfUploaded = false
+  let imageOnly = false
   if (files.length > 0) {
     // Cliquer les triggers pour révéler le file input (Gemini, Claude, Grok…)
     if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findFileInput(fileInputSelectors)) {
@@ -121,6 +146,8 @@ async function injectIntoProvider(
         fileInput.dispatchEvent(new Event('input', { bubbles: true }))
         pdfUploaded = true
       } catch { /* fallback handled by caller */ }
+    } else {
+      imageOnly = onlyImageInputs(fileInputSelectors)
     }
   }
 
@@ -152,7 +179,7 @@ async function injectIntoProvider(
     }
   }
 
-  return { pdfUploaded, promptFilled }
+  return { pdfUploaded, promptFilled, imageOnly }
 }
 
 type ProgressPhase = 'opening' | 'loading' | 'injecting'
@@ -168,7 +195,7 @@ async function openAndInject(
   promptText: string,
   url: string,
   onProgress?: (phase: ProgressPhase) => void
-): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
+): Promise<InjectionResult> {
   onProgress?.('opening')
   const tab = await chrome.tabs.create({ url, active: true })
   if (!tab.id) throw new Error(`Failed to create ${provider.label} tab`)
@@ -200,12 +227,13 @@ async function openAndInject(
     ],
   })
 
-  const result = results[0]?.result as { pdfUploaded: boolean; promptFilled: boolean } | undefined
+  const result = results[0]?.result as Omit<InjectionResult, 'tabId'> | undefined
 
   return {
     tabId,
     pdfUploaded: result?.pdfUploaded ?? false,
     promptFilled: result?.promptFilled ?? false,
+    imageOnly: result?.imageOnly ?? false,
   }
 }
 
@@ -223,7 +251,7 @@ export async function openProviderWithContent(options: {
   promptText: string
   threadUrl?: string
   onProgress?: (phase: ProgressPhase) => void
-}): Promise<{ tabId: number; pdfUploaded: boolean; promptFilled: boolean }> {
+}): Promise<InjectionResult> {
   const { provider, files = [], promptText, threadUrl, onProgress } = options
 
   // Mode thread cible — toujours injection DOM (pas de prefill ?q= sur un thread existant)
@@ -245,6 +273,7 @@ export async function openProviderWithContent(options: {
         tabId: tab.id ?? 0,
         pdfUploaded: false,
         promptFilled: true,
+        imageOnly: false,
       }
     }
   }

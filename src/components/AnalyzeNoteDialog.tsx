@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { toast } from '@/lib/toast'
-import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown } from 'lucide-react'
+import { X, Sparkles, Copy, ExternalLink, MessageSquare, GraduationCap, PenLine, Target, Check, ImageIcon, Loader2, AlertTriangle, Download, FileText, ChevronDown, LogIn } from 'lucide-react'
 import { obtenirNoteMentorat, joindreNoteAuMentor } from '@/lib/note-mentorat'
 import { fetchAccesCaptureIA } from '@/lib/sync'
 import type { AcademicNote, NoteSummary, AnalysisProvider, NoteFolder } from '@/types/academic'
@@ -176,6 +176,8 @@ function AnalyzeNoteDialog({
   const [provider, setProvider] = useState<AnalysisProvider>(defaultProvider)
   const [status, setStatus] = useState<SendStatus>('idle')
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  // La page de l'IA n'acceptait que des images : le plus souvent, l'élève n'y est pas connecté
+  const [connexionRequise, setConnexionRequise] = useState(false)
   const [providerThreadUrls, setProviderThreadUrls] = useState<Partial<Record<AnalysisProvider, string>>>({})
   // 'mentor' (1.8.1) : au lieu de sortir vers l'IA personnelle de l'élève, la
   // note rejoint son fil de mentorat, dans le carnet. Ce n'est pas la même
@@ -233,6 +235,7 @@ function AnalyzeNoteDialog({
     if (isOpen) {
       setStatus('idle')
       setPdfBlob(null)
+      setConnexionRequise(false)
       setSendMode('new')
       setLoadingPhase('preparing')
       setSelectedNoteIds([note.id])
@@ -431,7 +434,11 @@ function AnalyzeNoteDialog({
 
       try {
         const result = await send(threadUrl)
-        setStatus(hasImages ? (result.pdfUploaded ? 'success' : 'fallback') : 'success')
+        // Des fichiers devaient partir (la note en PDF, la doctrine) et n'ont pas
+        // été joints : ce n'est pas un succès, même pour une note sans image.
+        const fichiersNonJoints = files.length > 0 && !result.pdfUploaded
+        setConnexionRequise(fichiersNonJoints && result.imageOnly)
+        setStatus(fichiersNonJoints ? 'fallback' : 'success')
       } catch (err) {
         if (err instanceof Error && err.message === 'THREAD_INJECTION_FAILED') {
           setStatus('thread-fallback')
@@ -835,6 +842,14 @@ function AnalyzeNoteDialog({
           {/* Fallback feedback */}
           {status === 'fallback' && (
             <div className="mx-5 mb-4 space-y-2">
+              {connexionRequise && (
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
+                  <LogIn size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    {t('analyse.connexionRequise', { provider: providerConfig.label })}
+                  </p>
+                </div>
+              )}
               <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
                 <Copy size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-300">

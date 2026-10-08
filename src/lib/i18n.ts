@@ -389,10 +389,11 @@ const FR = {
   'analyse.pdfEnvoye': 'PDF envoyé',
   'analyse.envoye': 'Envoyé',
   'analyse.ouvert': 'Ouvert',
-  'analyse.promptCopie': 'Le prompt a été copié : collez avec',
+  'analyse.promptCopie': 'Le prompt a été copié : colle-le avec',
   // Espace en tête voulue : la phrase suit la précédente dans le même paragraphe.
-  'analyse.glissezPdf': ' Glissez le PDF ci-dessous dans la conversation.',
+  'analyse.glissezPdf': ' Glisse le PDF ci-dessous dans la conversation.',
   'analyse.telechargerPdf': 'Télécharger le PDF',
+  'analyse.connexionRequise': "{provider} n'accepte ici que des images : tu n'es sans doute pas connecté à ton compte. Connecte-toi dans ce navigateur, puis relance l'analyse pour que le PDF parte avec le prompt.",
   'analyse.convIndisponible': 'Conv. existante indisponible : une nouvelle conversation a été ouverte.',
   'analyse.promptAussiCopie': 'Le prompt a aussi été copié dans le presse-papier.',
 
@@ -1146,6 +1147,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'analyse.promptCopie': 'The prompt has been copied: paste it with',
   'analyse.glissezPdf': ' Drag the PDF below into the conversation.',
   'analyse.telechargerPdf': 'Download the PDF',
+  'analyse.connexionRequise': "{provider} only accepts images here: you're probably not signed in. Sign in to your account in this browser, then run the analysis again so the PDF goes with the prompt.",
   'analyse.convIndisponible': 'Existing chat unavailable: a new conversation was opened.',
   'analyse.promptAussiCopie': 'The prompt was also copied to the clipboard.',
 
