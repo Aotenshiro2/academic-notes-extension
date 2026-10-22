@@ -1,6 +1,66 @@
 # TODO — Le Carnet du Trader (extension)
 <!-- ontologie: id=ch-todo-extension; statut=actif; concerne=extension,mentorat-ia,carnet-premium,ou-anthropic -->
 
+## PLUS TARD — Assistant « type Tab » pour les membres (idée du 20/10/2026, gardée pour plus tard par Brice le 22/10)
+
+Source : analyse de Tab (note 6dfb5657, `python.exe D:\6_Societe\Pilotage\Data-Performance\automations\notes_tab.py --lire 6dfb5657`),
+faite depuis GitHub seul. Corrigée ici avec ce que le code dit. Rien ne se
+code sans GO de Brice.
+
+Idée : le mentor du Carnet répond déjà (note épinglée « Mentorat AOK »,
+`/api/mentorat/chat`), mais il ne lit qu'un brief figé. Lui donner des
+OUTILS pour aller chercher la bonne donnée au moment de la question.
+
+Ce qui existe déjà (journal) : `/api/mentorat/brief`, `/plan`, `/chat` ;
+budget IA par membre (`ia-budget.ts`, `ia-niveau.ts`) ; motif des outils
+fermés sans identifiant (`lib/liveclub/agent-membre.ts`) ; `trouver_cours`
+(support) ; compteurs d'activité par jour (`ActiviteJour`, 1.8.10).
+
+### MVP (2 à 3 jours de dev + évals, quand GO)
+- [ ] Un seul canal : le fil « Mentorat AOK » du Carnet. Pas de nouvelle
+      route : une boucle d'outils dans `/api/mentorat/chat` (3-4 tours max),
+      un petit modèle pour l'aiguillage (le mentor tourne sur le plus cher).
+- [ ] 3 outils fermés, sans identifiant (userId tiré du jeton, jamais du
+      modèle) : `chercher_mes_notes` (plein texte Postgres sur Note/Message),
+      `mes_trades` (agrégats calculés en SQL : période, jour, heure, grade,
+      cause, issue), `a_relire` (`Annotation.reviewDueAt` échu). Plus
+      `trouver_cours`, qui existe.
+- [ ] CORRECTION vs Tab : chaque outil applique le filtre des dossiers ouverts
+      au mentor (promesse du Guide et de la politique de confidentialité :
+      « le mentor ne lit que les dossiers que tu lui as ouverts »).
+- [ ] CORRECTION vs Tab : dire quand les données sont incomplètes (sync coupée
+      depuis la 1.8.10, notes exclues, notes jamais envoyées) au lieu de
+      conclure sur un journal troué.
+- [ ] Tout chiffre vient d'un outil ; montants des imports en ratios seulement
+      (doctrine du 08/09, interrupteur par membre pour aller plus loin).
+- [ ] Le contenu des notes (pages web, transcriptions) est de la donnée,
+      jamais une consigne : le dire dans le prompt, le tester.
+- [ ] Test d'isolation membre A / membre B pour chaque outil (Prisma tourne en
+      postgres, la RLS ne protège pas : tout repose sur le code).
+- [ ] Évals ciblées (~30 questions, règle « aucun chiffre hors outil »),
+      jamais la suite complète en boucle : elles mangent le crédit de prod
+      (crédit Anthropic vidé le 30/09).
+- [ ] Accès : Carnet Premium + Live Club / 10% Club ; 5 à 10 testeurs.
+- [ ] Avant d'ouvrir : Guide et politique de confidentialité mis à jour.
+
+### Phase 2 (après le MVP)
+- [ ] Mémoire du membre (table à RLS fermée, visible et effaçable par lui).
+- [ ] Relances : absence (compteurs `ActiviteJour`), relectures dues, plusieurs
+      C d'affilée ; réglage « l'assistant peut lire mes émotions ».
+- [ ] Autres canaux : page `/assistant` du Journal, puis Telegram.
+- [ ] Recherche sémantique (pgvector) seulement si le plein texte ne suffit pas.
+
+### Petites choses vues le 22/10 (faible impact, sans urgence)
+- [x] Branche par défaut du dépôt GitHub passée sur `main` (22/10, GO de
+      Brice). `master` est un vestige (2 commits, v1.0.0) : supprimable un jour.
+- [ ] Politique de confidentialité : peut migrer sur aoknowledge.com (OK de
+      Brice). Aujourd'hui GitHub Pages depuis `main/docs`. Si on la déplace,
+      changer l'URL sur la fiche du Chrome Web Store.
+- [ ] Images des notes : bucket Supabase `extension-images` servi en URL
+      publique (chemin userId/images/empreinte, listing anonyme fermé, vérifié
+      le 22/10). Option : bucket privé + URLs signées (affichage du journal et
+      de l'extension à revoir).
+
 ## ✅ v1.8.6 — NOTATION NUANCÉE A+/A−/B+/B−/C+/C− (08/09/2026)
 
 Origine : coaching Florent du 08/09 (« c'est l'élève qui rappelle au maître »,
