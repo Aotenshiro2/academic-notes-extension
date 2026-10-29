@@ -108,8 +108,9 @@ const CONFIDENTIALITE: CleI18n[] = [
 const CHANGELOG = [
   {
     version: '1.8.11',
-    title: 'Un fantôme de moins',
+    title: 'Connexion plus claire, et un fantôme de moins',
     items: [
+      'Connexion plus claire : quand la connexion est refusée, le message t\'explique pourquoi en français (souvent, un compte créé avec Google, donc sans mot de passe). Si tu t\'inscris avec un email qui a déjà un compte, le Carnet le repère et te propose « Mot de passe oublié ? ». La réinitialisation passe maintenant par journal.aoknowledge.com, et si tu es déjà client AOKnowledge, l\'écran Compte te rappelle d\'utiliser l\'email de ton achat : tes accès s\'ouvrent tout seuls.',
       'Correction : en survolant une image de ta note, elle pouvait s\'afficher une deuxième fois, plus haut, par-dessus le texte du dessus. Rien n\'était abîmé dans la note. C\'était le léger assombrissement de l\'image au survol : il est retiré, le curseur loupe suffit à dire qu\'elle s\'agrandit au clic. Merci encore Franky pour la vidéo.',
     ],
   },
