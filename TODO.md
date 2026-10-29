@@ -448,6 +448,15 @@ on verra aux retours.
       la couche composite morte restait peinte. Passé en `transition-colors`.
       Si ça revient : chercher une autre propriété de boîte qui change sous
       transition, pas un problème de rendu React.
+      **REVENU (vidéo de Franky du 19/10, en 1.8.10, remontée par Brice le
+      29/10)** : cette fois c'est une IMAGE qui se peint une deuxième fois,
+      plus haut, par-dessus le texte du dessus, au survol. Cause retenue :
+      `transition-opacity hover:opacity-90` sur l'image (Chrome la sort dans
+      une couche composite le temps de l'animation). Retiré en 1.8.11 sur
+      l'image de `MessageBlock`, les images dans un bloc de texte, et les deux
+      cas de `CurrentNoteView` (ancienne note, captures). Règle : rien de la
+      taille d'une image ne s'anime au survol. Toujours pas vérifiable hors
+      d'un vrai panneau Chrome : à confirmer par Franky après la mise à jour.
 
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc

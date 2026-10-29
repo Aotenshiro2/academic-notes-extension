@@ -107,6 +107,13 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.11',
+    title: 'Un fantôme de moins',
+    items: [
+      'Correction : en survolant une image de ta note, elle pouvait s\'afficher une deuxième fois, plus haut, par-dessus le texte du dessus. Rien n\'était abîmé dans la note. C\'était le léger assombrissement de l\'image au survol : il est retiré, le curseur loupe suffit à dire qu\'elle s\'agrandit au clic. Merci encore Franky pour la vidéo.',
+    ],
+  },
+  {
     version: '1.8.10',
     title: 'Ton activité, et tes données entre tes mains',
     items: [

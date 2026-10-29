@@ -319,12 +319,21 @@ function MessageBlock({
     return (
       <div className={`${groupe} relative ${selectionClass}`} {...selectionProps}>
         {caseSelection}
+        {/* Aucun effet d'opacité au survol de l'image (retiré le 29/10/2026,
+            même vidéo de Franky, la 3e fois que ce fantôme revient). Avec
+            `transition-opacity hover:opacity-90`, Chrome sortait la capture
+            dans une couche composite le temps de l'animation, et cette couche
+            restait peinte une deuxième fois, plus haut, par-dessus le texte du
+            dessus. Même mécanisme qu'en 1.7.1 (display) et en 1.8.7
+            (transition-all) : rien de ce qui a la taille d'une image ne doit
+            s'animer au survol. Le curseur loupe suffit à dire qu'elle
+            s'agrandit au clic. */}
         <img
           src={message.content}
           alt={message.metadata?.alt || 'Image'}
           loading="lazy"
           decoding="async"
-          className={`max-w-full rounded-lg transition-opacity ${enSelection ? '' : 'cursor-zoom-in hover:opacity-90'}`}
+          className={`max-w-full rounded-lg ${enSelection ? '' : 'cursor-zoom-in'}`}
           onClick={handleClick}
         />
 
@@ -495,7 +504,7 @@ function MessageBlock({
           className={`
             prose prose-sm max-w-none text-foreground/90 leading-relaxed rounded-lg transition-colors outline-none
             [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
-            [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:hover:opacity-80
+            [&_img]:max-w-full [&_img]:cursor-zoom-in
             [&_*]:max-w-full
             ${isEditing
               ? 'border-2 border-primary/40 bg-background p-3 focus:border-primary'

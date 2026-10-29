@@ -1045,7 +1045,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         /* Fallback pour anciennes notes sans messages */
         <div className="prose prose-sm max-w-none">
           <div
-            className="text-foreground/90 leading-relaxed p-3 [&_img]:cursor-zoom-in [&_img]:transition-opacity [&_img]:hover:opacity-80"
+            className="text-foreground/90 leading-relaxed p-3 [&_img]:cursor-zoom-in"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
             onClick={(e) => {
               const target = e.target as HTMLElement
@@ -1194,7 +1194,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 key={index}
                 src={screenshot.dataUrl}
                 alt={t('note.captureAlt', { n: index + 1 })}
-                className="rounded-lg border border-border cursor-zoom-in hover:opacity-80 transition-opacity"
+                // Pas d'opacité animée au survol : voir le commentaire de l'image dans MessageBlock
+                className="rounded-lg border border-border cursor-zoom-in"
                 onClick={(e) => {
                   e.stopPropagation()
                   handleImageClick(screenshot.dataUrl)
