@@ -107,6 +107,16 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.12',
+    title: 'Les prix de tes trades, et le PDF qui arrive vraiment',
+    items: [
+      'Nouveau : sur chaque trade clos d\'une note, la pastille « Prix » ouvre un petit panneau pour noter l\'entrée, la sortie et la taille. Ces prix restent dans ton Carnet (et ton Journal d\'Études) : Pilotage, lui, ne lit que les trades de ton broker.',
+      'Nouveau, au même endroit : si tu as importé ton relevé du broker dans Pilotage, le Carnet te montre les trades importés autour de l\'heure du tien. Un clic sur « Lier » relie les deux, et ton jugement comme ton cooldown rejoignent le vrai trade. « Délier » défait le lien.',
+      'Correction : analyser une note dans une conversation ChatGPT existante pouvait afficher « PDF envoyé » sans que le PDF arrive. Le Carnet attend maintenant que la conversation ait fini de charger, vérifie que la pièce jointe apparaît bien, et réessaie autrement sinon. S\'il ne la voit toujours pas, il te le dit et te propose le PDF à glisser toi-même. Merci Flow pour les captures.',
+      'Correction : le fantôme au survol des images revenait encore. Les petits boutons qui apparaissent au survol d\'un bloc (poubelle, heure, « + tag ») ne s\'affichent plus en fondu, mais d\'un coup : c\'est ce fondu qui faisait repeindre l\'image plus haut. Merci Franky pour la nouvelle vidéo.',
+    ],
+  },
+  {
     version: '1.8.11',
     title: 'Connexion plus claire, et un fantôme de moins',
     items: [

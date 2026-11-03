@@ -457,6 +457,38 @@ on verra aux retours.
       cas de `CurrentNoteView` (ancienne note, captures). Règle : rien de la
       taille d'une image ne s'anime au survol. Toujours pas vérifiable hors
       d'un vrai panneau Chrome : à confirmer par Franky après la mise à jour.
+      **REVENU EN 1.8.11 (Brice, 03/11, Store bien en 1.8.11)**. La vidéo,
+      relue image par image, montre le fantôme PENDANT le fondu des pastilles
+      (de 3,5 s à 4 s), pas après. Mesuré dans Edge sans tête (LayerTree,
+      `essai-1812-fantome.mjs`) : au survol d'une image, la poubelle posée
+      dessus et la pastille de l'heure, en `transition-opacity`, créaient deux
+      couches composites pendant 150 ms. Corrigé en 1.8.12 : plus aucun fondu
+      sur ce qui apparaît au survol d'un bloc (MessageBlock, CurrentNoteView),
+      mesuré après : zéro animation, zéro couche nouvelle. Le fil perd aussi
+      son défilement horizontal (visible sur la vidéo). Règle élargie : rien
+      ne s'anime en opacité au survol dans le fil d'une note. Le bug de peinture
+      lui-même (GPU) ne se reproduit pas sans tête : à confirmer par Franky.
+
+- [x] **1.8.12 - prix des trades et lien avec le trade du broker (03/11).**
+      Pastille « Prix » sur un trade clos : entrée, sortie, taille saisies à
+      la main (`TradeSegment.prix`), dans le Carnet et la note du journal,
+      jamais dans Pilotage (la route des positions n'expose que des champs
+      nommés). Même panneau : positions importées à ±14 h du trade
+      (`GET /api/pilotage/trades/positions`), « Lier » / « Délier »
+      (`PATCH`, la route de l'import de Pilotage). Essai : `essai-1812-prix.mjs`
+      (session factice, journal simulé par CDP). Non essayé contre le vrai
+      journal. Reste côté Pilotage (hors Carnet) : un bouton lier/délier dans
+      la table des positions d'un compte, aujourd'hui le lien ne se fait qu'à
+      l'import.
+
+- [x] **1.8.12 - PDF absent en conversation existante (Flow, 09/10).**
+      `injectIntoProvider` attend une zone de saisie et un champ fichier
+      stables 1,5 s (20 s max), donne le fichier de quatre façons (champ,
+      champ du moment, dépôt sur le formulaire, collage) et s'arrête dès que
+      le nom du fichier apparaît hors de la zone de saisie (comparé à avant,
+      l'historique peut déjà le montrer). « PDF envoyé » seulement si la pièce
+      est visible, sinon `analyse.pdfNonVu`. Essai sur une fausse page
+      (`carnet-essais-visuels/injecteur/`). Non essayé sur le vrai ChatGPT.
 
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
