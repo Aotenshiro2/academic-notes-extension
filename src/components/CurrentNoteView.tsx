@@ -10,10 +10,11 @@ import MessageDetailPanel from './MessageDetailPanel'
 import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
+import TradePrixPopover from './TradePrixPopover'
 import WarmupCard from './WarmupCard'
 import ConfirmDialog from './ConfirmDialog'
 import DolBar from './DolBar'
-import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, NoteWarmup, DolLevel } from '@/types/academic'
+import type { AcademicNote, NoteMessage, Annotation, AnnotationGrade, AnnotationLettre, AnnotationCause, TradeSegment, TradeOutcome, TradeCooldown, TradePrix, NoteWarmup, DolLevel } from '@/types/academic'
 import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
 import { deleteJournalAnnotation } from '@/lib/sync'
 import { suggererTagsNote } from '@/lib/capture-ia'
@@ -96,6 +97,8 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [rDraft, setRDraft] = useState('')
   const [cooldownTradeId, setCooldownTradeId] = useState<string | null>(null)
   const [cooldownPos, setCooldownPos] = useState({ top: 0, bottom: 0, left: 0 })
+  const [prixTradeId, setPrixTradeId] = useState<string | null>(null)
+  const [prixPos, setPrixPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [addingConcept, setAddingConcept] = useState(false)
   const [conceptDraft, setConceptDraft] = useState('')
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
@@ -142,7 +145,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // pourrait faire disparaître ou déplacer un bloc déjà coché.
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || selection !== null) {
+    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || prixTradeId !== null || selection !== null) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
@@ -453,6 +456,13 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     }
     setEditingRTradeId(null)
   }, [rDraft, noteId, onNoteUpdate])
+
+  // Prix saisis à la main d'un trade (1.8.12) : restent dans le Carnet
+  const handleSaveTradePrix = useCallback(async (tradeId: string, prix: TradePrix | undefined) => {
+    await storage.setTradePrix(noteId, tradeId, prix)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
 
   // Cooldown par trade : débrief mental rattaché au segment (mental game), persisté avec la note
   const handleSaveCooldown = useCallback(async (tradeId: string, cooldown: TradeCooldown) => {
@@ -928,6 +938,25 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                             : 'R ?'}
                         </button>
                       )}
+                      {/* Les prix saisis à la main (1.8.12, demande de Flow) et
+                          le lien avec le trade importé du broker : une pastille,
+                          le détail au clic. */}
+                      <button
+                        onClick={e => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setPrixPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                          setPrixTradeId(trade.id)
+                        }}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
+                          trade.prix && (trade.prix.entree !== undefined || trade.prix.sortie !== undefined)
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
+                        }`}
+                        title={t('trade.prixAide')}
+                        aria-label={t('trade.prixLabel', { n })}
+                      >
+                        {t('trade.prixPastille')}
+                      </button>
                       <button
                         onClick={e => {
                           const rect = e.currentTarget.getBoundingClientRect()
@@ -1098,6 +1127,21 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           onClose={() => setCooldownTradeId(null)}
         />
       )}
+
+      {/* Prix du trade et lien avec le trade importé du broker (1.8.12) */}
+      {prixTradeId && (() => {
+        const trade = (note.trades ?? []).find(tr => tr.id === prixTradeId)
+        if (!trade) return null
+        return (
+          <TradePrixPopover
+            position={prixPos}
+            trade={trade}
+            numero={(note.trades ?? []).findIndex(tr => tr.id === prixTradeId) + 1}
+            onSave={(prix) => handleSaveTradePrix(prixTradeId, prix)}
+            onClose={() => setPrixTradeId(null)}
+          />
+        )
+      })()}
 
       <ConfirmDialog
         isOpen={tradeASupprimer !== null}

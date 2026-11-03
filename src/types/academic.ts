@@ -173,6 +173,17 @@ export interface TradeSegment {
    *  compatible avec la doctrine de masquage. */
   r?: number
   cooldown?: TradeCooldown // débrief mental de fin de trade (mental game)
+  /** Prix saisis à la main par le membre (demande de Flow, 1.8.12) : entrée,
+   *  sortie, taille. Ils restent dans le Carnet (et la note du journal qui en
+   *  est la copie) : Pilotage ne reçoit QUE les trades du broker (règle de
+   *  Brice), jamais une saisie manuelle. */
+  prix?: TradePrix
+}
+
+export interface TradePrix {
+  entree?: number
+  sortie?: number
+  taille?: number
 }
 
 // Cooldown par trade (Tendler) : le débrief court après chaque trade fermé —

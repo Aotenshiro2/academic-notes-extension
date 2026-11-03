@@ -999,6 +999,18 @@ export const storage = {
     await this.saveNote({ ...note, trades })
   },
 
+  /** Pose ou efface les prix saisis à la main d'un trade (undefined = effacer). */
+  async setTradePrix(noteId: string, tradeId: string, prix: import('@/types/academic').TradePrix | undefined): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const trades = (note.trades ?? []).map(t => {
+      if (t.id !== tradeId) return t
+      const { prix: _ancien, ...reste } = t
+      return prix === undefined ? reste : { ...reste, prix }
+    })
+    await this.saveNote({ ...note, trades })
+  },
+
   /** Pose ou efface le résultat en R d'un trade (undefined = effacer). */
   async setTradeR(noteId: string, tradeId: string, r: number | undefined): Promise<void> {
     const note = await this.getNote(noteId)

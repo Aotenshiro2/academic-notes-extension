@@ -708,6 +708,69 @@ export async function deleteJournalAnnotation(annotationId: string): Promise<voi
   } catch { /* best effort — la note locale est déjà retirée */ }
 }
 
+// ── Lien avec les trades importés du broker (1.8.12) ─────────────────────────
+// Les positions viennent des imports du broker (CSV, capture, PDF) faits dans
+// Pilotage ou le journal (table TradeImport). Le Carnet ne crée JAMAIS de trade
+// là-bas : il lit les positions et pose ou retire le lien (segmentRef) avec un
+// trade de la note, par la route que Pilotage utilise déjà à l'import.
+
+export interface PositionImportee {
+  positionId: string
+  symbole: string
+  direction: string | null
+  devise: string
+  entreLe: string
+  sortiLe: string | null
+  quantite: number
+  pnl: number
+  prixEntree: number | null
+  prixSortie: number | null
+  segmentRef: string | null
+  /** null = heure telle qu'affichée par la plateforme (stockée comme de l'UTC). */
+  fuseau: string | null
+}
+
+/** Les positions importées dont l'entrée tombe entre `depuis` et `jusqu` (instants). */
+export async function fetchPositionsImportees(depuis: number, jusqu: number): Promise<{ positions?: PositionImportee[]; error?: 'non-connecte' | 'reseau' }> {
+  const token = await getBearerToken()
+  if (!token) return { error: 'non-connecte' }
+  try {
+    const q = `depuis=${encodeURIComponent(new Date(depuis).toISOString())}&jusqu=${encodeURIComponent(new Date(jusqu).toISOString())}`
+    const res = await fetch(`${JOURNAL_API}/api/pilotage/trades/positions?${q}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (res.status === 401) return { error: 'non-connecte' }
+    if (!res.ok) return { error: 'reseau' }
+    const data = await res.json()
+    return { positions: Array.isArray(data.positions) ? data.positions as PositionImportee[] : [] }
+  } catch {
+    return { error: 'reseau' }
+  }
+}
+
+/** Lie (segmentRef) ou délie (null) une position importée et un trade du Carnet. */
+export async function lierPositionImportee(positionId: string, segmentRef: string | null): Promise<{ ok: boolean; error?: 'non-connecte' | 'introuvable' | 'deja-lie' | 'reseau'; autrePositionId?: string }> {
+  const token = await getBearerToken()
+  if (!token) return { ok: false, error: 'non-connecte' }
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/pilotage/trades/positions`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(segmentRef ? { action: 'lier', positionId, segmentRef } : { action: 'delier', positionId }),
+    })
+    if (res.ok) return { ok: true }
+    if (res.status === 401) return { ok: false, error: 'non-connecte' }
+    if (res.status === 404) return { ok: false, error: 'introuvable' }
+    if (res.status === 409) {
+      const data = await res.json().catch(() => ({}))
+      return { ok: false, error: 'deja-lie', autrePositionId: typeof data.positionId === 'string' ? data.positionId : undefined }
+    }
+    return { ok: false, error: 'reseau' }
+  } catch {
+    return { ok: false, error: 'reseau' }
+  }
+}
+
 // ── Support IA ────────────────────────────────────────────────────────────────
 
 export async function sendSupportMessage(message: string, threadId?: string | null): Promise<{ threadId?: string; reply?: string; error?: string }> {
