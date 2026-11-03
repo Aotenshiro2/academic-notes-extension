@@ -953,7 +953,11 @@ function App() {
       {/* Zone principale - Note courante (style Claude) */}
       <main className="content-section flex flex-col">
         {/* Contenu de la note courante */}
-        <div ref={noteDisplayRef} className="flex-1 overflow-y-auto p-4">
+        {/* overflow-x-hidden (1.8.12) : la vidéo de Franky montre une barre de
+            défilement horizontale sous le fil, donc un fil décalable de
+            quelques pixels sur le côté. Rien ne doit dépasser en largeur
+            (images et contenu en max-w-full) : on coupe ce défilement. */}
+        <div ref={noteDisplayRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
           {showSupport ? (
             <SupportView onBack={() => setShowSupport(false)} />
           ) : showMentorat ? (

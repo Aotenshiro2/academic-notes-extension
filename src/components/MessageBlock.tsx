@@ -296,7 +296,7 @@ function MessageBlock({
         {!isReadOnly && (
           <button
             onClick={handleDelete}
-            className="p-1 text-muted-foreground/40 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            className="p-1 text-muted-foreground/40 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 flex-shrink-0"
             title={t('bloc.supprimerMeta')}
             aria-label={t('bloc.supprimerMeta')}
           >
@@ -327,7 +327,15 @@ function MessageBlock({
             dessus. Même mécanisme qu'en 1.7.1 (display) et en 1.8.7
             (transition-all) : rien de ce qui a la taille d'une image ne doit
             s'animer au survol. Le curseur loupe suffit à dire qu'elle
-            s'agrandit au clic. */}
+            s'agrandit au clic.
+            1.8.12 (03/11/2026, le fantôme revenait en 1.8.11) : la vidéo de
+            Franky montre le fantôme pendant le fondu des pastilles, pas
+            après. Mesuré dans Edge : au survol d'une image, la poubelle posée
+            dessus et la pastille de l'heure, en `transition-opacity`, créaient
+            DEUX couches composites le temps du fondu (150 ms), détruites
+            ensuite. Plus AUCUN fondu sur ce qui apparaît au survol d'un bloc
+            (poubelles, pastille, poignée, « + tag », bande d'insertion) :
+            elles apparaissent d'un coup, sans couche. */}
         <img
           src={message.content}
           alt={message.metadata?.alt || 'Image'}
@@ -341,7 +349,7 @@ function MessageBlock({
         {!isReadOnly && (
           <button
             onClick={handleDelete}
-            className="absolute top-2 right-2 p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-2 right-2 p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100"
             title={t('bloc.supprimerImage')}
             aria-label={t('bloc.supprimerImage')}
           >
@@ -411,7 +419,7 @@ function MessageBlock({
         {!isReadOnly && (
           <button
             onClick={(e) => { e.stopPropagation(); handleDelete() }}
-            className="absolute -top-1.5 -right-1.5 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute -top-1.5 -right-1.5 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100"
             aria-label={t('bloc.supprimerMessage')}
           >
             <Trash2 size={11} />
@@ -437,7 +445,7 @@ function MessageBlock({
       {caseSelection}
       {/* Edit controls */}
       {!isReadOnly && (
-        <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <div className="absolute -left-8 top-0 opacity-0 group-hover:opacity-100 flex flex-col gap-1">
           <button
             className="p-1 text-muted-foreground hover:text-foreground rounded"
             title={t('bloc.reorganiserAide')}
@@ -690,7 +698,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // rectangle est survolable, le hover ne se perd jamais en route.
   if (!tags || tags.length === 0) {
     return (
-      <div className="absolute bottom-full right-0 z-20 pb-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
+      <div className="absolute bottom-full right-0 z-20 pb-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto">
       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground">
         <span>{formatSmartDate(timestamp)}</span>
         <button
@@ -721,7 +729,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
   // pastille en surimpression, comme pour les blocs sans tag.
   return (
     <>
-      <span className="absolute bottom-full right-0 mb-0.5 z-20 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity">
+      <span className="absolute bottom-full right-0 mb-0.5 z-20 px-2 py-0.5 rounded-md border border-border bg-popover shadow-sm text-[10px] text-muted-foreground opacity-0 pointer-events-none group-hover:opacity-100">
         {formatSmartDate(timestamp)}
       </span>
       <div className="flex flex-wrap items-center gap-1.5 min-h-[16px] text-[10px] text-muted-foreground">
@@ -752,7 +760,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         // cassait la lecture (retour Brice 17/07)
         <button
           onClick={e => { e.stopPropagation(); onOpenPicker(e.currentTarget.getBoundingClientRect()) }}
-          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/40 hover:text-primary transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           aria-label={t('note.ajouterTag')}
         >
           {t('bloc.plusTag')}
@@ -762,7 +770,7 @@ function MessageFooter({ timestamp, tags, isReadOnly, onRemoveTag, onOpenPicker,
         // Sélectionner, modifier et supprimer forment UN groupe calé à droite
         // (le `ml-auto` porté jadis par la seule poubelle passe au groupe),
         // révélé par opacité au survol comme le reste de la rangée (24/09/2026).
-        <span className="ml-auto inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <span className="ml-auto inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
           {boutonsActions}
           {onDelete && (
             // Filet de sécurité : sans cette poubelle, un bloc texte ne contenant

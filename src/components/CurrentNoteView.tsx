@@ -636,7 +636,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             <h2 className="flex-1 text-sm font-semibold text-foreground truncate">{note.title}</h2>
             <button
               onClick={() => { setTitleDraft(note.title); setEditingTitle(true) }}
-              className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              className="p-1 text-muted-foreground hover:text-primary rounded opacity-0 group-hover:opacity-100 flex-shrink-0"
               title={t('historique.modifierTitre')}
               aria-label={t('historique.modifierTitre')}
             >
@@ -652,7 +652,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
                   setTagPickerOpen(true)
                 }}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
                 title={t('note.ajouterTag')}
                 aria-label={t('note.ajouterTag')}
               >
@@ -664,7 +664,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               <button
                 onClick={handleTagsAuto}
                 disabled={tagsAutoEnCours}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0 disabled:opacity-100"
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0 disabled:opacity-100"
                 title={t('note.tagsAutoPropose')}
                 aria-label={t('note.tagsAuto')}
               >
@@ -705,7 +705,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               #{tag}
               <button
                 onClick={() => handleRemoveTag(tag)}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
+                className="opacity-0 group-hover:opacity-100 hover:text-red-500 leading-none"
                 title={t('note.retirerTag')}
                 aria-label={t('note.retirerTagNomme', { tag })}
               >
@@ -719,7 +719,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
               setTagPickerPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
               setTagPickerOpen(true)
             }}
-            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
+            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100"
             title={t('note.ajouterTag')}
           >
             <Plus size={10} />
@@ -728,7 +728,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           <button
             onClick={handleTagsAuto}
             disabled={tagsAutoEnCours}
-            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-all opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100 disabled:opacity-100"
+            className="flex items-center gap-0.5 px-2 py-0.5 text-xs text-muted-foreground/60 hover:text-primary rounded-full hover:bg-muted transition-colors opacity-0 group-hover/notetags:opacity-100 focus-visible:opacity-100 disabled:opacity-100"
             title={t('note.tagsAutoComplete')}
             aria-label={t('note.tagsAuto')}
           >
@@ -966,7 +966,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                   {closingTradeId !== trade.id && (
                     <button
                       onClick={() => setTradeASupprimer(trade.id)}
-                      className="flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/trade:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      className="flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/trade:opacity-100 focus-visible:opacity-100"
                       title={t('trade.supprimerAide')}
                       aria-label={t('trade.supprimerLabel', { n })}
                     >
@@ -1149,7 +1149,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                 {concept}
                 <button
                   onClick={() => handleRemoveConcept(concept)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity leading-none"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 leading-none"
                   title={t('note.retirerConcept')}
                   aria-label={t('note.retirerConceptNomme', { concept })}
                 >
@@ -1297,7 +1297,7 @@ function InsertPoint({ onInsert, inactif = false }: { onInsert: (html: string) =
             lisait comme une superposition (remonté par Brice). Une pastille
             pleine se lit comme un bouton posé dessus, ce qu'elle est. Les
             traits restent d'un pixel : ils ne cachent rien de l'image. */}
-        <div className="w-full items-center gap-1 flex opacity-0 group-hover/ins:opacity-100 transition-opacity pointer-events-none">
+        <div className="w-full items-center gap-1 flex opacity-0 group-hover/ins:opacity-100 pointer-events-none">
           <span className="flex-1 h-px bg-primary/30" />
           <span className="flex items-center justify-center w-4 h-4 rounded-full bg-background border border-primary/30 flex-shrink-0">
             <Plus size={10} className="text-primary/70" />
