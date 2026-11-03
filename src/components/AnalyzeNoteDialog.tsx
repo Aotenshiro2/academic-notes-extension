@@ -178,6 +178,9 @@ function AnalyzeNoteDialog({
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   // La page de l'IA n'acceptait que des images : le plus souvent, l'élève n'y est pas connecté
   const [connexionRequise, setConnexionRequise] = useState(false)
+  // Le PDF a été confié à la page mais n'est jamais apparu dans la zone de
+  // saisie (bug de Flow, conversation existante, 1.8.12).
+  const [pdfNonVu, setPdfNonVu] = useState(false)
   const [providerThreadUrls, setProviderThreadUrls] = useState<Partial<Record<AnalysisProvider, string>>>({})
   // 'mentor' (1.8.1) : au lieu de sortir vers l'IA personnelle de l'élève, la
   // note rejoint son fil de mentorat, dans le carnet. Ce n'est pas la même
@@ -236,6 +239,7 @@ function AnalyzeNoteDialog({
       setStatus('idle')
       setPdfBlob(null)
       setConnexionRequise(false)
+      setPdfNonVu(false)
       setSendMode('new')
       setLoadingPhase('preparing')
       setSelectedNoteIds([note.id])
@@ -438,6 +442,7 @@ function AnalyzeNoteDialog({
         // été joints : ce n'est pas un succès, même pour une note sans image.
         const fichiersNonJoints = files.length > 0 && !result.pdfUploaded
         setConnexionRequise(fichiersNonJoints && result.imageOnly)
+        setPdfNonVu(fichiersNonJoints && result.pdfNonVu)
         setStatus(fichiersNonJoints ? 'fallback' : 'success')
       } catch (err) {
         if (err instanceof Error && err.message === 'THREAD_INJECTION_FAILED') {
@@ -847,6 +852,14 @@ function AnalyzeNoteDialog({
                   <LogIn size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700 dark:text-amber-300">
                     {t('analyse.connexionRequise', { provider: providerConfig.label })}
+                  </p>
+                </div>
+              )}
+              {pdfNonVu && !connexionRequise && (
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg flex items-start gap-2">
+                  <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    {t('analyse.pdfNonVu', { provider: providerConfig.label })}
                   </p>
                 </div>
               )}

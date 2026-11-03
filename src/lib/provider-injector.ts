@@ -13,6 +13,9 @@ export interface InjectionResult {
   promptFilled: boolean
   /** Fichiers non joints parce que la page n'accepte que des images (ChatGPT sans compte). */
   imageOnly: boolean
+  /** Fichiers confiés à la page (champ fichier, dépôt, collage) mais aucune
+   *  pièce jointe n'est apparue dans la zone de saisie (bug de Flow, 1.8.12). */
+  pdfNonVu: boolean
 }
 
 /**
@@ -23,13 +26,13 @@ export interface InjectionResult {
  * Plusieurs fichiers peuvent partir ensemble (ex. la note ET la doctrine) : ils sont
  * déposés dans un seul DataTransfer, comme le ferait un glisser-déposer multiple.
  */
-async function injectIntoProvider(
+export async function injectIntoProvider(
   files: { base64: string; name: string; mime: string }[],
   promptText: string,
   fileInputSelectors: string[],
   textareaSelectors: string[],
   uploadTriggerSteps: string[][] | null
-): Promise<{ pdfUploaded: boolean; promptFilled: boolean; imageOnly: boolean }> {
+): Promise<{ pdfUploaded: boolean; promptFilled: boolean; imageOnly: boolean; pdfNonVu: boolean }> {
 
   function findEl(selectors: string[]): HTMLElement | null {
     for (const s of selectors) {
@@ -124,31 +127,152 @@ async function injectIntoProvider(
     return true
   }
 
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+  /**
+   * Attend que la page soit PRÊTE, pas seulement chargée (bug de Flow, 1.8.12).
+   * Sur une conversation existante (/c/...), ChatGPT affiche d'abord une zone
+   * de saisie, puis recharge le fil et REMPLACE la zone et son champ fichier :
+   * un PDF déposé dans le premier champ part dans le vide. On attend donc que
+   * la zone de saisie et le champ fichier soient les MÊMES nœuds pendant
+   * 1,5 s d'affilée (20 s au plus).
+   */
+  async function waitUntilSettled(): Promise<void> {
+    let prevComposer: HTMLElement | null = null
+    let prevInput: HTMLInputElement | null = null
+    let stableSince = 0
+    const start = Date.now()
+    while (Date.now() - start < 20000) {
+      const composer = findEl(textareaSelectors)
+      const input = findFileInput(fileInputSelectors)
+      if (composer && composer === prevComposer && input === prevInput) {
+        if (stableSince && Date.now() - stableSince >= 1500) return
+        if (!stableSince) stableSince = Date.now()
+      } else {
+        stableSince = 0
+      }
+      prevComposer = composer
+      prevInput = input
+      await sleep(300)
+    }
+  }
+
+  /**
+   * Compte les endroits de la page qui montrent le nom du fichier (texte, title,
+   * aria-label), hors zone de saisie. Une pièce jointe acceptée s'affiche avec son
+   * nom ; sur une conversation existante, le même nom peut déjà figurer dans
+   * l'historique : on compare donc avant / après.
+   */
+  function countNameMarks(name: string): number {
+    const stem = name.replace(/\.[a-z0-9]+$/i, '').toLowerCase()
+    const needle = stem.slice(0, Math.min(stem.length, 16))
+    if (!needle) return 0
+    const composer = findEl(textareaSelectors)
+    let n = 0
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement
+      if (!parent || (composer && composer.contains(parent))) continue
+      if (parent.closest('script,style,noscript')) continue
+      if ((node.nodeValue || '').toLowerCase().includes(needle)) n++
+    }
+    for (const el of Array.from(document.querySelectorAll('[title],[aria-label]'))) {
+      const v = ((el.getAttribute('title') || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase()
+      if (v.includes(needle)) n++
+    }
+    return n
+  }
+
+  async function waitForAttachment(name: string, baseline: number, ms: number): Promise<boolean> {
+    const start = Date.now()
+    while (Date.now() - start < ms) {
+      if (countNameMarks(name) > baseline) return true
+      await sleep(300)
+    }
+    return false
+  }
+
+  function makeTransfer(): DataTransfer {
+    const dt = new DataTransfer()
+    for (const f of files) dt.items.add(b64ToFile(f.base64, f.name, f.mime))
+    return dt
+  }
+
   // --- Upload des fichiers joints ---
 
   let pdfUploaded = false
   let imageOnly = false
+  let pdfNonVu = false
   if (files.length > 0) {
+    await waitUntilSettled()
+
     // Cliquer les triggers pour révéler le file input (Gemini, Claude, Grok…)
     if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findFileInput(fileInputSelectors)) {
       await clickTriggerSteps(uploadTriggerSteps)
-      await new Promise(r => setTimeout(r, 800))
+      await sleep(800)
     }
 
-    const fileInput = await waitForFileInput(fileInputSelectors)
+    const watched = files[0].name
+    const baseline = countNameMarks(watched)
+    let handed = false
 
-    if (fileInput) {
+    // Trois manières de donner le fichier, dans l'ordre, et on s'arrête dès
+    // que la pièce jointe se VOIT : (1) le champ fichier qu'on trouve, (2) le
+    // même geste sur le champ du moment s'il a été remplacé, (3) un dépôt
+    // (glisser-déposer) puis un collage sur la zone de saisie, que ChatGPT
+    // écoute aussi. « PDF envoyé » ne s'affiche que si la pièce est visible.
+    const attempts: (() => Promise<boolean>)[] = [
+      async () => {
+        const input = await waitForFileInput(fileInputSelectors)
+        if (!input) return false
+        input.files = makeTransfer().files
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        return true
+      },
+      async () => {
+        const input = findFileInput(fileInputSelectors)
+        if (!input) return false
+        input.value = ''
+        input.files = makeTransfer().files
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+        return true
+      },
+      async () => {
+        const composer = findEl(textareaSelectors)
+        const target = (composer?.closest('form') as HTMLElement | null) || composer
+        if (!target) return false
+        const dt = makeTransfer()
+        for (const type of ['dragenter', 'dragover', 'drop']) {
+          target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }))
+          await sleep(60)
+        }
+        return true
+      },
+      async () => {
+        const composer = findEl(textareaSelectors)
+        if (!composer) return false
+        composer.focus()
+        composer.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: makeTransfer() }))
+        return true
+      },
+    ]
+
+    // ChatGPT sans compte : champs image seulement, aucun geste ne fera passer
+    // le PDF (et un dépôt afficherait une erreur dans la page). On le dit.
+    const imagesSeules = !findFileInput(fileInputSelectors) && onlyImageInputs(fileInputSelectors)
+    if (imagesSeules) imageOnly = true
+
+    for (let i = 0; i < attempts.length && !pdfUploaded && !imagesSeules; i++) {
       try {
-        const dt = new DataTransfer()
-        for (const f of files) dt.items.add(b64ToFile(f.base64, f.name, f.mime))
-        fileInput.files = dt.files
-        fileInput.dispatchEvent(new Event('change', { bubbles: true }))
-        fileInput.dispatchEvent(new Event('input', { bubbles: true }))
-        pdfUploaded = true
-      } catch { /* fallback handled by caller */ }
-    } else {
-      imageOnly = onlyImageInputs(fileInputSelectors)
+        if (await attempts[i]()) {
+          handed = true
+          pdfUploaded = await waitForAttachment(watched, baseline, i === 0 ? 6000 : 4000)
+        }
+      } catch { /* manière suivante */ }
     }
+
+    if (!pdfUploaded) pdfNonVu = handed
   }
 
   // --- Pré-remplir le prompt ---
@@ -179,7 +303,7 @@ async function injectIntoProvider(
     }
   }
 
-  return { pdfUploaded, promptFilled, imageOnly }
+  return { pdfUploaded, promptFilled, imageOnly, pdfNonVu }
 }
 
 type ProgressPhase = 'opening' | 'loading' | 'injecting'
@@ -234,6 +358,7 @@ async function openAndInject(
     pdfUploaded: result?.pdfUploaded ?? false,
     promptFilled: result?.promptFilled ?? false,
     imageOnly: result?.imageOnly ?? false,
+    pdfNonVu: result?.pdfNonVu ?? false,
   }
 }
 
@@ -274,6 +399,7 @@ export async function openProviderWithContent(options: {
         pdfUploaded: false,
         promptFilled: true,
         imageOnly: false,
+        pdfNonVu: false,
       }
     }
   }

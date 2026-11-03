@@ -395,6 +395,7 @@ const FR = {
   'analyse.telechargerPdf': 'Télécharger le PDF',
   'analyse.connexionRequise': "{provider} n'accepte ici que des images : tu n'es sans doute pas connecté à ton compte. Connecte-toi dans ce navigateur, puis relance l'analyse pour que le PDF parte avec le prompt.",
   'analyse.convIndisponible': 'Conv. existante indisponible : une nouvelle conversation a été ouverte.',
+  'analyse.pdfNonVu': "{provider} n'a pas affiché le PDF dans la zone de saisie après plusieurs essais. Le prompt est bien là : glisse le PDF ci-dessous dans la conversation avant d'envoyer.",
   'analyse.promptAussiCopie': 'Le prompt a aussi été copié dans le presse-papier.',
 
   // Dates relatives (lib/date-utils). Les noms de mois viennent de la locale.
@@ -1149,6 +1150,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'analyse.telechargerPdf': 'Download the PDF',
   'analyse.connexionRequise': "{provider} only accepts images here: you're probably not signed in. Sign in to your account in this browser, then run the analysis again so the PDF goes with the prompt.",
   'analyse.convIndisponible': 'Existing chat unavailable: a new conversation was opened.',
+  'analyse.pdfNonVu': "{provider} didn't show the PDF in the message box after several tries. The prompt is there: drag the PDF below into the conversation before sending.",
   'analyse.promptAussiCopie': 'The prompt was also copied to the clipboard.',
 
   'date.aujourdhuiA': 'Today at {heure}',
