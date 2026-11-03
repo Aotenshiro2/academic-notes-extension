@@ -92,7 +92,7 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
         {onDelete && (
           <button
             onClick={requestDelete}
-            className="ml-1.5 p-1 flex-shrink-0 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+            className="ml-1.5 p-1 flex-shrink-0 text-muted-foreground/50 hover:text-red-500 rounded opacity-0 group-hover:opacity-100"
             title={t('warmup.supprimer')}
             aria-label={t('warmup.supprimer')}
           >
