@@ -18,9 +18,11 @@ import {
   Globe,
   FileUp,
   Sparkles,
-  Lock
+  Lock,
+  Stethoscope
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
+import DiagnosticView from '@/components/DiagnosticView'
 import ImportTradesDialog from '@/components/ImportTradesDialog'
 import MentoratView from '@/components/MentoratView'
 import SupportView from '@/components/SupportView'
@@ -70,6 +72,9 @@ function App() {
   const [showAiConfig, setShowAiConfig] = useState(false)
   const [showPlans, setShowPlans] = useState(false)
   const [showTools, setShowTools] = useState(false)
+  // « Envoyer un diagnostic » (1.8.14), et Paramètres ouverts depuis lui, placés sur l'affichage de secours
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
+  const [focusReglage, setFocusReglage] = useState<'affichageSecours' | undefined>(undefined)
   // Ferme tous les écrans (une seule vue à la fois)
   const closeAllViews = () => {
     setShowSettings(false)
@@ -79,6 +84,8 @@ function App() {
     setShowAiConfig(false)
     setShowPlans(false)
     setShowTools(false)
+    setShowDiagnostic(false)
+    setFocusReglage(undefined)
   }
 
   // Ouvrir une note referme l ecran en cours. Sans ca, choisir une note
@@ -1013,6 +1020,12 @@ function App() {
             <PlansView onBack={() => setShowPlans(false)} />
           ) : showTools ? (
             <ToolsView onBack={() => setShowTools(false)} />
+          ) : showDiagnostic ? (
+            <DiagnosticView
+              onBack={() => setShowDiagnostic(false)}
+              onOpenSettings={() => { closeAllViews(); setFocusReglage('affichageSecours'); setShowSettings(true) }}
+              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
+            />
           ) : showAccount ? (
             <AccountView
               notes={notes}
@@ -1139,6 +1152,7 @@ function App() {
                 onSyncToJournal={() => {
                   toast.info(t('reglages.syncNonImplemente'))
                 }}
+                focus={focusReglage}
               />
             </div>
           ) : currentNoteId ? (
@@ -1182,7 +1196,7 @@ function App() {
         
         {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
             flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
-        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && !showAiConfig && !showPlans && !showTools && (
+        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && !showAiConfig && !showPlans && !showTools && !showDiagnostic && (
           <div className="bg-background px-4 pt-1.5 flex flex-wrap items-center gap-1">
             <DolBar
               dols={[]}
@@ -1401,6 +1415,11 @@ function App() {
                       <button onClick={tab(chrome.runtime.getURL('src/guide/index.html') + '#versions')} className={item} role="menuitem">
                         <Clock size={13} className="text-muted-foreground flex-shrink-0" />
                         {t('menu.versions')}
+                      </button>
+                      {/* 1.8.14 : les infos de la machine et le déroulé du dernier envoi IA, à l'équipe au geste du membre */}
+                      <button onClick={open(setShowDiagnostic)} className={item} role="menuitem">
+                        <Stethoscope size={13} className="text-muted-foreground flex-shrink-0" />
+                        {t('menu.diagnostic')}
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowPlans)} className={item} role="menuitem">

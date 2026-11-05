@@ -1,6 +1,8 @@
 import React from 'react'
 import { AlertTriangle, RotateCw } from 'lucide-react'
 import { t } from '@/lib/i18n'
+import { premiereFrame } from '@/lib/diagnostic-pur'
+import { lieuDeLaPage, noterErreur } from '@/lib/diagnostic-traces'
 
 interface ErrorBoundaryProps {
   children: React.ReactNode
@@ -28,6 +30,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary] Rendu interrompu:', error, info.componentStack)
+    // Une erreur de rendu attrapée ici n'atteint pas l'événement `error` de la
+    // page : le diagnostic (1.8.14) la garde à part, message nettoyé.
+    noterErreur(lieuDeLaPage(), 'rendu', { message: error, ...premiereFrame(error?.stack) })
   }
 
   render() {

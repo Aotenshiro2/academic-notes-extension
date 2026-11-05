@@ -98,6 +98,7 @@ const FR = {
   'menu.importerTrades': 'Importer mes trades',
   'menu.bonnesPratiques': 'Bonnes pratiques',
   'menu.versions': 'Versions et feuille de route',
+  'menu.diagnostic': 'Envoyer un diagnostic',
   'menu.forfait': 'Mon forfait',
   'menu.inviter': 'Inviter un ami',
   'menu.autresOutils': 'Autres outils AOK',
@@ -227,6 +228,9 @@ const FR = {
   'reglages.langue': "Langue de l'interface",
   'reglages.noterD': "Noter jusqu'à D",
   'reglages.noterDDesc': "Ajoute le grade D sous le C dans la notation des trades. Pour les élèves qui en ont l'usage.",
+  // Affichage de secours (1.8.14)
+  'reglages.secours': 'Affichage de secours',
+  'reglages.secoursDesc': "Coupe les animations et les effets de transparence, si l'écran laisse des traces.",
   'reglages.importReussi': 'Import réussi !',
   'reglages.importErreur': 'Erreur import : {erreur}',
   'reglages.syncNonImplemente': 'Sync Journal non implémenté',
@@ -578,6 +582,7 @@ const FR = {
   'guide.confidentialite5': 'La dictée vocale tourne entièrement sur ton appareil : ta voix ne quitte jamais ton ordinateur.',
   'guide.confidentialite6': "Avec la synchronisation, ton carnet envoie aussi les compteurs de ton panneau d'activité : combien de notes, de messages au mentor, de trades, de jugements et de notes ouvertes par jour, sans leur contenu. Ces chiffres et ce que reçoit ton journal nous servent à mesurer l'usage de nos apps, pour les améliorer et mieux accompagner nos membres.",
   'guide.confidentialite7': "Ton adresse email sert à ton compte et à vérifier ton forfait. L'extension n'embarque aucun outil de mesure d'audience ni aucun traceur publicitaire, et tes données ne sont pas revendues.",
+  'guide.confidentialite8': "« Envoyer un diagnostic », dans le menu de la roue, ne part qu'à ton clic : la version du Carnet, ton navigateur, ta carte graphique, ton écran, ton email, les dernières erreurs et le déroulé du dernier envoi vers une IA. Rien de tes notes, et tu vois avant d'envoyer exactement ce qui part.",
 
   // Bascule de thème (ThemeToggle : panneau et guide)
   'theme.clair': 'Clair',
@@ -953,6 +958,53 @@ const FR = {
   'micro.introuvableTete': 'Micro introuvable.',
   'micro.introuvableSuite': "Vérifie qu'un micro est branché et non utilisé en exclusivité par une autre application. ({erreur})",
   'micro.erreur': 'erreur',
+
+  // « Envoyer un diagnostic » (1.8.14), ouvert par le menu de la roue
+  'diagnostic.titre': 'Envoyer un diagnostic',
+  'diagnostic.intro': "Pour nous aider à régler un souci d'affichage ou d'envoi vers une IA : les infos de ta machine et le déroulé du dernier envoi.",
+  'diagnostic.rienDesNotes': "Rien de tes notes n'est envoyé.",
+  'diagnostic.collecte': 'Je rassemble les infos...',
+  'diagnostic.titreCopie': 'Diagnostic du Carnet',
+  'diagnostic.carnet': 'Carnet',
+  'diagnostic.navigateur': 'Navigateur',
+  'diagnostic.gpu': 'Carte graphique',
+  'diagnostic.gpuAbsente': 'non lue',
+  'diagnostic.renduLogiciel': 'rendu logiciel',
+  'diagnostic.ecran': 'Écran',
+  'diagnostic.ecranValeur': 'zoom estimé {zoom}, dpr {dpr}, panneau {l} x {h}',
+  'diagnostic.zoomInconnu': 'inconnu',
+  'diagnostic.secours': 'Affichage de secours',
+  'diagnostic.active': 'activé',
+  'diagnostic.desactive': 'désactivé',
+  'diagnostic.compte': 'Compte',
+  'diagnostic.nonConnecte': 'non connecté',
+  'diagnostic.erreurs': 'Erreurs récentes',
+  'diagnostic.erreursAucune': 'aucune',
+  'diagnostic.erreurs1': '1, le {quand}',
+  'diagnostic.erreursN': '{n}, la dernière le {quand}',
+  'diagnostic.envoiIA': 'Dernier envoi IA',
+  'diagnostic.envoiAucun': 'aucun',
+  'diagnostic.pageNouvelle': 'nouvelle conversation',
+  'diagnostic.pageConversation': 'conversation existante',
+  'diagnostic.pageAutre': 'autre page',
+  'diagnostic.pdfVu': 'PDF arrivé',
+  'diagnostic.pdfNonVu': 'PDF non vu',
+  'diagnostic.pdfImages': 'images seulement',
+  'diagnostic.pdfEchec': 'échec',
+  'diagnostic.sansFichier': 'sans fichier',
+  'diagnostic.le': 'le {quand}',
+  'diagnostic.detail': 'Voir exactement ce qui part',
+  'diagnostic.envoyer': "Envoyer à l'équipe",
+  'diagnostic.envoi': 'Envoi...',
+  'diagnostic.copier': 'Copier',
+  'diagnostic.copie': "Diagnostic copié : colle-le dans ton message à l'équipe.",
+  'diagnostic.envoye': "C'est parti. L'équipe le reçoit sur Telegram et revient vers toi.",
+  'diagnostic.cadence': "Tu as déjà envoyé 5 diagnostics aujourd'hui. Copie celui-ci et envoie-le-nous sur Telegram.",
+  'diagnostic.nonConnecteAide': "Connecte-toi pour l'envoyer d'ici, ou copie-le et envoie-le-nous sur Telegram.",
+  'diagnostic.seConnecter': 'Me connecter',
+  'diagnostic.echec': "L'envoi n'a pas abouti. Copie le diagnostic et envoie-le-nous sur Telegram.",
+  'diagnostic.conseilSecours': "Si tu as un souci d'affichage, essaie aussi l'Affichage de secours dans Paramètres.",
+  'diagnostic.ouvrirParametres': 'Ouvrir Paramètres',
 } as const
 
 export type CleI18n = keyof typeof FR
@@ -1021,6 +1073,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'menu.importerTrades': 'Import my trades',
   'menu.bonnesPratiques': 'Good practice',
   'menu.versions': 'Versions and roadmap',
+  'menu.diagnostic': 'Send a diagnostic',
   'menu.forfait': 'My plan',
   'menu.inviter': 'Invite a friend',
   'menu.autresOutils': 'Other AOK tools',
@@ -1138,6 +1191,8 @@ const EN: Partial<Record<CleI18n, string>> = {
   'reglages.langue': 'Interface language',
   'reglages.noterD': 'Grade down to D',
   'reglages.noterDDesc': 'Adds a D grade below C when grading trades. For students who need it.',
+  'reglages.secours': 'Fallback display',
+  'reglages.secoursDesc': 'Turns off animations and transparency effects, if the screen leaves traces.',
   'reglages.importReussi': 'Import successful!',
   'reglages.importErreur': 'Import error: {erreur}',
   'reglages.syncNonImplemente': 'Journal sync is not implemented',
@@ -1468,6 +1523,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'guide.confidentialite5': 'Voice dictation runs entirely on your device: your voice never leaves your computer.',
   'guide.confidentialite6': 'With sync on, your journal also receives the counters from your activity panel: how many notes, messages to the mentor, trades, grades and opened notes per day, without their content. These numbers and what your journal receives help us measure how our apps are used, to improve them and better support our members.',
   'guide.confidentialite7': 'Your email address is used for your account and to check your plan. The extension includes no audience-measurement tool and no advertising tracker, and your data is not resold.',
+  'guide.confidentialite8': '"Send a diagnostic", in the wheel menu, only leaves when you click: the Carnet version, your browser, your graphics card, your screen, your email, the latest errors and how the last send to an AI went. Nothing from your notes, and before sending you see exactly what leaves.',
 
   'theme.clair': 'Light',
   'theme.sombre': 'Dark',
@@ -1825,6 +1881,52 @@ const EN: Partial<Record<CleI18n, string>> = {
   'micro.introuvableTete': 'Microphone not found.',
   'micro.introuvableSuite': 'Check that a microphone is plugged in and not used exclusively by another application. ({erreur})',
   'micro.erreur': 'error',
+
+  'diagnostic.titre': 'Send a diagnostic',
+  'diagnostic.intro': 'To help us fix a display problem or a send to an AI: what your computer runs on, and how the last send went.',
+  'diagnostic.rienDesNotes': 'Nothing from your notes is sent.',
+  'diagnostic.collecte': 'Gathering the details...',
+  'diagnostic.titreCopie': 'Carnet diagnostic',
+  'diagnostic.carnet': 'Carnet',
+  'diagnostic.navigateur': 'Browser',
+  'diagnostic.gpu': 'Graphics card',
+  'diagnostic.gpuAbsente': 'not read',
+  'diagnostic.renduLogiciel': 'software rendering',
+  'diagnostic.ecran': 'Screen',
+  'diagnostic.ecranValeur': 'estimated zoom {zoom}, dpr {dpr}, panel {l} x {h}',
+  'diagnostic.zoomInconnu': 'unknown',
+  'diagnostic.secours': 'Fallback display',
+  'diagnostic.active': 'on',
+  'diagnostic.desactive': 'off',
+  'diagnostic.compte': 'Account',
+  'diagnostic.nonConnecte': 'not signed in',
+  'diagnostic.erreurs': 'Recent errors',
+  'diagnostic.erreursAucune': 'none',
+  'diagnostic.erreurs1': '1, on {quand}',
+  'diagnostic.erreursN': '{n}, the last one on {quand}',
+  'diagnostic.envoiIA': 'Last send to an AI',
+  'diagnostic.envoiAucun': 'none',
+  'diagnostic.pageNouvelle': 'new conversation',
+  'diagnostic.pageConversation': 'existing conversation',
+  'diagnostic.pageAutre': 'other page',
+  'diagnostic.pdfVu': 'PDF arrived',
+  'diagnostic.pdfNonVu': 'PDF not seen',
+  'diagnostic.pdfImages': 'images only',
+  'diagnostic.pdfEchec': 'failed',
+  'diagnostic.sansFichier': 'no file',
+  'diagnostic.le': 'on {quand}',
+  'diagnostic.detail': 'See exactly what is sent',
+  'diagnostic.envoyer': 'Send to the team',
+  'diagnostic.envoi': 'Sending...',
+  'diagnostic.copier': 'Copy',
+  'diagnostic.copie': 'Diagnostic copied: paste it in your message to the team.',
+  'diagnostic.envoye': 'Done. The team gets it on Telegram and will come back to you.',
+  'diagnostic.cadence': 'You already sent 5 diagnostics today. Copy this one and send it to us on Telegram.',
+  'diagnostic.nonConnecteAide': 'Sign in to send it from here, or copy it and send it to us on Telegram.',
+  'diagnostic.seConnecter': 'Sign in',
+  'diagnostic.echec': 'The send did not go through. Copy the diagnostic and send it to us on Telegram.',
+  'diagnostic.conseilSecours': 'If you have a display problem, also try Fallback display in Settings.',
+  'diagnostic.ouvrirParametres': 'Open Settings',
 }
 
 const DICO: Record<Langue, Partial<Record<CleI18n, string>>> = { fr: FR, en: EN }
@@ -1952,6 +2054,42 @@ export function t(cle: CleI18n, remplacements?: Record<string, string | number>)
     }
   }
   return texte
+}
+
+// ── La clé d'un texte affiché (1.8.14) ──────────────────────────────────────
+// Le diagnostic garde les toasts d'erreur par leur CLÉ, jamais par leur texte :
+// un remplacement ({erreur}, {nom}...) peut porter ce que l'élève a écrit ou
+// le nom d'une note. On retrouve la clé en comparant le texte aux modèles du
+// dictionnaire (FR et EN), une seule fois compilés, au premier toast d'erreur.
+
+type Motif = { cle: CleI18n; exact?: string; re?: RegExp; fixe: number }
+let motifs: Motif[] | null = null
+
+function compilerMotifs(): Motif[] {
+  const sortie: Motif[] = []
+  for (const dico of [FR, EN] as Partial<Record<CleI18n, string>>[]) {
+    for (const [cle, modele] of Object.entries(dico) as [CleI18n, string | undefined][]) {
+      if (!modele) continue
+      const morceaux = modele.split(/\{[A-Za-z0-9_]+\}/)
+      const fixe = morceaux.join('').length
+      if (morceaux.length === 1) { sortie.push({ cle, exact: modele, fixe }); continue }
+      // Un modèle presque vide (« {erreur} ») reconnaîtrait n'importe quel texte.
+      if (fixe < 6) continue
+      const motif = morceaux.map(m => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s\\S]*')
+      sortie.push({ cle, re: new RegExp(`^${motif}$`), fixe })
+    }
+  }
+  // Le modèle le plus précis d'abord.
+  return sortie.sort((a, b) => b.fixe - a.fixe)
+}
+
+/** La clé du dictionnaire qui a produit ce texte, ou null (texte du serveur, texte libre). */
+export function cleDuTexte(texte: string): CleI18n | null {
+  if (typeof texte !== 'string' || !texte) return null
+  if (!motifs) motifs = compilerMotifs()
+  for (const m of motifs) if (m.exact !== undefined && m.exact === texte) return m.cle
+  for (const m of motifs) if (m.re && m.re.test(texte)) return m.cle
+  return null
 }
 
 /**

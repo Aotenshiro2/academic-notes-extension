@@ -6,6 +6,9 @@
 // suffit. Module impératif sans provider : utilisable depuis le sidepanel ET
 // le fullscreen sans câblage React.
 
+import { cleDuTexte } from './i18n'
+import { lieuDeLaPage, noterErreur } from './diagnostic-traces'
+
 type ToastKind = 'success' | 'error' | 'info'
 
 let container: HTMLDivElement | null = null
@@ -50,6 +53,10 @@ function show(kind: ToastKind, message: string, durationMs: number) {
 export const toast = {
   success: (message: string) => show('success', message, 4000),
   info: (message: string) => show('info', message, 4000),
-  // Les erreurs restent plus longtemps : c'est le seul canal restant
-  error: (message: string) => show('error', message, 7000),
+  // Les erreurs restent plus longtemps : c'est le seul canal restant.
+  // Le diagnostic (1.8.14) garde la CLÉ du message affiché, jamais son texte.
+  error: (message: string) => {
+    show('error', message, 7000)
+    noterErreur(lieuDeLaPage(), 'toast', { code: cleDuTexte(message) })
+  },
 }

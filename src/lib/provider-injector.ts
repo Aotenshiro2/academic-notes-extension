@@ -1,4 +1,6 @@
 import type { ProviderConfig } from '@/lib/analysis-providers'
+import { compterFichiers, normaliserTrace, typePage, type TraceInjection } from '@/lib/diagnostic-pur'
+import { noterEnvoiIA } from '@/lib/diagnostic-traces'
 
 /** Un fichier à joindre à la conversation (note en PDF, doctrine en markdown…). */
 export interface InjectedFile {
@@ -18,6 +20,9 @@ export interface InjectionResult {
   pdfNonVu: boolean
 }
 
+/** Ce que rend la fonction injectée : le résultat, et son déroulé pour le diagnostic (1.8.14). */
+type ResultatInjection = { pdfUploaded: boolean; promptFilled: boolean; imageOnly: boolean; pdfNonVu: boolean; trace: TraceInjection }
+
 /**
  * Fonction autonome injectée dans la page du provider.
  * Reçoit les sélecteurs en paramètres → provider-agnostique.
@@ -25,6 +30,10 @@ export interface InjectionResult {
  *
  * Plusieurs fichiers peuvent partir ensemble (ex. la note ET la doctrine) : ils sont
  * déposés dans un seul DataTransfer, comme le ferait un glisser-déposer multiple.
+ *
+ * `trace` (1.8.14, bug de Flow : le PDF ne passe qu'une fois sur 5) : le délai
+ * avant stabilité, les champs fichier vus (id, accept) et chaque voie essayée
+ * avec son résultat. Rien de la page ni des fichiers : pas de texte, pas de nom.
  */
 export async function injectIntoProvider(
   files: { base64: string; name: string; mime: string }[],
@@ -32,7 +41,9 @@ export async function injectIntoProvider(
   fileInputSelectors: string[],
   textareaSelectors: string[],
   uploadTriggerSteps: string[][] | null
-): Promise<{ pdfUploaded: boolean; promptFilled: boolean; imageOnly: boolean; pdfNonVu: boolean }> {
+): Promise<ResultatInjection> {
+
+  const trace: ResultatInjection['trace'] = { stabiliteMs: null, stabiliteAtteinte: false, declencheurs: null, champsVus: [], voies: [] }
 
   function findEl(selectors: string[]): HTMLElement | null {
     for (const s of selectors) {
@@ -137,7 +148,7 @@ export async function injectIntoProvider(
    * la zone de saisie et le champ fichier soient les MÊMES nœuds pendant
    * 1,5 s d'affilée (20 s au plus).
    */
-  async function waitUntilSettled(): Promise<void> {
+  async function waitUntilSettled(): Promise<boolean> {
     let prevComposer: HTMLElement | null = null
     let prevInput: HTMLInputElement | null = null
     let stableSince = 0
@@ -146,7 +157,7 @@ export async function injectIntoProvider(
       const composer = findEl(textareaSelectors)
       const input = findFileInput(fileInputSelectors)
       if (composer && composer === prevComposer && input === prevInput) {
-        if (stableSince && Date.now() - stableSince >= 1500) return
+        if (stableSince && Date.now() - stableSince >= 1500) return true
         if (!stableSince) stableSince = Date.now()
       } else {
         stableSince = 0
@@ -155,6 +166,21 @@ export async function injectIntoProvider(
       prevInput = input
       await sleep(300)
     }
+    return false
+  }
+
+  /** Les champs fichier de la page, pour le diagnostic : id et accept seulement, 8 au plus. */
+  function champsFichier(): { id: string; accept: string }[] {
+    const vus: { id: string; accept: string }[] = []
+    const deja = new Set<Element>()
+    for (const s of fileInputSelectors) {
+      for (const el of Array.from(document.querySelectorAll(s))) {
+        if (!(el instanceof HTMLInputElement) || el.type !== 'file' || deja.has(el) || vus.length >= 8) continue
+        deja.add(el)
+        vus.push({ id: (el.id || '').slice(0, 60), accept: (el.accept || '').slice(0, 120) })
+      }
+    }
+    return vus
   }
 
   /**
@@ -204,13 +230,16 @@ export async function injectIntoProvider(
   let imageOnly = false
   let pdfNonVu = false
   if (files.length > 0) {
-    await waitUntilSettled()
+    const debutStabilite = Date.now()
+    trace.stabiliteAtteinte = await waitUntilSettled()
+    trace.stabiliteMs = Date.now() - debutStabilite
 
     // Cliquer les triggers pour révéler le file input (Gemini, Claude, Grok…)
     if (uploadTriggerSteps && uploadTriggerSteps.length > 0 && !findFileInput(fileInputSelectors)) {
-      await clickTriggerSteps(uploadTriggerSteps)
+      trace.declencheurs = await clickTriggerSteps(uploadTriggerSteps)
       await sleep(800)
     }
+    trace.champsVus = champsFichier()
 
     const watched = files[0].name
     const baseline = countNameMarks(watched)
@@ -263,13 +292,19 @@ export async function injectIntoProvider(
     const imagesSeules = !findFileInput(fileInputSelectors) && onlyImageInputs(fileInputSelectors)
     if (imagesSeules) imageOnly = true
 
+    const nomsVoies = ['champ', 'champ-remplace', 'depot', 'collage'] as const
     for (let i = 0; i < attempts.length && !pdfUploaded && !imagesSeules; i++) {
+      const debutVoie = Date.now()
+      let donne = false
+      let erreur = false
       try {
         if (await attempts[i]()) {
           handed = true
+          donne = true
           pdfUploaded = await waitForAttachment(watched, baseline, i === 0 ? 6000 : 4000)
         }
-      } catch { /* manière suivante */ }
+      } catch { erreur = true /* manière suivante */ }
+      trace.voies.push({ voie: nomsVoies[i], donne, vu: pdfUploaded, ms: Date.now() - debutVoie, ...(erreur ? { erreur: true } : {}) })
     }
 
     if (!pdfUploaded) pdfNonVu = handed
@@ -303,10 +338,13 @@ export async function injectIntoProvider(
     }
   }
 
-  return { pdfUploaded, promptFilled, imageOnly, pdfNonVu }
+  return { pdfUploaded, promptFilled, imageOnly, pdfNonVu, trace }
 }
 
 type ProgressPhase = 'opening' | 'loading' | 'injecting'
+
+/** Les durées d'un envoi (ms), pour le diagnostic. */
+type Durees = { chargement: number | null; attente: number | null; injection: number | null }
 
 /**
  * Ouvre un onglet sur `url`, attend le chargement, puis injecte le contenu.
@@ -318,8 +356,10 @@ async function openAndInject(
   files: InjectedFile[],
   promptText: string,
   url: string,
-  onProgress?: (phase: ProgressPhase) => void
-): Promise<InjectionResult> {
+  onProgress?: (phase: ProgressPhase) => void,
+  durees?: Durees,
+): Promise<InjectionResult & { trace: TraceInjection | null }> {
+  const debut = Date.now()
   onProgress?.('opening')
   const tab = await chrome.tabs.create({ url, active: true })
   if (!tab.id) throw new Error(`Failed to create ${provider.label} tab`)
@@ -335,10 +375,13 @@ async function openAndInject(
     }
     chrome.tabs.onUpdated.addListener(listener)
   })
+  if (durees) durees.chargement = Date.now() - debut
 
   await new Promise(r => setTimeout(r, provider.spaDelay))
+  if (durees) durees.attente = provider.spaDelay
 
   onProgress?.('injecting')
+  const debutInjection = Date.now()
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     func: injectIntoProvider,
@@ -350,8 +393,9 @@ async function openAndInject(
       provider.uploadTriggerSteps ?? null,
     ],
   })
+  if (durees) durees.injection = Date.now() - debutInjection
 
-  const result = results[0]?.result as Omit<InjectionResult, 'tabId'> | undefined
+  const result = results[0]?.result as Partial<ResultatInjection> | undefined
 
   return {
     tabId,
@@ -359,7 +403,52 @@ async function openAndInject(
     promptFilled: result?.promptFilled ?? false,
     imageOnly: result?.imageOnly ?? false,
     pdfNonVu: result?.pdfNonVu ?? false,
+    trace: result?.trace ?? null,
   }
+}
+
+/**
+ * Garde le déroulé de l'envoi pour « Envoyer un diagnostic » (1.8.14) : le
+ * fournisseur, le genre de page (jamais l'identifiant de la conversation),
+ * les fichiers comptés (jamais leur nom), la trace de la page, les durées.
+ */
+function noterEnvoi(
+  provider: ProviderConfig,
+  files: InjectedFile[],
+  mode: 'prefill' | 'injection' | 'fil',
+  adresse: string,
+  debut: number,
+  durees: Durees,
+  r: (Partial<InjectionResult> & { trace?: TraceInjection | null }) | null,
+  erreur: string | null,
+): void {
+  const { page, projet } = typePage(adresse)
+  const t = r?.trace ?? null
+  const trace = normaliserTrace({
+    le: Date.now(),
+    fournisseur: provider.id,
+    mode,
+    page,
+    projet,
+    fichiers: compterFichiers(files),
+    stabilite: t && t.stabiliteMs !== null ? { ms: t.stabiliteMs, atteinte: t.stabiliteAtteinte } : null,
+    declencheurs: t?.declencheurs ?? null,
+    champsVus: t?.champsVus ?? [],
+    voies: t?.voies ?? [],
+    pdfUploaded: r?.pdfUploaded ?? false,
+    pdfNonVu: r?.pdfNonVu ?? false,
+    imageOnly: r?.imageOnly ?? false,
+    promptFilled: r?.promptFilled ?? false,
+    durees: { ...durees, total: Date.now() - debut },
+    erreur,
+    repli: false,
+  })
+  if (trace) void noterEnvoiIA(trace)
+}
+
+/** Le résultat rendu à l'appelant, sans la trace. */
+function sansTrace(r: InjectionResult & { trace?: unknown }): InjectionResult {
+  return { tabId: r.tabId, pdfUploaded: r.pdfUploaded, promptFilled: r.promptFilled, imageOnly: r.imageOnly, pdfNonVu: r.pdfNonVu }
 }
 
 /**
@@ -378,12 +467,17 @@ export async function openProviderWithContent(options: {
   onProgress?: (phase: ProgressPhase) => void
 }): Promise<InjectionResult> {
   const { provider, files = [], promptText, threadUrl, onProgress } = options
+  const debut = Date.now()
+  const durees: Durees = { chargement: null, attente: null, injection: null }
 
   // Mode thread cible — toujours injection DOM (pas de prefill ?q= sur un thread existant)
   if (threadUrl) {
     try {
-      return await openAndInject(provider, files, promptText, threadUrl, onProgress)
+      const r = await openAndInject(provider, files, promptText, threadUrl, onProgress, durees)
+      noterEnvoi(provider, files, 'fil', threadUrl, debut, durees, r, null)
+      return sansTrace(r)
     } catch {
+      noterEnvoi(provider, files, 'fil', threadUrl, debut, durees, null, 'fil')
       throw new Error('THREAD_INJECTION_FAILED')
     }
   }
@@ -394,16 +488,26 @@ export async function openProviderWithContent(options: {
     if (provider.prefillMaxLength && encoded.length < provider.prefillMaxLength) {
       const url = `${provider.url}?${provider.prefillParam}=${encoded}`
       const tab = await chrome.tabs.create({ url, active: true })
-      return {
+      const r: InjectionResult = {
         tabId: tab.id ?? 0,
         pdfUploaded: false,
         promptFilled: true,
         imageOnly: false,
         pdfNonVu: false,
       }
+      // L'adresse du fournisseur, pas celle qui porte le texte du prompt.
+      noterEnvoi(provider, files, 'prefill', provider.url, debut, durees, r, null)
+      return r
     }
   }
 
   // Chemin injection DOM (fichiers joints ou texte long ou provider sans prefill)
-  return await openAndInject(provider, files, promptText, provider.url, onProgress)
+  try {
+    const r = await openAndInject(provider, files, promptText, provider.url, onProgress, durees)
+    noterEnvoi(provider, files, 'injection', provider.url, debut, durees, r, null)
+    return sansTrace(r)
+  } catch (err) {
+    noterEnvoi(provider, files, 'injection', provider.url, debut, durees, null, 'injection')
+    throw err
+  }
 }

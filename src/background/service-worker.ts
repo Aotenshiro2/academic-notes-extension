@@ -1,6 +1,11 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
 import { storage, runFullBackup } from '@/lib/storage'
+import { installerCaptureErreurs } from '@/lib/diagnostic-traces'
+
+// 1.8.14 : les erreurs du service worker rejoignent l'anneau du diagnostic
+// (message nettoyé, fichier, ligne ; rien ne part sans le geste du membre).
+installerCaptureErreurs('serviceWorker')
 
 // Fallback pour les navigateurs Chromium sans sidePanel (Opera, etc.)
 async function openSidePanel(tabId: number): Promise<void> {

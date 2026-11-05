@@ -1,5 +1,5 @@
 import { toast } from '../lib/toast'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Settings,
   Download,
@@ -12,6 +12,7 @@ import {
 import { micPermissionState, listMicrophones, openMicPermissionPage } from '@/lib/dictation'
 import type { Settings as SettingsType } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
+import { getAffichageSecours, setAffichageSecours } from '@/lib/affichage-secours'
 import { t, LANGUES, getLangue, setLangue, type Langue } from '@/lib/i18n'
 import StorageHealth from './StorageHealth'
 
@@ -21,18 +22,44 @@ interface SettingsViewProps {
   onExport: () => void
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void
   onSyncToJournal: () => void
+  /** Ouvert depuis le diagnostic (1.8.14) : l'écran se place sur ce réglage. */
+  focus?: 'affichageSecours'
 }
 
-function SettingsView({ 
-  settings, 
-  onChange, 
-  onExport, 
+function SettingsView({
+  settings,
+  onChange,
+  onExport,
   onImport,
-  onSyncToJournal 
+  onSyncToJournal,
+  focus,
 }: SettingsViewProps) {
   const [importFileRef, setImportFileRef] = useState<HTMLInputElement | null>(null)
   // Métadonnées de capture : réglage global (localStorage), OFF par défaut
   const [showMeta, setShowMetaState] = useState(getShowMeta)
+  // Affichage de secours (1.8.14) : localStorage aussi, posé sur <html> par affichage-secours.ts
+  const [secours, setSecoursState] = useState(getAffichageSecours)
+  const racineRef = useRef<HTMLDivElement>(null)
+  // Ouvert depuis le diagnostic : l'écran se place sur l'affichage de secours.
+  // Le poids du carnet et le micro s'affichent après coup et repoussent le
+  // réglage vers le bas : on le replace à chaque changement de hauteur, jusqu'au
+  // premier geste du membre (molette, clic, touche). Un événement, pas une minuterie.
+  useEffect(() => {
+    const el = document.getElementById('reglage-affichage-secours')
+    const racine = racineRef.current
+    if (focus !== 'affichageSecours' || !el || !racine) return
+    const placer = () => el.scrollIntoView({ block: 'center' })
+    placer()
+    const observateur = new ResizeObserver(placer)
+    observateur.observe(racine)
+    const arreter = () => observateur.disconnect()
+    const gestes = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const
+    for (const g of gestes) window.addEventListener(g, arreter, { once: true })
+    return () => {
+      arreter()
+      for (const g of gestes) window.removeEventListener(g, arreter)
+    }
+  }, [focus])
 
   // Dictée vocale : état de la permission micro + micros disponibles.
   // Re-vérifié quand le panneau reprend le focus (retour de l'onglet
@@ -85,7 +112,7 @@ function SettingsView({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
+    <div ref={racineRef} className="flex-1 overflow-y-auto scrollbar-thin p-4">
       <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center">
         <Settings size={20} className="mr-2" />
         {t('reglages.titre')}
@@ -315,6 +342,29 @@ function SettingsView({
                 checked={!!settings.notationJusquaD}
                 onChange={(e) => handleToggle('notationJusquaD', e.target.checked)}
                 className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* Affichage de secours (1.8.14), éteint par défaut : coupe animations,
+              flous et ombres lourdes si l'écran laisse des traces (le fantôme
+              au survol des images chez Franky). Proposé par « Envoyer un diagnostic ». */}
+          <div
+            id="reglage-affichage-secours"
+            className={`flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg ${focus === 'affichageSecours' ? 'ring-2 ring-primary/40' : ''}`}
+          >
+            <div>
+              <p className="font-medium text-foreground">{t('reglages.secours')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.secoursDesc')}</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={secours}
+                onChange={(e) => { setAffichageSecours(e.target.checked); setSecoursState(e.target.checked) }}
+                className="sr-only peer"
+                aria-label={t('reglages.secours')}
               />
               <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>

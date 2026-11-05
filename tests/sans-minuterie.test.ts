@@ -23,8 +23,19 @@ const FICHIERS_1813 = [
   'src/components/TradePrevuBroker.tsx',
 ]
 
-test('aucune minuterie périodique dans le code de la 1.8.13', () => {
-  for (const chemin of FICHIERS_1813) {
+// 1.8.14 : le diagnostic se rassemble au geste (ouvrir l'écran), l'affichage
+// de secours suit un événement, rien ne tourne en fond.
+const FICHIERS_1814 = [
+  'src/lib/diagnostic-pur.ts',
+  'src/lib/diagnostic-traces.ts',
+  'src/lib/diagnostic.ts',
+  'src/lib/affichage-secours.ts',
+  'src/lib/provider-injector.ts',
+  'src/components/DiagnosticView.tsx',
+]
+
+test('aucune minuterie périodique dans le code de la 1.8.13 et de la 1.8.14', () => {
+  for (const chemin of [...FICHIERS_1813, ...FICHIERS_1814]) {
     const source = readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8')
     assert.doesNotMatch(source, /\bsetInterval\s*\(/, `${chemin} relance une minuterie`)
   }
