@@ -1,9 +1,17 @@
 import type { ExtensionMessage } from '@/types/academic'
+import {
+  CLE_COMPTES_DEMO, CLE_COMPTES_REELS, CLE_STOCKAGE_COMPTES, HOTE_PILOTAGE,
+  comptesDepuisStockage, memeListe, userIdDepuisCookies, type ListeComptesPilotage,
+} from '@/lib/pilotage-comptes'
 
 // IMPORTANT : ce fichier est injecté par Chrome/Brave en script CLASSIQUE
 // (pas un module ES). Aucun import runtime n'est autorisé ici — seuls les
 // `import type` (effacés à la compilation) le sont. Le stockage vit dans le
 // service worker : ce script extrait le DOM et lui envoie les données.
+// Seule exception : `pilotage-comptes.ts`, pur et importé par CE SEUL
+// point d'entrée (le panneau n'en importe que des types), que Vite fond donc
+// dans ce fichier. Vérifier après chaque build qu'aucun `import` n'apparaît
+// dans dist/content/content-script.js.
 
 // Écouter les messages du background script
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
@@ -401,6 +409,53 @@ document.documentElement.setAttribute('data-aok-installed', '1')
 document.addEventListener('aok:open-panel', () => {
   chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' })
 })
+
+// ── Les comptes de Pilotage (1.8.13) ────────────────────────────────────────
+// Sur pilotage.aoknowledge.com seulement : les comptes du trader vivent dans
+// le localStorage de Pilotage. On en garde de quoi les reconnaître (aucun
+// montant, voir pilotage-comptes.ts) dans chrome.storage.local, pour que la
+// boîte « Importer mes trades » du Carnet range au même endroit. Relu au
+// chargement, au retour sur l'onglet et toutes les 5 s tant qu'il est
+// visible ; rien n'est écrit quand rien n'a changé. Rien n'est changé dans
+// Pilotage.
+if (location.hostname === HOTE_PILOTAGE) {
+  let dejaEcrit: Pick<ListeComptesPilotage, 'comptes' | 'userId'> | null = null
+  let minuterie: ReturnType<typeof setInterval> | null = null
+
+  const relireComptesPilotage = () => {
+    // Extension rechargée ou retirée : ce script n'a plus de quoi écrire.
+    if (!chrome.runtime?.id) {
+      if (minuterie) clearInterval(minuterie)
+      return
+    }
+    let lue: Pick<ListeComptesPilotage, 'comptes' | 'userId'>
+    try {
+      lue = {
+        comptes: comptesDepuisStockage(localStorage.getItem(CLE_COMPTES_REELS), localStorage.getItem(CLE_COMPTES_DEMO)),
+        userId: userIdDepuisCookies(document.cookie),
+      }
+    } catch {
+      return
+    }
+    if (memeListe(lue, dejaEcrit)) return
+    try {
+      chrome.storage.local.get(CLE_STOCKAGE_COMPTES, resultat => {
+        const actuelle = resultat?.[CLE_STOCKAGE_COMPTES] as ListeComptesPilotage | undefined
+        if (memeListe(lue, actuelle)) { dejaEcrit = lue; return }
+        const liste: ListeComptesPilotage = { ...lue, luLe: Date.now() }
+        chrome.storage.local.set({ [CLE_STOCKAGE_COMPTES]: liste }, () => { dejaEcrit = lue })
+      })
+    } catch { /* contexte de l'extension perdu : on réessaiera */ }
+  }
+
+  relireComptesPilotage()
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') relireComptesPilotage()
+  })
+  minuterie = setInterval(() => {
+    if (document.visibilityState === 'visible') relireComptesPilotage()
+  }, 5000)
+}
 
 // Démarrer l'initialisation
 init()
