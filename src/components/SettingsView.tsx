@@ -131,6 +131,24 @@ function SettingsView({
             </label>
           </div>
 
+          {/* Capture du graphique au lancement et à la clôture d'un trade (1.8.13), activée par défaut */}
+          <div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
+            <div>
+              <p className="font-medium text-foreground">{t('reglages.captureGraphique')}</p>
+              <p className="text-sm text-muted-foreground">{t('reglages.captureGraphiqueDesc')}</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={settings.captureGraphiqueTrade !== false}
+                onChange={(e) => handleToggle('captureGraphiqueTrade', e.target.checked)}
+                className="sr-only peer"
+                aria-label={t('reglages.captureGraphique')}
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
               <p className="font-medium text-foreground">{t('reglages.meta')}</p>

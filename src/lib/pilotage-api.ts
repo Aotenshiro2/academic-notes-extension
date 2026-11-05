@@ -1,4 +1,5 @@
 import { getBearerToken, getSession } from './auth'
+import { messageAOnglet } from './message-onglet'
 import { JOURNAL_API } from './sync'
 import type { CompteConnu, ListeComptesPilotage } from './pilotage-comptes'
 import { normaliseLecture, normaliseQuota, type Lecture, type Quota, type TradeNormalise } from './documents-lecture'
@@ -255,6 +256,26 @@ export async function userIdCarnet(): Promise<string | null> {
 }
 
 export const ADRESSE_PILOTAGE = 'https://pilotage.aoknowledge.com'
+
+/**
+ * Relecture des comptes au moment du geste (1.8.13, règle de Brice du 05/11 :
+ * à l'action, jamais à la minuterie) : chaque onglet Pilotage ouvert relit
+ * son localStorage tout de suite et range la liste ; `ecouterListeComptes` la
+ * reçoit. Sans onglet Pilotage, ou sans réponse, la dernière liste rangée
+ * reste celle de la boîte. Rend la liste d'un onglet qui a répondu, ou null.
+ */
+export async function demanderRelectureComptesPilotage(): Promise<ListeComptesPilotage | null> {
+  let onglets: chrome.tabs.Tab[] = []
+  try {
+    onglets = await chrome.tabs.query({ url: `${ADRESSE_PILOTAGE}/*` })
+  } catch {
+    return null
+  }
+  const reponses = await Promise.all(onglets
+    .filter(o => typeof o.id === 'number')
+    .map(o => messageAOnglet<{ liste: ListeComptesPilotage | null }>(o.id!, { type: 'RELIRE_COMPTES_PILOTAGE' }, 1500)))
+  return reponses.find(r => r?.liste)?.liste ?? null
+}
 
 /** Ouvre une page de Pilotage dans un nouvel onglet (le panneau reste là). */
 export function ouvrirPilotage(chemin = '/comptes'): void {

@@ -54,6 +54,7 @@ import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
 import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
 import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
+import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot, DolLevel } from '@/types/academic'
@@ -522,7 +523,21 @@ function App() {
         noteId = newNoteId
         setCurrentNoteId(newNoteId)
       }
-      await storage.startTrade(noteId)
+      const tradeId = await storage.startTrade(noteId)
+      // Capture du graphique au lancement (1.8.13) : sans attendre, le trade
+      // est lancé tout de suite et la capture suit. Pas de capture (réglage
+      // coupé, rien qui montre l'actif) : rien, ou un message discret.
+      if (tradeId) {
+        const noteDuTrade = noteId
+        void capturerGraphiqueDuTrade(noteDuTrade, tradeId, 'lancement').then(resultat => {
+          if (!resultat) return
+          if (resultat.message) toast.info(resultat.message)
+          if (resultat.faites > 0) {
+            void loadData()
+            setNoteRefreshTrigger(Date.now())
+          }
+        })
+      }
       await loadData()
       setNoteRefreshTrigger(Date.now())
       setTimeout(() => {

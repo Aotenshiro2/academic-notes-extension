@@ -498,7 +498,11 @@ on verra aux retours.
         avec l'id du compte AOK lu dans le cookie de @supabase/ssr ; liste
         ignorée si elle vient d'un autre compte AOK que le Carnet.
         `pilotage-comptes.ts` est fondu dans le content script (script
-        classique) : le panneau n'en importe que des types.
+        classique) : le panneau n'en importe que des types. Relu au geste
+        (règle de Brice du 05/11, plus de minuterie de 5 s) : au chargement,
+        au changement de visibilité de l'onglet, et à la demande du panneau
+        (`RELIRE_COMPTES_PILOTAGE`) quand la boîte d'import s'ouvre ou que le
+        panneau reprend la main. Garde-fou : `tests/sans-minuterie.test.ts`.
       - C2 : boîte « Importer mes trades » (ligne du menu de la roue, et
         « Importer l'export de ce jour » dans « Lier ») : `documents/lire` (garder), compte
         deviné (`documents-attribution.ts`, porté de Pilotage, plus strict :
@@ -524,6 +528,24 @@ on verra aux retours.
         libellé court (`note.approfondirCourt`), texte complet et aide dans le
         title ; trois états gardés (en cours, ouvert avec `aura-ia`,
         verrouillé). On approfondit plusieurs fois pendant l'écriture.
+      - Brief C3 : capture automatique du graphique au lancement et à la
+        clôture d'un trade (vraie clôture seulement, pas un changement de
+        résultat), sans faire attendre le geste. Onglets ACTIFS de
+        TradingView des fenêtres non réduites, même famille que l'instrument
+        du trade (posé, sinon celui de la note ; rien : la seule famille
+        affichée le devient), une capture par fenêtre, 3 au plus, onglet
+        relu avant et après la capture. JPEG 1600 px, qualité 0,75. Bloc
+        image ordinaire du trade (`tradeRef`), `auto: 'lancement' | 'cloture'`,
+        `uniteTemps` normalisée ('5m', '1h', 'D', '3M' ; null si illisible),
+        légende sous l'image (« Lancement, NQ1!, 5 min, 09:40 »). Réglage
+        `captureGraphiqueTrade` (absent = activé). Pur :
+        `capture-graphique.ts` ; Chrome : `capture-graphique-trade.ts` ;
+        page TradingView lue au geste par le content script
+        (`LIRE_GRAPHIQUE_TV`).
+      - Reste (C3) : vérifier les sélecteurs du content script sur le vrai
+        TradingView (symbole, intervalle surligné, légende) ; le journal ne
+        garde pas encore `auto` ni `uniteTemps` (pas de colonne sur Message) ;
+        capture d'une fenêtre cachée derrière une autre non essayée.
       - Tests : `npm test` (node --test, sans dépendance). Essai visuel :
         `carnet-essais-visuels/carnet-1813/essai-1813.mjs`, journal simulé.
       - Reste : essayer contre le vrai journal une fois la branche

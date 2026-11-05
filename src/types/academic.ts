@@ -10,6 +10,14 @@ export interface NoteMessage {
   timestamp: number
   tags?: string[]
   tradeRef?: string // segment de trade auquel ce bloc appartient (réassignable)
+  /** Capture du graphique prise par le Carnet au lancement ou à la clôture du
+   *  trade (1.8.13), pas par le membre. Un bloc image ordinaire pour le reste
+   *  (supprimer, remplacer, déplacer) ; le champ part au journal avec le bloc. */
+  auto?: 'lancement' | 'cloture'
+  /** L'unité de temps du graphique capturé, normalisée ('1m', '5m', '1h',
+   *  '4h', 'D', 'W', 'M', '3M'), null si elle n'a pas pu être lue. Le Journal
+   *  s'en servira pour choisir un HTF et un LTF. */
+  uniteTemps?: string | null
   metadata?: {
     sourceUrl?: string
     sourceTitle?: string
@@ -363,6 +371,9 @@ export interface Settings {
    *  suffisent. C'est un choix d'AFFICHAGE seulement : le serveur accepte
    *  toujours un D existant, et un D déjà posé reste visible réglage éteint. */
   notationJusquaD?: boolean
+  /** Capture du graphique TradingView au lancement et à la clôture d'un trade
+   *  (1.8.13). Absent = activé : c'est le défaut voulu par Brice. */
+  captureGraphiqueTrade?: boolean
 }
 
 // Messages pour communication entre composants
@@ -376,6 +387,9 @@ export type MessageType =
   | 'SAVE_NOTE'
   | 'SYNC_TO_JOURNAL'
   | 'EXTRACT_CONTENT'
+  // 1.8.13 : du panneau au content script, au moment du geste
+  | 'RELIRE_COMPTES_PILOTAGE'
+  | 'LIRE_GRAPHIQUE_TV'
 
 export interface ExtensionMessage {
   type: MessageType

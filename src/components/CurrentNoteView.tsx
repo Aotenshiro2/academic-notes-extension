@@ -20,6 +20,7 @@ import { deleteJournalAnnotation } from '@/lib/sync'
 import { suggererTagsNote } from '@/lib/capture-ia'
 import { collectNoteImages } from '@/lib/note-images'
 import { instrumentDuTrade } from '@/lib/instrument'
+import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -136,14 +137,25 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours.
   // Le mode sélection compte comme une édition : recharger sous les doigts
   // pourrait faire disparaître ou déplacer un bloc déjà coché.
+  const enEdition = editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || prixTradeId !== null || selection !== null
   useEffect(() => {
     if (!refreshTrigger) return
-    if (editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || prixTradeId !== null || selection !== null) {
+    if (enEdition) {
       setRemoteUpdatePending(true)
     } else {
       loadNote()
     }
   }, [refreshTrigger])
+
+  // La capture automatique du graphique arrive après la clôture (1.8.13) :
+  // même règle qu'un rafraîchissement distant, et seulement si la note est
+  // toujours celle qu'on regarde.
+  const [captureArrivee, setCaptureArrivee] = useState<{ noteId: string; le: number } | null>(null)
+  useEffect(() => {
+    if (!captureArrivee || captureArrivee.noteId !== noteId) return
+    if (enEdition) setRemoteUpdatePending(true)
+    else loadNote()
+  }, [captureArrivee])
 
 
   const loadNote = async () => {
@@ -385,11 +397,25 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   }, [note, notationTarget, noteAnnotation, findTradeAnnotation, onNoteUpdate])
 
   const handleCloseTrade = useCallback(async (tradeId: string, outcome: TradeOutcome) => {
+    // Le même geste change aussi le résultat d'un trade déjà clos : la capture
+    // du graphique n'est prise qu'à la vraie clôture (1.8.13).
+    const etaitOuvert = !(note?.trades ?? []).find(tr => tr.id === tradeId)?.closedAt
     await storage.closeTrade(noteId, tradeId, outcome)
+    if (etaitOuvert) {
+      // Sans attendre : le trade est clos tout de suite, la capture suit.
+      void capturerGraphiqueDuTrade(noteId, tradeId, 'cloture').then(resultat => {
+        if (!resultat) return
+        if (resultat.message) toast.info(resultat.message)
+        if (resultat.faites > 0) {
+          setCaptureArrivee({ noteId, le: Date.now() })
+          onNoteUpdate?.()
+        }
+      })
+    }
     setClosingTradeId(null)
     await loadNote()
     onNoteUpdate?.()
-  }, [noteId, onNoteUpdate])
+  }, [noteId, note, onNoteUpdate])
 
   // Supprimer un trade (1.8.10) : le segment seulement, ses blocs restent
   // libres. Les notations qu'il portait sont effacées aussi côté journal.

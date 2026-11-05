@@ -27,6 +27,16 @@ async function handleContentMessage(message: ExtensionMessage, sendResponse: (re
         sendResponse(contentData)
         break
 
+      // Le panneau demande une relecture des comptes au moment du geste (1.8.13)
+      case 'RELIRE_COMPTES_PILOTAGE':
+        sendResponse({ liste: relireComptesPilotage ? await relireComptesPilotage() : null })
+        break
+
+      // Le panneau lance ou clôt un trade : ce que le graphique affiche (1.8.13)
+      case 'LIRE_GRAPHIQUE_TV':
+        sendResponse(/(^|\.)tradingview\.com$/i.test(location.hostname) ? lireGraphiqueTradingView() : null)
+        break
+
       default:
         sendResponse({ error: 'Unknown content script message' })
     }
@@ -414,20 +424,22 @@ document.addEventListener('aok:open-panel', () => {
 // Sur pilotage.aoknowledge.com seulement : les comptes du trader vivent dans
 // le localStorage de Pilotage. On en garde de quoi les reconnaître (aucun
 // montant, voir pilotage-comptes.ts) dans chrome.storage.local, pour que la
-// boîte « Importer mes trades » du Carnet range au même endroit. Relu au
-// chargement, au retour sur l'onglet et toutes les 5 s tant qu'il est
-// visible ; rien n'est écrit quand rien n'a changé. Rien n'est changé dans
-// Pilotage.
+// boîte « Importer mes trades » du Carnet range au même endroit. Rien n'est
+// écrit quand rien n'a changé. Rien n'est changé dans Pilotage.
+//
+// Relu au geste, jamais à la minuterie (règle de Brice du 05/11 : « des
+// rechargements à la demande, à l'action », pas un recalcul toutes les
+// 30 secondes ; la 1re version relisait toutes les 5 s) : au chargement de la
+// page, quand l'onglet change de visibilité (on y arrive, on en repart après
+// avoir créé un compte), et quand le panneau le demande (la boîte d'import
+// s'ouvre ou le panneau reprend la main : message RELIRE_COMPTES_PILOTAGE).
+let relireComptesPilotage: (() => Promise<ListeComptesPilotage | null>) | null = null
 if (location.hostname === HOTE_PILOTAGE) {
   let dejaEcrit: Pick<ListeComptesPilotage, 'comptes' | 'userId'> | null = null
-  let minuterie: ReturnType<typeof setInterval> | null = null
 
-  const relireComptesPilotage = () => {
+  relireComptesPilotage = () => new Promise(resolve => {
     // Extension rechargée ou retirée : ce script n'a plus de quoi écrire.
-    if (!chrome.runtime?.id) {
-      if (minuterie) clearInterval(minuterie)
-      return
-    }
+    if (!chrome.runtime?.id) { resolve(null); return }
     let lue: Pick<ListeComptesPilotage, 'comptes' | 'userId'>
     try {
       lue = {
@@ -435,26 +447,74 @@ if (location.hostname === HOTE_PILOTAGE) {
         userId: userIdDepuisCookies(document.cookie),
       }
     } catch {
+      resolve(null)
       return
     }
-    if (memeListe(lue, dejaEcrit)) return
     try {
       chrome.storage.local.get(CLE_STOCKAGE_COMPTES, resultat => {
         const actuelle = resultat?.[CLE_STOCKAGE_COMPTES] as ListeComptesPilotage | undefined
-        if (memeListe(lue, actuelle)) { dejaEcrit = lue; return }
+        if (actuelle && memeListe(lue, actuelle)) { dejaEcrit = lue; resolve(actuelle); return }
+        if (memeListe(lue, dejaEcrit) && actuelle) { resolve(actuelle); return }
         const liste: ListeComptesPilotage = { ...lue, luLe: Date.now() }
-        chrome.storage.local.set({ [CLE_STOCKAGE_COMPTES]: liste }, () => { dejaEcrit = lue })
+        chrome.storage.local.set({ [CLE_STOCKAGE_COMPTES]: liste }, () => { dejaEcrit = lue; resolve(liste) })
       })
-    } catch { /* contexte de l'extension perdu : on réessaiera */ }
-  }
-
-  relireComptesPilotage()
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') relireComptesPilotage()
+    } catch {
+      resolve(null) /* contexte de l'extension perdu */
+    }
   })
-  minuterie = setInterval(() => {
-    if (document.visibilityState === 'visible') relireComptesPilotage()
-  }, 5000)
+
+  void relireComptesPilotage()
+  document.addEventListener('visibilitychange', () => { void relireComptesPilotage?.() })
+}
+
+// ── Le graphique affiché sur TradingView (1.8.13, capture automatique) ──────
+// Le panneau lit le symbole dans le titre de l'onglet ; il demande ici, au
+// moment du lancement ou de la clôture d'un trade (jamais en continu), ce que
+// la page affiche : le bouton de symbole et l'intervalle surligné de la barre
+// du haut, et la ligne de légende du graphique (« E-mini S&P 500 \u00B7 5 \u00B7 CME »).
+// Texte brut seulement : le panneau le normalise (capture-graphique.ts).
+// Sélecteurs défensifs : chacun dans un try, null si rien.
+// VÉRIFIÉ : uniquement contre la fausse page TradingView de l'essai
+// (carnet-essais-visuels/carnet-1813/essai-1813.mjs), construite sur ces
+// mêmes noms. Les deux endroits où se lit l'unité (bouton surligné « 5m » de
+// la barre, légende « ... \u00B7 5 \u00B7 CME ») viennent d'une capture du vrai
+// TradingView envoyée par Brice le 05/11. NON VÉRIFIÉ sur le vrai DOM de
+// TradingView : les noms `#header-toolbar-symbol-search`,
+// `#header-toolbar-intervals` et `[data-name*="legend"]` sont repris de
+// mémoire. S'ils ne trouvent rien, le symbole vient du titre de l'onglet et
+// l'unité de temps manque sous l'image (null), rien de pire.
+function texteDe(el: Element | null | undefined): string | null {
+  const s = el?.textContent?.replace(/\s+/g, ' ').trim()
+  return s ? s.slice(0, 80) : null
+}
+
+function lireGraphiqueTradingView(): { symbole: string | null; intervalle: string | null; legende: string | null } {
+  let symbole: string | null = null
+  let intervalle: string | null = null
+  let legende: string | null = null
+  try {
+    symbole = texteDe(document.querySelector('#header-toolbar-symbol-search'))
+  } catch { /* rien */ }
+  try {
+    const barre = document.querySelector('#header-toolbar-intervals')
+    if (barre) {
+      const actif = barre.querySelector('[aria-checked="true"], [aria-pressed="true"], [data-active="true"], [class*="isActive"], [class*="active"]')
+      intervalle = actif?.getAttribute('data-value') || texteDe(actif)
+      // Intervalles repliés dans un seul bouton : il affiche l'intervalle courant.
+      if (!intervalle) {
+        const boutons = barre.querySelectorAll('button, [role="button"]')
+        if (boutons.length === 1) intervalle = texteDe(boutons[0])
+      }
+    }
+  } catch { /* rien */ }
+  try {
+    const candidats = Array.from(document.querySelectorAll('[data-name*="legend"]')).slice(0, 60)
+    for (const el of candidats) {
+      const t = texteDe(el)
+      if (t && t.length <= 80 && /\S\s*[\u00B7\u2022]\s*[0-9A-Za-z]{1,4}\s*[\u00B7\u2022]/.test(t)) { legende = t; break }
+    }
+  } catch { /* rien */ }
+  return { symbole, intervalle, legende }
 }
 
 // Démarrer l'initialisation

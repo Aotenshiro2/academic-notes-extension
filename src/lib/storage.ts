@@ -911,18 +911,22 @@ export const storage = {
     message: Omit<NoteMessage, 'id' | 'timestamp'>,
     options?: { afterMessageId?: string }
   ): Promise<string | null> {
+    // Toute image passe par la compression AVANT d'entrer en base : c'est le
+    // seul goulot commun à la barre de capture, aux captures d'écran et à la
+    // capture intelligente (qui, elle, ne compressait rien du tout).
+    // Compressée AVANT de relire la note (1.8.13) : la compression prend du
+    // temps, et une note relue avant elle était réécrite telle qu'elle était,
+    // effaçant ce qui s'y était ajouté entre-temps (la capture automatique du
+    // graphique arrive pendant que le membre écrit).
+    const content = message.type !== 'text' && message.type !== 'meta'
+      ? await prepareImageForStorage(message.content)
+      : message.content
+
     const note = await this.getNote(noteId)
     if (!note) return null
 
     // Segment de trade actif → le bloc s'y rattache automatiquement
     const activeTrade = (note.trades ?? []).find(t => !t.closedAt)
-
-    // Toute image passe par la compression AVANT d'entrer en base : c'est le
-    // seul goulot commun à la barre de capture, aux captures d'écran et à la
-    // capture intelligente (qui, elle, ne compressait rien du tout).
-    const content = message.type !== 'text' && message.type !== 'meta'
-      ? await prepareImageForStorage(message.content)
-      : message.content
 
     // Point d'ancrage d'une insertion (options.afterMessageId)
     const anchorIdx = options?.afterMessageId

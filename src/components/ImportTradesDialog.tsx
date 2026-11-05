@@ -9,8 +9,8 @@ import {
 } from '@/lib/documents-attribution'
 import { recouvrements, sansLesFaitsDeja, type Recouvrement } from '@/lib/documents-doublons'
 import {
-  TAILLE_MAX_BASE64, apercuImport, comptesEnvoyes, confirmerImport, demanderConnexion, fuseauDuNavigateur, lireDocument, ouvrirPilotage,
-  type ApercuImport,
+  TAILLE_MAX_BASE64, apercuImport, comptesEnvoyes, confirmerImport, demanderConnexion, demanderRelectureComptesPilotage,
+  fuseauDuNavigateur, lireDocument, ouvrirPilotage, type ApercuImport,
 } from '@/lib/pilotage-api'
 import { useComptesPilotage } from '@/lib/use-comptes-pilotage'
 import type { CompteConnu } from '@/lib/pilotage-comptes'
@@ -125,6 +125,18 @@ function ImportTradesDialog({ onClose, jour, onRange }: ImportTradesDialogProps)
   const fuseau = useMemo(fuseauDuNavigateur, [])
 
   useEffect(() => { void getBearerToken().then(jeton => setConnecte(!!jeton)) }, [])
+
+  // Les comptes de Pilotage relus au geste, jamais à la minuterie (règle de
+  // Brice du 05/11) : à l'ouverture de la boîte, puis quand le panneau
+  // reprend la main (retour de Pilotage où un compte vient d'être créé :
+  // l'onglet Pilotage reste visible à côté du panneau, il ne change pas de
+  // visibilité). La nouvelle liste arrive par useComptesPilotage.
+  useEffect(() => {
+    void demanderRelectureComptesPilotage()
+    const auRetour = () => { void demanderRelectureComptesPilotage() }
+    window.addEventListener('focus', auRetour)
+    return () => window.removeEventListener('focus', auRetour)
+  }, [])
 
   const setFichiers = useCallback((maj: (actuels: Fichier[]) => Fichier[]) => {
     fichiersRef.current = maj(fichiersRef.current)

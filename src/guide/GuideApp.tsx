@@ -116,6 +116,7 @@ const CHANGELOG = [
       '« Lier », dans la pastille « Prix » d\'un trade : la liste montre les trades du broker du jour du trade, même pour une vieille note, et du même instrument (lu sur le graphique de la note, modifiable d\'un clic). Tes comptes copiés tiennent sur une seule ligne : « Lier les 3 ». Rien d\'importé ce jour-là : « Importer l\'export de ce jour ».',
       '« Ma position » : ton prévu (entrée, stop, TP, taille, sortie et clôtures partielles) à côté de ce que dit le broker, une fois le trade lié. Ton prévu reste dans ton Carnet : Pilotage ne lit que les trades de ton broker.',
       '« Approfondir » est descendu à côté de « Poser un DOL » et « Lancer un warmup », juste au-dessus de la barre d\'écriture : tu peux approfondir plusieurs fois pendant que la note s\'écrit, sans remonter en haut.',
+      'Nouveau : quand tu lances un trade, puis quand tu le clôtures, le Carnet capture ton graphique TradingView, tel que tu le vois, et le range dans le trade avec le moment, le symbole, l\'unité de temps et l\'heure. Seulement si TradingView montre l\'actif du trade, jamais un autre site ; un écran par fenêtre si tu en as plusieurs. Une capture en trop se supprime comme les autres, et tout se coupe dans Paramètres.',
     ],
   },
   {

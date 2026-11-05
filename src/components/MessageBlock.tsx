@@ -344,6 +344,12 @@ function MessageBlock({
           className={`max-w-full rounded-lg ${enSelection ? '' : 'cursor-zoom-in'}`}
           onClick={handleClick}
         />
+        {/* Capture prise par le Carnet au lancement ou à la clôture du trade
+            (1.8.13) : le moment, le symbole, l'unité de temps et l'heure,
+            sous l'image. Texte simple, rien qui s'anime. */}
+        {message.auto && message.metadata?.alt && (
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{message.metadata.alt}</p>
+        )}
 
         {/* Delete button for images */}
         {!isReadOnly && (
