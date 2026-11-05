@@ -29,14 +29,16 @@ export interface OngletVu {
   page?: PageLue | null
 }
 
-/** La lecture brute du content script dans la page TradingView. */
+/** La lecture brute du content script dans la page TradingView (vérifiée sur le vrai site le 05/11). */
 export interface PageLue {
   /** Texte du bouton de symbole de la barre du haut (« NQ1! »). */
   symbole?: string | null
-  /** Texte du bouton d'intervalle surligné de la barre du haut (« 5m », « 1h », « D »). */
+  /** Texte du bouton d'intervalle : l'actif s'il y en a plusieurs, sinon le bouton menu (« 5m », « 1h », « D »). */
   intervalle?: string | null
-  /** La ligne de légende du graphique (« E-mini S&P 500 \u00B7 5 \u00B7 CME »). */
-  legende?: string | null
+  /** aria-label ou data-tooltip de ce bouton (« 5 minutes », « 1 heure », « 1 day »). */
+  intervalleLibelle?: string | null
+  /** L'intervalle de la légende du graphique, `[class*="intervalTitle"]` (« 5 » : des minutes). */
+  intervalleLegende?: string | null
 }
 
 /** Un graphique retenu : son symbole tel qu'affiché, sa famille, son unité de temps. */
@@ -146,20 +148,6 @@ export function normaliserUniteTemps(brut: string | null | undefined): string | 
   return null
 }
 
-/**
- * L'unité de temps de la légende du graphique : « E-mini S&P 500 \u00B7 5 \u00B7 CME »
- * donne '5m' (le morceau entre les points, en minutes s'il n'a pas de lettre).
- */
-export function uniteTempsDepuisLegende(legende: string | null | undefined): string | null {
-  if (!legende) return null
-  const morceaux = legende.split(/\s*[\u00B7\u2022]\s*/).map(x => x.trim()).filter(Boolean)
-  for (const morceau of morceaux.slice(1)) {
-    const u = normaliserUniteTemps(morceau)
-    if (u) return u
-  }
-  return null
-}
-
 /** L'intervalle de l'adresse (`&interval=5`), quand TradingView l'y met. */
 export function uniteTempsDepuisAdresse(url: string | null | undefined): string | null {
   if (!url) return null
@@ -181,9 +169,10 @@ export function afficherUniteTemps(norme: string | null | undefined): string | n
 /**
  * Ce qu'on lit d'un onglet : le symbole (titre d'abord, il suit le graphique
  * en direct ; puis la page ; puis l'adresse, qui peut garder le symbole
- * d'ouverture), l'unité de temps (bouton surligné, puis légende, puis
- * adresse). null si le symbole n'est pas lisible : on ne capture pas un
- * graphique dont on ne sait pas l'actif.
+ * d'ouverture), l'unité de temps (texte du bouton d'intervalle, actif ou
+ * menu ; puis son aria-label ou son data-tooltip ; puis l'intervalle de la
+ * légende ; puis l'adresse). null si le symbole n'est pas lisible : on ne
+ * capture pas un graphique dont on ne sait pas l'actif.
  */
 export function lireGraphique(o: OngletVu): GraphiqueLu | null {
   if (!estTradingView(o.url)) return null
@@ -194,7 +183,8 @@ export function lireGraphique(o: OngletVu): GraphiqueLu | null {
   const famille = familleInstrument(symbole)
   if (!symbole || !racine || !famille) return null
   const uniteTemps = normaliserUniteTemps(o.page?.intervalle)
-    ?? uniteTempsDepuisLegende(o.page?.legende)
+    ?? normaliserUniteTemps(o.page?.intervalleLibelle)
+    ?? normaliserUniteTemps(o.page?.intervalleLegende)
     ?? uniteTempsDepuisAdresse(o.url)
   return { tabId: o.tabId, windowId: o.windowId, url: o.url, titre: o.titre, symbole, racine, famille, uniteTemps }
 }
@@ -232,6 +222,17 @@ export function choisirGraphiques(onglets: OngletVu[], attendu: string | null | 
   if (lus.length === 0) return { ok: false, raison: 'aucun-graphique', attendu: null, affiches }
   if (affiches.length > 1) return { ok: false, raison: 'plusieurs-actifs', attendu: null, affiches }
   return { ok: true, graphiques: lus.slice(0, CAPTURES_MAX), instrumentAPoser: peutPoser ? lus[0].racine : null }
+}
+
+/**
+ * Faut-il dire pourquoi il n'y a pas de capture ? Seulement si TradingView est
+ * ouvert quelque part (Brice, 05/11) : aucun onglet TradingView, c'est un
+ * membre qui ne s'en sert pas, on ne lui dit rien à chaque trade. Ouvert sur
+ * un autre actif, ou derrière un autre site : le message dit pourquoi.
+ */
+export function raisonAMontrer(choix: ChoixCapture, tradingViewOuvert: boolean): 'aucun-graphique' | 'autre-actif' | 'plusieurs-actifs' | null {
+  if (!tradingViewOuvert || !('raison' in choix)) return null
+  return choix.raison
 }
 
 /** Le texte sous l'image : « Lancement, NQ1!, 5 min, 09:40 » (unité de temps omise si elle n'est pas lue). */

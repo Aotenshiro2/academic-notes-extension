@@ -542,10 +542,16 @@ on verra aux retours.
         `capture-graphique.ts` ; Chrome : `capture-graphique-trade.ts` ;
         page TradingView lue au geste par le content script
         (`LIRE_GRAPHIQUE_TV`).
-      - Reste (C3) : vérifier les sélecteurs du content script sur le vrai
-        TradingView (symbole, intervalle surligné, légende) ; le journal ne
-        garde pas encore `auto` ni `uniteTemps` (pas de colonne sur Message) ;
-        capture d'une fenêtre cachée derrière une autre non essayée.
+      - Retouches C3 : lecture de TradingView reprise du relevé du vrai site
+        (05/11, sans compte, sans favoris) : bouton d'intervalle actif s'il y
+        en a plusieurs, sinon le bouton menu (« 5m »), puis son aria-label ou
+        data-tooltip (« 5 minutes »), puis `intervalTitle` de la légende
+        (« 5 »). Aucun onglet TradingView ouvert : pas de message (le membre
+        ne s'en sert pas) ; le message ne sort que si TradingView est ouvert.
+      - Reste (C3) : TradingView avec des favoris d'intervalles (bouton actif)
+        et compte connecté non relevés ; le journal ne garde pas encore `auto`
+        ni `uniteTemps` (pas de colonne sur Message) ; capture d'une fenêtre
+        cachée derrière une autre non essayée.
       - Tests : `npm test` (node --test, sans dépendance). Essai visuel :
         `carnet-essais-visuels/carnet-1813/essai-1813.mjs`, journal simulé.
       - Reste : essayer contre le vrai journal une fois la branche

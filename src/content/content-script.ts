@@ -470,51 +470,65 @@ if (location.hostname === HOTE_PILOTAGE) {
 // ── Le graphique affiché sur TradingView (1.8.13, capture automatique) ──────
 // Le panneau lit le symbole dans le titre de l'onglet ; il demande ici, au
 // moment du lancement ou de la clôture d'un trade (jamais en continu), ce que
-// la page affiche : le bouton de symbole et l'intervalle surligné de la barre
-// du haut, et la ligne de légende du graphique (« E-mini S&P 500 \u00B7 5 \u00B7 CME »).
-// Texte brut seulement : le panneau le normalise (capture-graphique.ts).
-// Sélecteurs défensifs : chacun dans un try, null si rien.
-// VÉRIFIÉ : uniquement contre la fausse page TradingView de l'essai
-// (carnet-essais-visuels/carnet-1813/essai-1813.mjs), construite sur ces
-// mêmes noms. Les deux endroits où se lit l'unité (bouton surligné « 5m » de
-// la barre, légende « ... \u00B7 5 \u00B7 CME ») viennent d'une capture du vrai
-// TradingView envoyée par Brice le 05/11. NON VÉRIFIÉ sur le vrai DOM de
-// TradingView : les noms `#header-toolbar-symbol-search`,
-// `#header-toolbar-intervals` et `[data-name*="legend"]` sont repris de
-// mémoire. S'ils ne trouvent rien, le symbole vient du titre de l'onglet et
-// l'unité de temps manque sous l'image (null), rien de pire.
+// la page affiche. Texte brut seulement : le panneau le normalise
+// (capture-graphique.ts). Sélecteurs défensifs : chacun dans un try, null si rien.
+//
+// VÉRIFIÉ sur le vrai site le 05/11 (tradingview.com/chart, sans compte, NQ1!
+// en 5 min) :
+// - symbole : `#header-toolbar-symbol-search` a pour texte « NQ1! » ; le
+//   titre de l'onglet commence par « NQ1! 27,885.00 ... » ;
+// - unité de temps : sans favoris, `#header-toolbar-intervals` ne contient
+//   qu'UN bouton menu (classe `menuBtn-...`), texte « 5m », aria-label et
+//   data-tooltip « 5 minutes », ni aria-checked ni aria-pressed. Avec des
+//   favoris il y a plusieurs boutons : on prend l'actif ;
+// - légende : pas de `data-name` ; classes à suffixe aléatoire :
+//   `[class*="legendMainSourceWrapper"]` contient `[class*="mainTitle"]`
+//   (« NASDAQ 100 E-mini Futures »), `[class*="intervalTitle"]` (« 5 ») et
+//   `[class*="exchangeTitle"]` (« CME »).
+// Non vérifié : l'interface avec des favoris (plusieurs boutons, lequel est
+// marqué actif), un compte connecté, une mise en page à plusieurs graphiques.
+// Si rien n'est trouvé : le symbole vient du titre, l'unité vaut null.
 function texteDe(el: Element | null | undefined): string | null {
   const s = el?.textContent?.replace(/\s+/g, ' ').trim()
   return s ? s.slice(0, 80) : null
 }
 
-function lireGraphiqueTradingView(): { symbole: string | null; intervalle: string | null; legende: string | null } {
-  let symbole: string | null = null
-  let intervalle: string | null = null
-  let legende: string | null = null
+interface GraphiqueTradingViewLu {
+  symbole: string | null
+  /** Texte du bouton d'intervalle : l'actif s'il y en a plusieurs, sinon le bouton menu (« 5m »). */
+  intervalle: string | null
+  /** aria-label ou data-tooltip de ce bouton (« 5 minutes », « 1 heure »). */
+  intervalleLibelle: string | null
+  /** L'intervalle de la légende du graphique (« 5 » : des minutes). */
+  intervalleLegende: string | null
+}
+
+function lireGraphiqueTradingView(): GraphiqueTradingViewLu {
+  const lu: GraphiqueTradingViewLu = { symbole: null, intervalle: null, intervalleLibelle: null, intervalleLegende: null }
   try {
-    symbole = texteDe(document.querySelector('#header-toolbar-symbol-search'))
+    lu.symbole = texteDe(document.querySelector('#header-toolbar-symbol-search'))
   } catch { /* rien */ }
   try {
     const barre = document.querySelector('#header-toolbar-intervals')
     if (barre) {
-      const actif = barre.querySelector('[aria-checked="true"], [aria-pressed="true"], [data-active="true"], [class*="isActive"], [class*="active"]')
-      intervalle = actif?.getAttribute('data-value') || texteDe(actif)
-      // Intervalles repliés dans un seul bouton : il affiche l'intervalle courant.
-      if (!intervalle) {
-        const boutons = barre.querySelectorAll('button, [role="button"]')
-        if (boutons.length === 1) intervalle = texteDe(boutons[0])
+      const boutons = Array.from(barre.querySelectorAll('button, [role="button"]'))
+      // a) plusieurs boutons (favoris) : l'actif ; b) sinon le bouton menu.
+      const actif = boutons.length > 1
+        ? barre.querySelector('[aria-checked="true"], [aria-pressed="true"], [class*="isActive"]')
+        : null
+      const bouton = actif ?? barre.querySelector('[class*="menuBtn"]') ?? (boutons.length === 1 ? boutons[0] : null)
+      if (bouton) {
+        lu.intervalle = texteDe(bouton)
+        // c) son aria-label ou son data-tooltip, en secours.
+        lu.intervalleLibelle = bouton.getAttribute('aria-label') || bouton.getAttribute('data-tooltip') || null
       }
     }
   } catch { /* rien */ }
   try {
-    const candidats = Array.from(document.querySelectorAll('[data-name*="legend"]')).slice(0, 60)
-    for (const el of candidats) {
-      const t = texteDe(el)
-      if (t && t.length <= 80 && /\S\s*[\u00B7\u2022]\s*[0-9A-Za-z]{1,4}\s*[\u00B7\u2022]/.test(t)) { legende = t; break }
-    }
+    const legende = document.querySelector('[class*="legendMainSourceWrapper"]')
+    lu.intervalleLegende = texteDe(legende?.querySelector('[class*="intervalTitle"]'))
   } catch { /* rien */ }
-  return { symbole, intervalle, legende }
+  return lu
 }
 
 // Démarrer l'initialisation

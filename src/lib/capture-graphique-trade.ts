@@ -4,7 +4,7 @@ import { instrumentDuTrade } from './instrument.ts'
 import { messageAOnglet } from './message-onglet'
 import { t, locale } from './i18n'
 import {
-  choisirGraphiques, estTradingView, legendeCapture, lireGraphique,
+  choisirGraphiques, estTradingView, legendeCapture, lireGraphique, raisonAMontrer,
   type GraphiqueLu, type MomentCapture, type OngletVu, type PageLue,
 } from './capture-graphique.ts'
 
@@ -38,6 +38,16 @@ const QUALITE = 0.75
 const ECART_CAPTURES_MS = 600
 
 const pause = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/** Un onglet TradingView est-il ouvert quelque part, actif ou non ? Sinon le membre ne s'en sert pas. */
+async function tradingViewOuvert(): Promise<boolean> {
+  try {
+    const tous = await chrome.tabs.query({ url: ['*://*.tradingview.com/*'] })
+    return tous.some(o => estTradingView(o.url))
+  } catch {
+    return false
+  }
+}
 
 async function ongletsTradingView(): Promise<OngletVu[]> {
   const [onglets, fenetres] = await Promise.all([
@@ -110,7 +120,11 @@ export async function capturerGraphiqueDuTrade(noteId: string, tradeId: string, 
 
     const choix = choisirGraphiques(await ongletsTradingView(), attendu, peutPoser)
     // `in` et pas `!choix.ok` : sans strictNullChecks, TypeScript ne resserre pas l'union sur un booléen.
-    if ('raison' in choix) return { faites: 0, message: messageDe(choix.raison, choix.attendu, choix.affiches), poids: [] }
+    // Pas de capture : un message seulement si TradingView est ouvert quelque part (Brice, 05/11).
+    if ('raison' in choix) {
+      const raison = raisonAMontrer(choix, await tradingViewOuvert())
+      return { faites: 0, message: raison ? messageDe(raison, choix.attendu, choix.affiches) : null, poids: [] }
+    }
     if (choix.instrumentAPoser) await storage.setTradeInstrument(noteId, tradeId, choix.instrumentAPoser)
 
     const instant = moment === 'cloture' ? (trade.closedAt ?? Date.now()) : trade.startedAt
