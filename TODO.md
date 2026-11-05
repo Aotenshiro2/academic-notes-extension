@@ -490,6 +490,40 @@ on verra aux retours.
       est visible, sinon `analyse.pdfNonVu`. Essai sur une fausse page
       (`carnet-essais-visuels/injecteur/`). Non essayé sur le vrai ChatGPT.
 
+- [x] **1.8.13 - import des trades dans le Carnet, « Lier » au jour du trade,
+      Prévu / Broker (05/11, brief C1 du chantier Trades, options de Brice).**
+      - C1 : le content script lit sur pilotage.aoknowledge.com les comptes
+        (`aok-trading-accounts-v1` et `-demo-v1`), forme `compteConnu()` de
+        Pilotage, AUCUN montant, dans `chrome.storage.local.pilotageComptes`
+        avec l'id du compte AOK lu dans le cookie de @supabase/ssr ; liste
+        ignorée si elle vient d'un autre compte AOK que le Carnet.
+        `pilotage-comptes.ts` est fondu dans le content script (script
+        classique) : le panneau n'en importe que des types.
+      - C2 : boîte « Importer mes trades » (carte sur l'accueil, et « Importer
+        l'export de ce jour » dans « Lier ») : `documents/lire` (garder), compte
+        deviné (`documents-attribution.ts`, porté de Pilotage, plus strict :
+        un identifiant inconnu n'est jamais rangé sur un autre compte de la
+        même firme), un lot par compte du fichier (copy trading), doublons du
+        dépôt (`documents-doublons.ts`, porté tel quel), aperçu puis import par
+        lot (`trades/import`, même `compteId`). Hors trades : « se dépose dans
+        Pilotage », rien n'est écrit.
+      - C3 : « Lier » propose les positions du JOUR du trade (local et « tel
+        qu'affiché »), même instrument (famille NQ/MNQ...), copies groupées
+        (60 s, comptes différents), « Voir les autres jours » (3 jours, puis
+        tout). Lier/délier tout le trade (`positionIds`, `delier` par
+        `segmentRef`) ; journal plus ancien (400) : un par un, un seul compte
+        lié, dit à l'écran.
+      - C4 : `TradeSegment.instrument` (adresse TradingView, puis titres),
+        pastille modifiable dans le panneau (`instrument.ts`).
+      - C5 : `TradePrix.stop`, `tp`, `partiels` ; colonnes Prévu / Broker.
+      - Tests : `npm test` (node --test, sans dépendance). Essai visuel :
+        `carnet-essais-visuels/carnet-1813/essai-1813.mjs`, journal simulé.
+      - Reste : essayer contre le vrai journal une fois la branche
+        `trades-carnet-journal` en ligne (lier multiple, `compte` des
+        positions, doublon par `compteId`) ; essayer C1 sur le vrai Pilotage
+        (cookie de session lisible ou non) ; un CSV aux colonnes inconnues
+        renvoie vers Pilotage (pas d'écran de colonnes dans le Carnet).
+
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
       précédent, faute d'écart suffisant (`space-y-1.5` = 6 px pour une pastille

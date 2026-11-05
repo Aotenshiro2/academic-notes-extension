@@ -107,6 +107,17 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.13',
+    title: 'Tes trades du broker, importés depuis le Carnet',
+    items: [
+      'Nouveau : sur l\'accueil, « Importer mes trades ». Dépose l\'export de ton broker (CSV, PDF, capture ou relevé MetaTrader) : le Carnet le fait lire comme Pilotage, devine le compte d\'après le fichier et range les trades au même endroit, dans tes comptes Pilotage. Il ne te demande le compte qu\'en cas de doute.',
+      'Le Carnet connaît tes comptes Pilotage dès que tu ouvres Pilotage dans le même Chrome. Un compte que Pilotage ne connaît pas encore se crée en un clic, et la boîte s\'y retrouve toute seule au retour. Un document qui n\'est pas un export de trades (facture, relevé bancaire) se dépose dans Pilotage.',
+      'Copy trading : un même export peut porter plusieurs comptes, chacun garde ses trades. Et le même rapport déposé en CSV et en PDF n\'est rangé qu\'une fois.',
+      '« Lier », dans la pastille « Prix » d\'un trade : la liste montre les trades du broker du jour du trade, même pour une vieille note, et du même instrument (lu sur le graphique de la note, modifiable d\'un clic). Tes comptes copiés tiennent sur une seule ligne : « Lier les 3 ». Rien d\'importé ce jour-là : « Importer l\'export de ce jour ».',
+      '« Ma position » : ton prévu (entrée, stop, TP, taille, sortie et clôtures partielles) à côté de ce que dit le broker, une fois le trade lié. Ton prévu reste dans ton Carnet : Pilotage ne lit que les trades de ton broker.',
+    ],
+  },
+  {
     version: '1.8.12',
     title: 'Les prix de tes trades, et le PDF qui arrive vraiment',
     items: [
