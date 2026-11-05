@@ -602,9 +602,51 @@ on verra aux retours.
         fausse conversation ChatGPT, erreurs volontaires).
       - Reste : demander à Franky d'essayer l'affichage de secours puis
         d'envoyer un diagnostic ; demander à Flow un diagnostic juste après
-        un envoi raté. Mettre à jour la politique de confidentialité publiée
-        (le Guide a sa ligne `guide.confidentialite8`). Le zoom du panneau
-        n'est qu'estimé (aucune API ne le donne dans un panneau latéral).
+        un envoi raté. La politique de confidentialité est à jour dans
+        `privacy-policy.html` (section 5, 05/11, brief C5) : elle sera publiée
+        au push. Le zoom du panneau n'est qu'estimé (aucune API ne le donne
+        dans un panneau latéral).
+
+- [x] **1.8.14 - La carte de prix enrichie et « Lire une capture » (05/11,
+      brief C5).** Brice, 05/11 : « les infos qu'on devrait pouvoir renseigner
+      quand on ajoute un prix à un trade, et [...] mettre son screenshot
+      directement pour qu'il soit lu par l'IA ». D'après ses captures du
+      panneau d'ordre de TradingView et de l'outil « Position courte ».
+      - `TradePrix` : `sens` ('achat' | 'vente', CHOISI), `typeOrdre`
+        ('marche' | 'limite' | 'stop'), `risque` ({ montant, unite: 'USD' |
+        '%' }), tous facultatifs. Le stop et le TP restent des PRIX.
+      - `prix-trade.ts` (pur) : contrats connus (pas de cotation et valeur du
+        tick : ES/MES, NQ/MNQ, YM/MYM, RTY/M2K, GC/MGC, SI/SIL, HG, CL/MCL,
+        NG, 6E/M6E, 6B ; inconnu = pas de ticks), ticks vers prix et retour,
+        `sensDuPrix` (choisi, sinon déduit du stop, sinon du TP), `rDuPrix`,
+        risque en USD déduit (indice, jamais écrit), lecture du journal
+        nettoyée, `fusionnerLecture` (les vides se remplissent, le reste
+        n'est remplacé que si le membre accepte), réduction avant l'envoi
+        (celle de la capture automatique, `REDUCTION_CAPTURE`).
+      - Carte (`TradePrevuBroker`) : pastilles Achat / Vente (le sens déduit
+        en pointillés) et Marché / Limite / Stop ; basculeur prix / ticks à
+        côté du stop et du TP (le prix converti s'affiche dans le champ) ;
+        risque avec son unité (USD / %), le risque déduit en indice ; résumé
+        replié avec le sens, l'ordre et le risque.
+      - « Lire une capture » (`LireCaptureOrdre`) : dépôt, collage (Ctrl+V),
+        « Capture du lancement » quand le trade en a une ; attente ; champs
+        remplis surlignés en violet ; « Prendre ses valeurs » pour ce que le
+        membre avait tapé autrement ; 429 avec le palier, 413 réduite une
+        seconde fois puis message ; non connecté : comment l'obtenir.
+        `POST /api/carnet/lire-ordre` du journal (branche
+        `carnet-diagnostic`) : même moteur et même compteur que les
+        documents de Pilotage.
+      - Le sens choisi prime : « Lier » met les trades du broker de ce sens
+        devant (l'autre sens est dit, rien n'est masqué) ; la pastille
+        « R ? » propose le R calculé (Entrée sur le champ vide pour le
+        garder).
+      - Tests : `tests/prix-trade.test.ts`. Essai visuel :
+        `carnet-essais-visuels/carnet-1814/essai-1814.mjs prix`.
+      - Reste : les 4 lectures réelles des captures de Brice (clé du produit
+        pilotage absente de l'environnement du journal le 05/11) ; déployer la
+        route du journal AVANT de publier la 1.8.14 (sinon le bouton dit
+        « ne répond pas » : 404 lu comme indisponible) ; l'instrument lu par
+        l'IA n'est pas posé sur le trade (seulement montré).
 
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc

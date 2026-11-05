@@ -93,9 +93,10 @@ const TIPS: CleI18n[] = [
 // que depuis qu'elle coupe vraiment l'envoi automatique (1.8.10, voir
 // envoiAutoPermis dans storage.ts). Mêmes engagements que la politique de
 // confidentialité publiée (privacy-policy.html) : les tenir alignés.
-// Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `8`) :
+// Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `9`) :
 // toute modification de fond se fait des deux côtés, FR puis EN. La 8
-// (1.8.14) : « Envoyer un diagnostic », qui ne part qu'au clic du membre.
+// (1.8.14) : « Envoyer un diagnostic », qui ne part qu'au clic du membre. La 9
+// (1.8.14) : « Lire une capture », l'image envoyée à l'IA à son geste.
 const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite1',
   'guide.confidentialite2',
@@ -105,13 +106,18 @@ const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite6',
   'guide.confidentialite7',
   'guide.confidentialite8',
+  'guide.confidentialite9',
 ]
 
 const CHANGELOG = [
   {
     version: '1.8.14',
-    title: 'Un diagnostic à nous envoyer, et un affichage de secours',
+    title: 'Ta carte de prix lit ton panneau d\'ordre, un diagnostic à nous envoyer, un affichage de secours',
     items: [
+      'Nouveau : la carte de prix d\'un trade (pastille « Prix ») prend ce que tu règles dans le panneau d\'ordre de TradingView. Le sens (Achat ou Vente), choisi par toi : il prime sur celui que le Carnet déduit de ton stop, pour « Lier » comme pour le R. Le type d\'ordre (Marché, Limite, Stop). Le risque, en USD ou en % du compte.',
+      'Nouveau : le stop et le TP se tapent en ticks ou en prix, au choix, comme dans TradingView. Le prix reste ce qui est gardé : les ticks sont convertis avec le pas de l\'instrument (NQ, ES et leurs micros 0,25 ; YM 1 ; RTY 0,10 ; GC 0,10 ; CL 0,01...). Instrument inconnu : pas de ticks. La valeur du tick ne se tape pas : le Carnet propose le risque en USD qu\'il en déduit.',
+      'Nouveau : « Lire une capture », dans la carte de prix. Dépose ou colle une capture de ton panneau d\'ordre ou de l\'outil Position, ou prends en un clic la capture du lancement du trade : l\'IA remplit la carte, les champs remplis sont surlignés, tu vérifies, puis tu enregistres. Ce que tu avais déjà tapé n\'est remplacé que si tu le demandes. Une lecture compte dans tes lectures du mois, comme l\'import de tes trades.',
+      'Sur un trade clos, la pastille « R ? » propose le R calculé d\'après ta carte de prix : Entrée pour le garder.',
       'Nouveau : « Envoyer un diagnostic », dans le menu de la roue. Quand un souci ne se reproduit que chez toi, il nous donne en un clic ce qu\'il faut pour le régler : la version du Carnet, ton navigateur, ta carte graphique, ton écran et ton zoom, les dernières erreurs, et le déroulé du dernier envoi vers une IA (quel champ a été trouvé, quelle voie a marché ou non). Rien de tes notes n\'est envoyé, et tu vois exactement ce qui part avant d\'envoyer. Pas connecté, ou tu préfères passer par Telegram : « Copier ».',
       'Nouveau : « Affichage de secours », dans Paramètres. Si l\'écran laisse des traces, par exemple une image qui se dessine une deuxième fois au survol, il coupe les animations, les flous et les ombres lourdes. Le reste de l\'affichage ne change pas. Éteint par défaut.',
       'Merci Franky et Flow : c\'est pour vos deux soucis qu\'on l\'a construit.',
