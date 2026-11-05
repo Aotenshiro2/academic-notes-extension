@@ -93,8 +93,9 @@ const TIPS: CleI18n[] = [
 // que depuis qu'elle coupe vraiment l'envoi automatique (1.8.10, voir
 // envoiAutoPermis dans storage.ts). Mêmes engagements que la politique de
 // confidentialité publiée (privacy-policy.html) : les tenir alignés.
-// Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `7`) :
-// toute modification de fond se fait des deux côtés, FR puis EN.
+// Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `8`) :
+// toute modification de fond se fait des deux côtés, FR puis EN. La 8
+// (1.8.14) : « Envoyer un diagnostic », qui ne part qu'au clic du membre.
 const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite1',
   'guide.confidentialite2',
@@ -103,9 +104,19 @@ const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite5',
   'guide.confidentialite6',
   'guide.confidentialite7',
+  'guide.confidentialite8',
 ]
 
 const CHANGELOG = [
+  {
+    version: '1.8.14',
+    title: 'Un diagnostic à nous envoyer, et un affichage de secours',
+    items: [
+      'Nouveau : « Envoyer un diagnostic », dans le menu de la roue. Quand un souci ne se reproduit que chez toi, il nous donne en un clic ce qu\'il faut pour le régler : la version du Carnet, ton navigateur, ta carte graphique, ton écran et ton zoom, les dernières erreurs, et le déroulé du dernier envoi vers une IA (quel champ a été trouvé, quelle voie a marché ou non). Rien de tes notes n\'est envoyé, et tu vois exactement ce qui part avant d\'envoyer. Pas connecté, ou tu préfères passer par Telegram : « Copier ».',
+      'Nouveau : « Affichage de secours », dans Paramètres. Si l\'écran laisse des traces, par exemple une image qui se dessine une deuxième fois au survol, il coupe les animations, les flous et les ombres lourdes. Le reste de l\'affichage ne change pas. Éteint par défaut.',
+      'Merci Franky et Flow : c\'est pour vos deux soucis qu\'on l\'a construit.',
+    ],
+  },
   {
     version: '1.8.13',
     title: 'Tes trades du broker, importés depuis le Carnet',

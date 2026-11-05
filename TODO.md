@@ -560,6 +560,52 @@ on verra aux retours.
         (cookie de session lisible ou non) ; un CSV aux colonnes inconnues
         renvoie vers Pilotage (pas d'écran de colonnes dans le Carnet).
 
+- [x] **1.8.14 - « Envoyer un diagnostic » et « Affichage de secours » (05/11,
+      brief C4).** Pour le fantôme des images chez Franky et le PDF vers
+      ChatGPT qui ne passe qu'une fois sur 5 chez Flow : on ne les reproduit
+      pas, il faut les infos de LEUR machine. Brice a choisi les options 1 et
+      2 ; la télémétrie permanente est écartée.
+      - Diagnostic : ligne du menu de la roue (sous Versions), écran
+        `DiagnosticView`. Rassemblé à l'ouverture (le geste), jamais en fond :
+        version, langue, thème, `prefers-reduced-motion`, quelques réglages
+        nommés (jamais une clé, un jeton, une adresse de fil), navigateur
+        (`userAgentData`, version complète), carte graphique (WebGL
+        `UNMASKED_*`, drapeau rendu logiciel), écran (dpr, zoom ESTIMÉ, taille
+        du panneau, de la fenêtre, de l'écran, zoom de l'onglet), compte et
+        email, les 30 dernières erreurs, le dernier envoi IA. Liste blanche
+        dans `diagnostic-pur.ts` (`construireDiagnostic`) ; résumé puis détail
+        dépliable (exactement ce qui part) ; « Envoyer à l'équipe »
+        (`POST /api/carnet/diagnostic` du journal, branche `carnet-diagnostic`,
+        5 par jour : le Carnet compte aussi les siens) et « Copier ».
+      - Anneau d'erreurs (`diagnostic-traces.ts`, chrome.storage.local) :
+        `error` et `unhandledrejection` du panneau, du plein écran, du Guide
+        et du service worker, erreurs de rendu (ErrorBoundary), toasts
+        d'erreur par leur CLÉ (`cleDuTexte` relit le dictionnaire ; un texte
+        du serveur devient « hors-dictionnaire »). Message nettoyé : adresses,
+        emails, jetons, data URL, longs nombres et textes entre guillemets
+        retirés ; source = fichier de l'extension seulement.
+      - Déroulé du dernier envoi IA (`provider-injector.ts`) : fournisseur,
+        genre de page (nouvelle, conversation existante ; jamais
+        l'identifiant), fichiers comptés (jamais leur nom), délai avant
+        stabilité, champs fichier vus (id, accept), chaque voie essayée
+        (donné, vu, durée), `pdfUploaded`, `pdfNonVu`, `imageOnly`, durées,
+        repli après l'échec du fil.
+      - Affichage de secours (Paramètres, éteint par défaut) : classe
+        `affichage-secours` sur <html> du panneau, du plein écran et du Guide
+        (`affichage-secours.ts`, localStorage, posée avant le premier rendu) ;
+        `index.css` coupe transitions et animations, flous et
+        backdrop-filter, will-change, transformations au survol, et ramène
+        les ombres lourdes à une ombre légère. Le diagnostic dit s'il est
+        activé.
+      - Tests : `tests/diagnostic.test.ts` (node --test). Essai visuel :
+        `carnet-essais-visuels/carnet-1814/essai-1814.mjs` (journal simulé,
+        fausse conversation ChatGPT, erreurs volontaires).
+      - Reste : demander à Franky d'essayer l'affichage de secours puis
+        d'envoyer un diagnostic ; demander à Flow un diagnostic juste après
+        un envoi raté. Mettre à jour la politique de confidentialité publiée
+        (le Guide a sa ligne `guide.confidentialite8`). Le zoom du panneau
+        n'est qu'estimé (aucune API ne le donne dans un panneau latéral).
+
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
       précédent, faute d'écart suffisant (`space-y-1.5` = 6 px pour une pastille
