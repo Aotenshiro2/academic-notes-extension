@@ -1,7 +1,7 @@
 import { toast } from '../lib/toast'
 import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Lock, Loader2, Trash2 } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Loader2, Trash2 } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -69,17 +69,9 @@ interface CurrentNoteViewProps {
   onNoteUpdate?: () => void
   refreshTrigger?: number
   initialLightboxIndex?: number
-  /** 2e temps de la capture (1.8.0) : relire la note dans le cadre de la
-   *  methode et ecrire la lecture dedans. Le bouton s'affiche sous le resume. */
-  onEtudier?: () => void
-  /** l'approfondissement est-il ouvert a ce compte ? sinon le bouton reste
-   *  visible mais verrouille : voir la fonction et savoir pourquoi on ne l'a
-   *  pas convertit mieux qu'un bouton absent. */
-  etudeOuverte?: boolean
-  etudeEnCours?: boolean
 }
 
-function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightboxIndex, onEtudier, etudeOuverte = false, etudeEnCours = false }: CurrentNoteViewProps) {
+function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightboxIndex }: CurrentNoteViewProps) {
   const [note, setNote] = useState<AcademicNote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(initialLightboxIndex ?? null)
@@ -790,39 +782,18 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         <WarmupCard warmup={note.warmup} onSave={handleSaveWarmup} onDelete={handleDeleteLegacyWarmup} />
       )}
 
-      {/* « Approfondir cette note » (1.8.0, redécoupé le 01/09).
-          Il vivait DANS la carte Résumé, donc il n'existait que si la note
-          avait démarré par une capture intelligente — une note écrite à la
-          main, ou une note où la capture est arrivée en cours de route, n'y
-          avait pas droit. Il devient une action de NOTE, toujours là.
+      {/* « Approfondir cette note » n'est plus ici : en 1.8.13 il est descendu
+          dans la rangée de « Poser un DOL » et « Lancer un warmup », au-dessus
+          de la barre d'envoi (App.tsx). On approfondit plusieurs fois pendant
+          que la note s'écrit : en tête de note, il cassait la continuité.
 
           Les cartes Résumé et Points clés ont disparu d'ici : la capture les
           écrit maintenant comme blocs dans le fil, à leur place chronologique
           et modifiables. Les garder en tête aurait fait le doublon que Brice a
           vu (« deux résumés l'un après l'autre »). Les champs `note.summary`
-          et `note.keyPoints` continuent d'exister — ils alimentent l'aperçu de
-          la liste et du journal — ils ne sont simplement plus affichés deux
+          et `note.keyPoints` continuent d'exister (ils alimentent l'aperçu de
+          la liste et du journal), ils ne sont simplement plus affichés deux
           fois. */}
-      {onEtudier && (
-        <button
-          onClick={() => { if (!etudeEnCours) onEtudier() }}
-          disabled={etudeEnCours}
-          className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-            etudeEnCours
-              ? 'bg-muted text-muted-foreground cursor-wait'
-              : etudeOuverte
-                ? 'aura-ia bg-background text-foreground hover:bg-muted'
-                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-          }`}
-          title={etudeOuverte ? t('note.approfondirAide') : t('note.approfondirRefus')}
-        >
-          {etudeEnCours
-            ? <><Loader2 size={13} className="animate-spin flex-shrink-0" /> {t('note.approfondirEnCours')}</>
-            : etudeOuverte
-              ? <><Sparkles size={13} className="flex-shrink-0" /> {t('note.approfondir')}</>
-              : <><Lock size={13} className="flex-shrink-0" /> {t('note.approfondirVerrouille')}</>}
-        </button>
-      )}
 
       {/* Contenu de la note — blocs messages, segmentés par trade, warmups ancrés dans le fil */}
       {(note.messages && note.messages.length > 0) || (note.trades && note.trades.length > 0) || (note.warmups && note.warmups.length > 0) ? (

@@ -15,9 +15,13 @@ import {
   BadgeCheck,
   UserPlus,
   Compass,
-  Globe
+  Globe,
+  FileUp,
+  Sparkles,
+  Lock
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
+import ImportTradesDialog from '@/components/ImportTradesDialog'
 import MentoratView from '@/components/MentoratView'
 import SupportView from '@/components/SupportView'
 import AiConfigView from '@/components/AiConfigView'
@@ -100,6 +104,10 @@ function App() {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [settingsMenuOpen])
+  // « Importer mes trades » (1.8.13) : une ligne du menu de la roue, plus une
+  // carte de l'accueil. Brice, le 05/11 : la carte chargeait une interface qui
+  // se veut épurée, et l'import n'a pas besoin d'être au premier plan.
+  const [importTradesOuvert, setImportTradesOuvert] = useState(false)
   // Résumés, pas les notes complètes : charger 1000 notes entières (donc toutes
   // les images en base64) à chaque rafraîchissement saturait la mémoire
   const [notes, setNotes] = useState<NoteSummary[]>([])
@@ -114,8 +122,8 @@ function App() {
   const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
   const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
   // Capture IA et étude (1.8.0). Ces deux drapeaux ne servent QU'À AFFICHER —
-  // l'aura sur « Capture intelligente », le bouton d'approfondissement sous le
-  // résumé. Le serveur re-vérifie le droit et le budget à chaque appel : un
+  // l'aura sur « Capture intelligente », le bouton « Approfondir » de la rangée
+  // du bas (1.8.13). Le serveur re-vérifie le droit et le budget à chaque appel : un
   // client bidouillé ne contourne rien.
   const [captureIaActive, setCaptureIaActive] = useState(false)
   const [etudeOuverte, setEtudeOuverte] = useState(false)
@@ -1123,9 +1131,6 @@ function App() {
               noteId={currentNoteId}
               onNoteUpdate={loadData}
               refreshTrigger={noteRefreshTrigger}
-              onEtudier={handleEtudierNote}
-              etudeOuverte={etudeOuverte}
-              etudeEnCours={etudeEnCours}
             />
           ) : (
             <>
@@ -1172,11 +1177,47 @@ function App() {
             />
             <button
               onClick={handleRitualWarmup}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 [@media(max-width:400px)]:px-1.5 [@media(max-width:400px)]:gap-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
               title={t('panneau.warmupAide')}
             >
               <Sunrise size={13} className="flex-shrink-0" />
               {t('capture.warmup')}
+            </button>
+            {/* « Approfondir » (1.8.0, descendu ici en 1.8.13). Il était en tête
+                de note ; Brice, le 05/11 : on approfondit plusieurs fois, à des
+                moments différents de l'écriture, il a sa place en bas, avec
+                les autres gestes de la séance, l'action d'étude en dernier.
+                Libellé court pour tenir sur la ligne à 360 px ; le texte
+                complet et l'aide sont dans le title. Même à 11 px, les trois
+                débordaient à 360 px : à 400 px et moins, les trois lanceurs
+                resserrent leurs marges (px-1.5, gap-1). Verrouillé, il reste
+                visible (voir la fonction convertit mieux qu'un bouton absent) :
+                le clic passe quand même, le serveur refuse et ouvre
+                l'explication du forfait (handleEtudierNote). */}
+            <button
+              onClick={() => { if (!etudeEnCours) void handleEtudierNote() }}
+              disabled={etudeEnCours}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 [@media(max-width:400px)]:px-1.5 [@media(max-width:400px)]:gap-1 rounded-md text-[11px] font-medium transition-colors ${
+                etudeEnCours
+                  ? 'text-muted-foreground cursor-wait'
+                  : etudeOuverte
+                    ? 'aura-ia aura-ia-discrete text-foreground/80 hover:text-foreground hover:bg-muted'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+              title={etudeEnCours
+                ? t('note.approfondirEnCours')
+                : etudeOuverte
+                  ? `${t('note.approfondir')}\n${t('note.approfondirAide')}`
+                  : `${t('note.approfondirVerrouille')}\n${t('note.approfondirRefus')}`}
+              aria-label={etudeOuverte || etudeEnCours ? t('note.approfondir') : t('note.approfondirVerrouille')}
+              aria-busy={etudeEnCours}
+            >
+              {etudeEnCours
+                ? <Loader2 size={13} className="animate-spin flex-shrink-0" />
+                : etudeOuverte
+                  ? <Sparkles size={13} className="flex-shrink-0" />
+                  : <Lock size={13} className="flex-shrink-0" />}
+              {t('note.approfondirCourt')}
             </button>
           </div>
         )}
@@ -1328,6 +1369,15 @@ function App() {
                         <User size={13} className="text-muted-foreground flex-shrink-0" />
                         {t('menu.compte')}
                       </button>
+                      {/* Pas un écran : la boîte d'import s'ouvre par-dessus ce qui est affiché. */}
+                      <button
+                        onClick={() => { setSettingsMenuOpen(false); setImportTradesOuvert(true) }}
+                        className={item}
+                        role="menuitem"
+                      >
+                        <FileUp size={13} className="text-muted-foreground flex-shrink-0" />
+                        {t('menu.importerTrades')}
+                      </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={tab(chrome.runtime.getURL('src/guide/index.html'))} className={item} role="menuitem">
                         <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
@@ -1400,6 +1450,9 @@ function App() {
           folders={folders}
         />
       )}
+
+      {/* Boîte « Importer mes trades », ouverte depuis le menu de la roue (1.8.13) */}
+      {importTradesOuvert && <ImportTradesDialog onClose={() => setImportTradesOuvert(false)} />}
     </div>
   )
 }

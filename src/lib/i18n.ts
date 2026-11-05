@@ -95,6 +95,7 @@ const FR = {
   'menu.parametres': 'Paramètres',
   'menu.configurerIA': 'Configurer son IA',
   'menu.compte': 'Compte AOKnowledge',
+  'menu.importerTrades': 'Importer mes trades',
   'menu.bonnesPratiques': 'Bonnes pratiques',
   'menu.versions': 'Versions et feuille de route',
   'menu.forfait': 'Mon forfait',
@@ -107,6 +108,8 @@ const FR = {
   'note.resume': 'Résumé',
   'note.pointsCles': 'Points clés',
   'note.approfondir': 'Approfondir cette note',
+  // Libellé visible dans la rangée du bas (1.8.13) : le texte complet va dans le title.
+  'note.approfondirCourt': 'Approfondir',
   'note.approfondirVerrouille': 'Approfondir · Carnet Premium',
   'note.approfondirEnCours': 'Étude en cours…',
   'note.approfondirAide': 'Relire cette note dans le cadre de la méthode et écrire la lecture dedans',
@@ -708,9 +711,8 @@ const FR = {
   'prix.erreurCopieLiee': 'Un de ces trades du broker est déjà lié à un autre trade du Carnet.',
   'prix.remplacer': 'Lier celui-ci à la place',
 
-  // Boîte « Importer mes trades » (1.8.13)
-  'import.carte': 'Importer mes trades',
-  'import.carteSous': "L'export du broker : CSV, PDF ou capture",
+  // Boîte « Importer mes trades » (1.8.13), ouverte par le menu de la roue
+  // (`menu.importerTrades`) et par « Importer l'export de ce jour » dans « Lier »
   'import.titre': 'Importer mes trades',
   'import.titreJour': "Importer l'export du {jour}",
   'import.fermer': 'Fermer',
@@ -1006,6 +1008,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'menu.parametres': 'Settings',
   'menu.configurerIA': 'Set up your AI',
   'menu.compte': 'AOKnowledge account',
+  'menu.importerTrades': 'Import my trades',
   'menu.bonnesPratiques': 'Good practice',
   'menu.versions': 'Versions and roadmap',
   'menu.forfait': 'My plan',
@@ -1017,6 +1020,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'note.resume': 'Summary',
   'note.pointsCles': 'Key points',
   'note.approfondir': 'Go deeper on this note',
+  'note.approfondirCourt': 'Go deeper',
   'note.approfondirVerrouille': 'Go deeper · Carnet Premium',
   'note.approfondirEnCours': 'Studying…',
   'note.approfondirAide': 'Read this note back through the method, and write that reading into it',
@@ -1583,8 +1587,6 @@ const EN: Partial<Record<CleI18n, string>> = {
   'prix.erreurCopieLiee': 'One of these broker trades is already linked to another Carnet trade.',
   'prix.remplacer': 'Link this one instead',
 
-  'import.carte': 'Import my trades',
-  'import.carteSous': "Your broker's export: CSV, PDF or screenshot",
   'import.titre': 'Import my trades',
   'import.titreJour': 'Import the export of {jour}',
   'import.fermer': 'Close',

@@ -499,8 +499,8 @@ on verra aux retours.
         ignorée si elle vient d'un autre compte AOK que le Carnet.
         `pilotage-comptes.ts` est fondu dans le content script (script
         classique) : le panneau n'en importe que des types.
-      - C2 : boîte « Importer mes trades » (carte sur l'accueil, et « Importer
-        l'export de ce jour » dans « Lier ») : `documents/lire` (garder), compte
+      - C2 : boîte « Importer mes trades » (ligne du menu de la roue, et
+        « Importer l'export de ce jour » dans « Lier ») : `documents/lire` (garder), compte
         deviné (`documents-attribution.ts`, porté de Pilotage, plus strict :
         un identifiant inconnu n'est jamais rangé sur un autre compte de la
         même firme), un lot par compte du fichier (copy trading), doublons du
@@ -516,6 +516,14 @@ on verra aux retours.
       - C4 : `TradeSegment.instrument` (adresse TradingView, puis titres),
         pastille modifiable dans le panneau (`instrument.ts`).
       - C5 : `TradePrix.stop`, `tp`, `partiels` ; colonnes Prévu / Broker.
+      - Brief C2 (retours de Brice du 05/11 sur les captures) : la carte
+        « Importer mes trades » quitte l'accueil (« trop chargé »), l'import
+        devient une ligne du menu de la roue, sous Compte (`menu.importerTrades`).
+        « Approfondir » quitte le haut de la note pour la rangée dockée de
+        « Poser un DOL » et « Lancer un warmup », en dernier, même gabarit,
+        libellé court (`note.approfondirCourt`), texte complet et aide dans le
+        title ; trois états gardés (en cours, ouvert avec `aura-ia`,
+        verrouillé). On approfondit plusieurs fois pendant l'écriture.
       - Tests : `npm test` (node --test, sans dépendance). Essai visuel :
         `carnet-essais-visuels/carnet-1813/essai-1813.mjs`, journal simulé.
       - Reste : essayer contre le vrai journal une fois la branche

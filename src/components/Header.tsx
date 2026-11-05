@@ -144,9 +144,10 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
             <Sparkles size={18} />
           </button>
 
-          {/* L'approfondissement n'est PAS ici : il vit dans la note, juste
-              sous le résumé que la capture vient d'écrire. C'est là qu'on a
-              envie d'aller plus loin, pas dans une barre d'outils globale. */}
+          {/* L'approfondissement n'est PAS ici : il vit avec la note, dans la
+              rangée de « Poser un DOL » et « Lancer un warmup », au-dessus de
+              la barre d'envoi (1.8.13). C'est en écrivant qu'on a envie
+              d'aller plus loin, pas dans une barre d'outils globale. */}
 
           <button
             onClick={onFullscreen}

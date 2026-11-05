@@ -493,6 +493,17 @@
   pointer-events: none;
 }
 
+/* Variante discrète (1.8.13) : « Approfondir » dans la rangée du bas, à côté
+   de lanceurs sans cadre (« Poser un DOL », « Lancer un warmup »). Le liseré
+   reste, plus pâle, sans la lueur : une trace, pas un bouton qui crie. */
+.aura-ia-discrete::before {
+  opacity: 0.5;
+}
+
+.aura-ia-discrete::after {
+  display: none;
+}
+
 @keyframes aura-ia-defile {
   to { background-position: 300% 0; }
 }

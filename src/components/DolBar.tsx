@@ -66,11 +66,13 @@ export default function DolBar({ dols, onAdd, onCycleStatus, onDelete }: DolBarP
   }
 
   if (dols.length === 0 && !adding) {
-    // Lanceur compact et discret (pas de gros bloc en tête de note)
+    // Lanceur compact et discret (pas de gros bloc en tête de note). Panneau
+    // étroit (400 px et moins) : marges resserrées, comme « Lancer un warmup »
+    // et « Approfondir » (App), pour que les trois tiennent sur une ligne à 360 px.
     return (
       <button
         onClick={() => setAdding(true)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-violet-600/80 dark:text-violet-400/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 [@media(max-width:400px)]:px-1.5 [@media(max-width:400px)]:gap-1 rounded-md text-[11px] font-medium text-violet-600/80 dark:text-violet-400/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
         title={t('dol.poserAide')}
       >
         <Magnet size={13} className="flex-shrink-0" />
