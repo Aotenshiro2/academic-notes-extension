@@ -178,12 +178,21 @@ export interface TradeSegment {
    *  est la copie) : Pilotage ne reçoit QUE les trades du broker (règle de
    *  Brice), jamais une saisie manuelle. */
   prix?: TradePrix
+  /** L'instrument du trade (1.8.13) : filtre la liste « Lier » (NQ et MNQ
+   *  sont la même famille). Absent = celui que la note dit (adresse du
+   *  graphique, titre) ; chaîne vide = pas de filtre, tous les instruments. */
+  instrument?: string
 }
 
+/** Le « prévu » du membre (1.8.12, stop, TP et partiels en 1.8.13). */
 export interface TradePrix {
   entree?: number
   sortie?: number
   taille?: number
+  stop?: number
+  tp?: number
+  /** Clôtures partielles prévues, 10 au plus. */
+  partiels?: { prix: number; taille?: number }[]
 }
 
 // Cooldown par trade (Tendler) : le débrief court après chaque trade fermé —

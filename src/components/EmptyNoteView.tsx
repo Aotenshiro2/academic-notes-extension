@@ -1,9 +1,10 @@
 import React from 'react'
 import { t } from '@/lib/i18n'
-import { BookOpen, Camera, History, Sparkles, Loader2 } from 'lucide-react'
+import { BookOpen, Camera, History, Sparkles, Loader2, FileUp } from 'lucide-react'
 import { formatSmartDate } from '@/lib/date-utils'
 import type { NoteSummary } from '@/types/academic'
 import ActivityPanel from './ActivityPanel'
+import ImportTradesDialog from './ImportTradesDialog'
 
 interface EmptyNoteViewProps {
   onCapturePage?: () => void
@@ -21,6 +22,7 @@ interface EmptyNoteViewProps {
 }
 
 function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, lastNote, onSelectNote, captureIaActive = false, notes }: EmptyNoteViewProps) {
+  const [importOuvert, setImportOuvert] = React.useState(false)
   // Mise en page rééquilibrée avec le panneau d'activité (1.8.9) : la
   // salutation et les cartes se centrent dans la place qui reste, le panneau
   // se cale en bas, juste au-dessus de la barre d'écriture. min-h-full et pas
@@ -83,6 +85,25 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
               </div>
             </button>
           )}
+
+          {/* Importer mes trades (1.8.13, placement A1 du labo du 03/11) : la
+              boîte d'import de Pilotage, sur l'accueil à côté des captures.
+              Pas dans l'en-tête : à 420 px, elle poussait « + » hors de l'écran. */}
+          {notes && (
+            <button
+              onClick={() => setImportOuvert(true)}
+              className="w-full flex items-center space-x-3 p-4 text-left rounded-lg border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors"
+            >
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FileUp size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-foreground">{t('import.carte')}</div>
+                <div className="text-sm text-muted-foreground">{t('import.carteSous')}</div>
+              </div>
+            </button>
+          )}
+          {importOuvert && <ImportTradesDialog onClose={() => setImportOuvert(false)} />}
 
           {/* Carte dernière conversation */}
           {lastNote && onSelectNote && (

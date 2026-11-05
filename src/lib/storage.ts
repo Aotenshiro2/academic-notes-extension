@@ -1011,6 +1011,18 @@ export const storage = {
     await this.saveNote({ ...note, trades })
   },
 
+  /** Pose l'instrument d'un trade ('' = aucun filtre) ou l'efface (undefined = celui de la note). */
+  async setTradeInstrument(noteId: string, tradeId: string, instrument: string | undefined): Promise<void> {
+    const note = await this.getNote(noteId)
+    if (!note) return
+    const trades = (note.trades ?? []).map(t => {
+      if (t.id !== tradeId) return t
+      const { instrument: _ancien, ...reste } = t
+      return instrument === undefined ? reste : { ...reste, instrument }
+    })
+    await this.saveNote({ ...note, trades })
+  },
+
   /** Pose ou efface le résultat en R d'un trade (undefined = effacer). */
   async setTradeR(noteId: string, tradeId: string, r: number | undefined): Promise<void> {
     const note = await this.getNote(noteId)

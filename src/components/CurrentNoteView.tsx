@@ -19,6 +19,7 @@ import { getShowMeta, subscribeShowMeta } from '@/lib/show-meta'
 import { deleteJournalAnnotation } from '@/lib/sync'
 import { suggererTagsNote } from '@/lib/capture-ia'
 import { collectNoteImages } from '@/lib/note-images'
+import { instrumentDuTrade } from '@/lib/instrument'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -460,6 +461,13 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Prix saisis à la main d'un trade (1.8.12) : restent dans le Carnet
   const handleSaveTradePrix = useCallback(async (tradeId: string, prix: TradePrix | undefined) => {
     await storage.setTradePrix(noteId, tradeId, prix)
+    await loadNote()
+    onNoteUpdate?.()
+  }, [noteId, onNoteUpdate])
+
+  // Instrument d'un trade (1.8.13) : filtre « Lier » ; undefined = celui de la note
+  const handleSaveTradeInstrument = useCallback(async (tradeId: string, instrument: string | undefined) => {
+    await storage.setTradeInstrument(noteId, tradeId, instrument)
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
@@ -948,7 +956,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                           setPrixTradeId(trade.id)
                         }}
                         className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
-                          trade.prix && (trade.prix.entree !== undefined || trade.prix.sortie !== undefined)
+                          trade.prix && Object.keys(trade.prix).length > 0
                             ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                             : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
@@ -1128,16 +1136,24 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         />
       )}
 
-      {/* Prix du trade et lien avec le trade importé du broker (1.8.12) */}
+      {/* Prix du trade et lien avec le trade importé du broker (1.8.12, panneau Prévu / Broker en 1.8.13) */}
       {prixTradeId && (() => {
         const trade = (note.trades ?? []).find(tr => tr.id === prixTradeId)
         if (!trade) return null
+        // L'instrument : les captures du trade d'abord (le graphique où il a été pris), puis la note.
+        const blocsDuTrade = note.messages.filter(m => m.tradeRef === trade.id)
+        const instrumentNote = instrumentDuTrade({
+          adresses: [...blocsDuTrade.map(m => m.metadata?.sourceUrl), note.url],
+          titres: [...blocsDuTrade.map(m => m.metadata?.sourceTitle), note.title, note.metadata?.title],
+        })
         return (
           <TradePrixPopover
             position={prixPos}
             trade={trade}
             numero={(note.trades ?? []).findIndex(tr => tr.id === prixTradeId) + 1}
+            instrumentNote={instrumentNote}
             onSave={(prix) => handleSaveTradePrix(prixTradeId, prix)}
+            onSaveInstrument={(instrument) => handleSaveTradeInstrument(prixTradeId, instrument)}
             onClose={() => setPrixTradeId(null)}
           />
         )

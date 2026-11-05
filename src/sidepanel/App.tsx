@@ -49,6 +49,7 @@ import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
 import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
+import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot, DolLevel } from '@/types/academic'
@@ -135,6 +136,14 @@ function App() {
   // vues ouvertes suivent sans rechargement, comme pour l'affichage des métas.
   const [langue, setLangueLocale] = useState<Langue>(getLangue)
   useEffect(() => subscribeLangue(setLangueLocale), [])
+
+  // « Me connecter » depuis la boîte d'import ou le panneau d'un trade (1.8.13) : l'écran Compte.
+  useEffect(() => {
+    const ouvrirCompte = () => { closeAllViews(); setShowAccount(true) }
+    window.addEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+    return () => window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Relit la session. Appelée à l'ouverture ET au retour de l'écran Compte :
   // sans ça, on se connectait et le panneau continuait d'afficher « Visiteur »
