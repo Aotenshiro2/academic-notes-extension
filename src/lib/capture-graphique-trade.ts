@@ -4,7 +4,7 @@ import { instrumentDuTrade } from './instrument.ts'
 import { messageAOnglet } from './message-onglet'
 import { t, locale } from './i18n'
 import {
-  choisirGraphiques, estTradingView, legendeCapture, lireGraphique, raisonAMontrer,
+  REDUCTION_CAPTURE, choisirGraphiques, estTradingView, legendeCapture, lireGraphique, raisonAMontrer,
   type GraphiqueLu, type MomentCapture, type OngletVu, type PageLue,
 } from './capture-graphique.ts'
 
@@ -31,9 +31,9 @@ export interface ResultatCaptureGraphique {
   poids: number[]
 }
 
-/** Largeur max et qualité : le poids synchronisé vers le journal reste modeste. */
-const LARGEUR_MAX = 1600
-const QUALITE = 0.75
+/** Largeur max et qualité : le poids synchronisé vers le journal reste modeste (partagées avec « Lire une capture »). */
+const LARGEUR_MAX = REDUCTION_CAPTURE.largeur
+const QUALITE = REDUCTION_CAPTURE.qualite
 /** Chrome refuse plus de 2 captureVisibleTab par seconde. */
 const ECART_CAPTURES_MS = 600
 

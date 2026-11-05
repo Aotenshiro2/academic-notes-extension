@@ -4,9 +4,10 @@ import type { TradePrix, TradeSegment } from '@/types/academic'
 import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 import { normaliserInstrument } from '@/lib/instrument'
 import {
-  bornesJours, dansLesJours, ecartMinutes, filtrerParInstrument, instantPosition, nomCompteDePosition, regrouperCopies, trierParEcart,
-  type PositionImportee, type Portee,
+  bornesJours, dansLesJours, ecartMinutes, filtrerParInstrument, instantPosition, nomCompteDePosition, regrouperCopies, sensDePosition,
+  trierParEcart, trierParSens, type PositionImportee, type Portee,
 } from '@/lib/positions-jour'
+import { sensDuPrix } from '@/lib/prix-trade'
 import { delierTrade, demanderConnexion, fetchPositions, lierPositions, lierUnePosition, type ErreurLien } from '@/lib/pilotage-api'
 import { useComptesPilotage } from '@/lib/use-comptes-pilotage'
 import TradePrevuBroker, { nombreAffiche } from './TradePrevuBroker'
@@ -32,6 +33,8 @@ interface TradePrixPopoverProps {
   numero: number
   /** L'instrument lu dans la note (adresse du graphique, titre) ; null quand rien ne le dit. */
   instrumentNote: string | null
+  /** La capture automatique du lancement du trade (1.8.14, « Lire une capture »), s'il y en a une. */
+  captureLancement?: string | null
   onSave: (prix: TradePrix | undefined) => void
   /** undefined : revenir à l'instrument lu dans la note ; '' : aucun filtre. */
   onSaveInstrument: (instrument: string | undefined) => void
@@ -66,7 +69,7 @@ const CLES_ERREUR: Record<ErreurLien, CleI18n> = {
   reseau: 'prix.erreurReseau',
 }
 
-function TradePrixPopover({ position, trade, numero, instrumentNote, onSave, onSaveInstrument, onClose }: TradePrixPopoverProps) {
+function TradePrixPopover({ position, trade, numero, instrumentNote, captureLancement = null, onSave, onSaveInstrument, onClose }: TradePrixPopoverProps) {
   const etatComptes = useComptesPilotage()
   const comptes = etatComptes.etat === 'pret' ? etatComptes.comptes : []
   const [portee, setPortee] = useState<Portee>(0)
@@ -125,7 +128,9 @@ function TradePrixPopover({ position, trade, numero, instrumentNote, onSave, onS
   const lies = (positions ?? []).filter(p => p.segmentRef === trade.id)
   const libres = (positions ?? []).filter(p => !p.segmentRef && (portee === 'tout' || dansLesJours(p, trade.startedAt, portee)))
   const { gardees, masques } = filtrerParInstrument(libres, instrument)
-  const groupesTries = trierParEcart(regrouperCopies(gardees), trade.startedAt)
+  // 1.8.14 : le sens du trade (choisi dans la carte, sinon déduit du stop) passe devant ; rien n'est masqué.
+  const sensTrade = sensDuPrix(trade.prix)?.sens ?? null
+  const groupesTries = trierParSens(trierParEcart(regrouperCopies(gardees), trade.startedAt), sensTrade)
   const groupes = portee === 0 ? groupesTries : groupesTries.slice(0, GROUPES_ELARGIS)
   // Ouvert par défaut, sauf quand des trades du broker attendent d'être liés (la liste passe devant).
   const ouvertMaPosition = maPosition ?? !(etatBroker === 'pret' && lies.length === 0 && groupes.length > 0)
@@ -216,13 +221,15 @@ function TradePrixPopover({ position, trade, numero, instrumentNote, onSave, onS
       : Math.abs(ecart) < 24 * 60 ? t('prix.ecartHeures', { ecart: `${signe}${Math.round(ecart / 60)}` })
       : ''
     const compteSeul = g.length === 1 ? nomCompte(p) : null
+    const sensPosition = sensDePosition(p)
+    const autreSens = sensTrade !== null && sensPosition !== null && sensPosition !== sensTrade ? t('prix.autreSens') : null
     const ouvert = copiesOuvertes === cle
     return (
       <li key={cle} className="rounded-lg border border-border">
         <div className="flex items-center gap-2 px-2 py-1">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-foreground truncate" title={decrirePosition(p)}>{decrirePosition(p)}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{[quand, ecartTexte, compteSeul].filter(Boolean).join(' · ')}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{[quand, ecartTexte, compteSeul, autreSens].filter(Boolean).join(' · ')}</p>
           </div>
           <button
             onClick={() => void lierGroupe(g)}
@@ -379,6 +386,8 @@ function TradePrixPopover({ position, trade, numero, instrumentNote, onSave, onS
         ouvert={ouvertMaPosition}
         onToggle={() => setMaPosition(!ouvertMaPosition)}
         onSave={prix => { onSave(prix); onClose() }}
+        instrument={instrument}
+        captureLancement={captureLancement}
       />
 
       <div className="border-t border-border pt-2 space-y-1.5">

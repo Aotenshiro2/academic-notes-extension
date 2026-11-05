@@ -4,6 +4,7 @@ import { JOURNAL_API } from './sync'
 import type { CompteConnu, ListeComptesPilotage } from './pilotage-comptes'
 import { normaliseLecture, normaliseQuota, type Lecture, type Quota, type TradeNormalise } from './documents-lecture'
 import type { PositionImportee } from './positions-jour'
+import { normaliseLectureOrdre, type LectureOrdre } from './prix-trade'
 
 // Les trades du broker, vus du Carnet (1.8.12, élargi en 1.8.13).
 //
@@ -153,6 +154,37 @@ export async function lireDocument(demande: { nom: string; type: string; data: s
     : r.status === 429 ? 'epuisees'
     : r.status === 413 ? 'trop-lourd'
     : r.status === 503 ? 'indisponible'
+    : 'refus'
+  return { ok: false, erreur, message: messageDe(r), quota }
+}
+
+// ── « Lire une capture » du ticket d'ordre (1.8.14) ─────────────────────────
+
+/** ok : `lecture` ; sinon `erreur` et le message du journal. `quota` dans les deux cas quand il est rendu. */
+export type ResultatLectureOrdre = {
+  ok: boolean
+  lecture?: LectureOrdre
+  quota: Quota | null
+  erreur?: 'non-connecte' | 'epuisees' | 'trop-lourd' | 'indisponible' | 'refus' | 'reseau'
+  message?: string | null
+}
+
+/**
+ * Une capture du panneau d'ordre (ou de l'outil Position de TradingView) lue
+ * par le journal : `POST /api/carnet/lire-ordre` { image: data URL }. Même
+ * moteur et même compteur que les documents de Pilotage (une lecture du
+ * palier) ; 429 quand le quota est épuisé, 413 quand la capture est trop
+ * lourde. Rien n'est écrit : la carte se remplit, le membre enregistre.
+ */
+export async function lireOrdre(image: string): Promise<ResultatLectureOrdre> {
+  const r = await appeler('POST', '/api/carnet/lire-ordre', { image })
+  if (!r || r.status === 401) return { ok: false, erreur: 'non-connecte', message: null, quota: null }
+  const quota = normaliseQuota(r.data.quota)
+  if (r.status >= 200 && r.status < 300) return { ok: true, lecture: normaliseLectureOrdre(r.data.lecture), quota }
+  const erreur = r.status === 0 ? 'reseau'
+    : r.status === 429 ? 'epuisees'
+    : r.status === 413 ? 'trop-lourd'
+    : r.status === 503 || r.status === 404 ? 'indisponible'
     : 'refus'
   return { ok: false, erreur, message: messageDe(r), quota }
 }

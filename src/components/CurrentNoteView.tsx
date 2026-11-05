@@ -21,6 +21,7 @@ import { suggererTagsNote } from '@/lib/capture-ia'
 import { collectNoteImages } from '@/lib/note-images'
 import { instrumentDuTrade } from '@/lib/instrument'
 import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
+import { rDuPrix } from '@/lib/prix-trade'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -465,8 +466,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   }, [selection, groupementEnCours, noteId, onNoteUpdate])
 
   // Le R : virgule ou point acceptés, vide = effacer, bornes larges (±100)
-  const handleSaveTradeR = useCallback(async (tradeId: string) => {
-    const brut = rDraft.trim().replace(',', '.')
+  const handleSaveTradeR = useCallback(async (tradeId: string, accepte?: string) => {
+    // `accepte` : le R calculé depuis la carte de prix, gardé par Entrée sur un champ vide (1.8.14).
+    const brut = (accepte ?? rDraft).trim().replace(',', '.')
     const valeur = brut === '' ? undefined : Number(brut)
     if (valeur === undefined || (Number.isFinite(valeur) && Math.abs(valeur) <= 100)) {
       await storage.setTradeR(noteId, tradeId, valeur)
@@ -907,21 +909,35 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                       </button>
                       {/* Le R : la donnée qui rend le mentor chiffré (espérance,
                           coût des B). Optionnel — une pastille discrète. */}
-                      {editingRTradeId === trade.id ? (
-                        <input
-                          autoFocus
-                          value={rDraft}
-                          onChange={e => setRDraft(e.target.value)}
-                          onBlur={() => handleSaveTradeR(trade.id)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') { e.preventDefault(); handleSaveTradeR(trade.id) }
-                            if (e.key === 'Escape') setEditingRTradeId(null)
-                          }}
-                          placeholder={t('trade.rPlaceholder')}
-                          className="w-12 px-1 py-0 text-[10px] text-center bg-muted/40 border border-border rounded-full focus:outline-none focus:border-primary/50"
-                          aria-label={t('trade.rDuTrade', { n })}
-                        />
-                      ) : (
+                      {editingRTradeId === trade.id ? (() => {
+                        // 1.8.14 : le R que la carte de prix permet de calculer (sens CHOISI
+                        // d'abord, sinon déduit du stop) est proposé ; Entrée sur un champ
+                        // vide le garde, rien n'est enregistré sans ce geste.
+                        const rCalcule = trade.r === undefined ? rDuPrix(trade.prix) : null
+                        const texteCalcule = rCalcule !== null ? `${rCalcule > 0 ? '+' : ''}${ecrireR(rCalcule)}` : null
+                        return (
+                          <input
+                            autoFocus
+                            value={rDraft}
+                            onChange={e => setRDraft(e.target.value)}
+                            onBlur={() => handleSaveTradeR(trade.id)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                const accepte = !rDraft.trim() && texteCalcule ? texteCalcule : undefined
+                                // Le brouillon suit : un blur qui arriverait après garde la même valeur.
+                                if (accepte) setRDraft(accepte)
+                                handleSaveTradeR(trade.id, accepte)
+                              }
+                              if (e.key === 'Escape') setEditingRTradeId(null)
+                            }}
+                            placeholder={texteCalcule ? `= ${texteCalcule}` : t('trade.rPlaceholder')}
+                            title={texteCalcule ? t('trade.rCalcule', { r: texteCalcule }) : undefined}
+                            className="w-12 px-1 py-0 text-[10px] text-center bg-muted/40 border border-border rounded-full focus:outline-none focus:border-primary/50"
+                            aria-label={t('trade.rDuTrade', { n })}
+                          />
+                        )
+                      })() : (
                         <button
                           onClick={() => {
                             setRDraft(trade.r !== undefined ? ecrireR(trade.r) : '')
@@ -1143,12 +1159,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
           adresses: [...blocsDuTrade.map(m => m.metadata?.sourceUrl), note.url],
           titres: [...blocsDuTrade.map(m => m.metadata?.sourceTitle), note.title, note.metadata?.title],
         })
+        // « Lire une capture » (1.8.14) : la capture automatique du lancement, en un clic.
+        const captureLancement = blocsDuTrade.find(m => m.type === 'image' && m.auto === 'lancement' && m.content)?.content ?? null
         return (
           <TradePrixPopover
             position={prixPos}
             trade={trade}
             numero={(note.trades ?? []).findIndex(tr => tr.id === prixTradeId) + 1}
             instrumentNote={instrumentNote}
+            captureLancement={captureLancement}
             onSave={(prix) => handleSaveTradePrix(prixTradeId, prix)}
             onSaveInstrument={(instrument) => handleSaveTradeInstrument(prixTradeId, instrument)}
             onClose={() => setPrixTradeId(null)}

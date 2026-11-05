@@ -192,15 +192,27 @@ export interface TradeSegment {
   instrument?: string
 }
 
+/** Le sens d'un trade, CHOISI par le membre (1.8.14) : il prime sur le sens déduit du stop. */
+export type SensTrade = 'achat' | 'vente'
+/** Le type d'ordre d'entrée (1.8.14), comme les onglets du panneau d'ordre de TradingView. */
+export type TypeOrdre = 'marche' | 'limite' | 'stop'
+/** Le risque du trade (1.8.14) : en USD ou en % du compte. */
+export interface RisqueTrade { montant: number; unite: 'USD' | '%' }
+
 /** Le « prévu » du membre (1.8.12, stop, TP et partiels en 1.8.13). */
 export interface TradePrix {
   entree?: number
   sortie?: number
   taille?: number
+  /** Toujours un PRIX : saisi en ticks, il est converti avec le pas de cotation (1.8.14). */
   stop?: number
   tp?: number
   /** Clôtures partielles prévues, 10 au plus. */
   partiels?: { prix: number; taille?: number }[]
+  /** 1.8.14, tous facultatifs (les notes d'avant restent valables). */
+  sens?: SensTrade
+  typeOrdre?: TypeOrdre
+  risque?: RisqueTrade
 }
 
 // Cooldown par trade (Tendler) : le débrief court après chaque trade fermé —

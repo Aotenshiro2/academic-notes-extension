@@ -139,6 +139,22 @@ export function trierParEcart<P extends PositionImportee>(groupes: P[][], starte
   return [...groupes].sort((a, b) => Math.abs(instantPosition(a[0]) - startedAt) - Math.abs(instantPosition(b[0]) - startedAt))
 }
 
+/** Le sens d'une position du broker, dans les mots de la carte de prix ; null quand le fichier ne le dit pas. */
+export const sensDePosition = (p: Pick<PositionImportee, 'direction'>): 'achat' | 'vente' | null =>
+  p.direction === 'long' ? 'achat' : p.direction === 'short' ? 'vente' : null
+
+/**
+ * 1.8.14 : quand le trade a un sens (CHOISI dans la carte, sinon déduit du
+ * stop), les groupes de ce sens passent devant, puis ceux dont le sens n'est
+ * pas dit, puis l'autre sens. L'ordre d'écart est gardé dans chaque part ;
+ * rien n'est masqué (un sens mal choisi ne cache pas le bon trade).
+ */
+export function trierParSens<P extends PositionImportee>(groupes: P[][], sens: 'achat' | 'vente' | null | undefined): P[][] {
+  if (!sens) return groupes
+  const rang = (g: P[]) => { const s = sensDePosition(g[0]); return s === sens ? 0 : s === null ? 1 : 2 }
+  return groupes.map((g, i) => ({ g, i, r: rang(g) })).sort((a, b) => a.r - b.r || a.i - b.i).map(x => x.g)
+}
+
 /** Écart en minutes entre l'entrée de la position et le début du trade (signé). */
 export const ecartMinutes = (p: PositionDatee, startedAt: number) => Math.round((instantPosition(p) - startedAt) / 60e3)
 

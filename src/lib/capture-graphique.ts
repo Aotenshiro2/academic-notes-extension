@@ -15,6 +15,13 @@ export type MomentCapture = 'lancement' | 'cloture'
 /** Une capture par fenêtre, 3 au plus (plusieurs écrans, plusieurs unités de temps). */
 export const CAPTURES_MAX = 3
 
+/**
+ * La réduction des captures : 1 600 px de large au plus, JPEG 0,75. Le poids
+ * synchronisé vers le journal reste modeste ; « Lire une capture » (1.8.14)
+ * réduit de la même façon une capture lourde avant de l'envoyer à l'IA.
+ */
+export const REDUCTION_CAPTURE = { largeur: 1600, qualite: 0.75 } as const
+
 /** Ce que le panneau sait d'un onglet actif de TradingView. */
 export interface OngletVu {
   tabId: number
