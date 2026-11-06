@@ -37,6 +37,8 @@ import TabPicker from '@/components/TabPicker'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
+import OutilsNoteRangee from '@/components/OutilsNoteRangee'
+import { fetchAccesCaptureIA } from '@/lib/sync'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
 import { poserBlocsDeCapture } from '@/lib/capture-blocs'
@@ -98,6 +100,19 @@ function FullscreenApp() {
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
   // Note complète chargée seulement le temps de l'analyse, puis relâchée
   const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
+
+  // Droit à l'étude (« Approfondir »), pour l'affichage seulement : aura ou
+  // cadenas. Une seule question au serveur, à l'ouverture de la vue, comme le
+  // panneau latéral à la connexion ; le serveur re-vérifie à chaque étude.
+  const [etudeOuverte, setEtudeOuverte] = useState(false)
+  const accesDemandeRef = useRef(false)
+  useEffect(() => {
+    if (!settings || accesDemandeRef.current) return
+    accesDemandeRef.current = true
+    fetchAccesCaptureIA(settings.modeleEtude ?? null)
+      .then(({ acces }) => setEtudeOuverte(Boolean(acces?.etude)))
+      .catch(() => { /* hors ligne ou déconnecté : cadenas, le serveur tranchera */ })
+  }, [settings])
 
   // Tab Picker (pour capturer depuis un autre onglet en fullscreen)
   const [tabPickerConfig, setTabPickerConfig] = useState<{
@@ -965,6 +980,16 @@ function FullscreenApp() {
 
         {/* Hub de capture */}
         <div className="border-t border-border bg-background px-6 py-3">
+          {/* La rangée d'outils de la note, la même que dans le panneau (1.8.15) */}
+          {currentNote && (
+            <OutilsNoteRangee
+              noteId={currentNote.id}
+              etudeOuverte={etudeOuverte}
+              modeleEtude={settings?.modeleEtude ?? null}
+              onChange={async () => { await loadData(); setNoteRefreshTrigger(Date.now()) }}
+              className="w-full max-w-4xl mx-auto pb-2"
+            />
+          )}
           <CaptureInput
             ref={editorRef}
             value={editorContent}

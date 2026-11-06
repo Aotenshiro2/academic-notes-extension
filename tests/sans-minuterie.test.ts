@@ -34,8 +34,16 @@ const FICHIERS_1814 = [
   'src/components/DiagnosticView.tsx',
 ]
 
-test('aucune minuterie périodique dans le code de la 1.8.13 et de la 1.8.14', () => {
-  for (const chemin of [...FICHIERS_1813, ...FICHIERS_1814]) {
+// 1.8.15 : la rangée d'outils de la note, partagée par le panneau et le plein
+// écran. Tout part d'un clic ; l'accès à l'étude est demandé une fois, à l'ouverture.
+const FICHIERS_1815 = [
+  'src/lib/outils-note.ts',
+  'src/components/OutilsNoteRangee.tsx',
+  'src/fullscreen/FullscreenApp.tsx',
+]
+
+test('aucune minuterie périodique dans le code de la 1.8.13, de la 1.8.14 et de la 1.8.15', () => {
+  for (const chemin of [...FICHIERS_1813, ...FICHIERS_1814, ...FICHIERS_1815]) {
     const source = readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8')
     assert.doesNotMatch(source, /\bsetInterval\s*\(/, `${chemin} relance une minuterie`)
   }

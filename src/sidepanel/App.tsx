@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Loader2,
   User,
-  Sunrise,
   GraduationCap,
   LifeBuoy,
   BookOpen,
@@ -17,11 +16,9 @@ import {
   Compass,
   Globe,
   FileUp,
-  Sparkles,
-  Lock,
   Stethoscope
 } from 'lucide-react'
-import DolBar from '@/components/DolBar'
+import OutilsNoteRangee from '@/components/OutilsNoteRangee'
 import DiagnosticView from '@/components/DiagnosticView'
 import ImportTradesDialog from '@/components/ImportTradesDialog'
 import MentoratView from '@/components/MentoratView'
@@ -43,7 +40,7 @@ import AccountView from '@/components/AccountView'
 import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { restoredFromBackup } from '@/lib/storage'
-import { enrichirCapture, etudierNote } from '@/lib/capture-ia'
+import { enrichirCapture } from '@/lib/capture-ia'
 import { poserBlocsDeCapture } from '@/lib/capture-blocs'
 import { fetchAccesCaptureIA } from '@/lib/sync'
 import { obtenirNoteMentorat, desepinglerSiPlusDeMentorat } from '@/lib/note-mentorat'
@@ -59,7 +56,7 @@ import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
 import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
-import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot, DolLevel } from '@/types/academic'
+import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
 
 function App() {
   // Suppression du système de vue par tabs
@@ -135,7 +132,6 @@ function App() {
   // client bidouillé ne contourne rien.
   const [captureIaActive, setCaptureIaActive] = useState(false)
   const [etudeOuverte, setEtudeOuverte] = useState(false)
-  const [etudeEnCours, setEtudeEnCours] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
@@ -448,52 +444,6 @@ function App() {
     // depuis l'écran mentorat ne faisait rien de visible (retour Brice 02/09)
     closeAllViews()
     setCurrentNoteId(null)
-  }
-
-  // « Poser un DOL » depuis la rangée dockée au-dessus de la barre d'envoi :
-  // ajoute le niveau à la note ouverte puis force son rechargement
-  const handleAddDolFromBar = async (dol: Omit<DolLevel, 'id' | 'createdAt' | 'status'>) => {
-    if (!currentNoteId) return
-    const fresh = await storage.getNote(currentNoteId)
-    if (!fresh) return
-    const entry: DolLevel = { ...dol, id: crypto.randomUUID(), status: 'actif', createdAt: Date.now() }
-    await storage.saveNote({ ...fresh, dols: [...(fresh.dols ?? []), entry] })
-    setNoteRefreshTrigger(Date.now())
-    await loadData()
-  }
-
-  // Bouton rituel du header : lance un warmup. Depuis l'accueil (aucune note ouverte),
-  // il crée une note de séance à la volée et y pose le warmup ; dans une note, il ajoute
-  // simplement un warmup au fil. Remplace l'ancien écran RitualView (sans vraie UX).
-  const handleRitualWarmup = async () => {
-    const warmupEntry = { id: crypto.randomUUID(), startedAt: Date.now(), doneAt: Date.now() }
-    if (!currentNoteId) {
-      const newNoteId = Date.now().toString()
-      const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-      const newNote: AcademicNote = {
-        id: newNoteId,
-        title: `Séance du ${today}`,
-        content: '',
-        url: '',
-        timestamp: Date.now(),
-        type: 'manual',
-        tags: [],
-        concepts: [],
-        screenshots: [],
-        warmups: [warmupEntry],
-        metadata: { domain: '', title: `Séance du ${today}`, language: 'fr' },
-      }
-      await storage.saveNote(newNote)
-      setCurrentNoteId(newNoteId)
-    } else {
-      // Note ouverte : relire la version fraîche pour ne rien écraser, puis ajouter
-      const fresh = await storage.getNote(currentNoteId)
-      if (fresh) {
-        await storage.saveNote({ ...fresh, warmups: [...(fresh.warmups ?? []), warmupEntry] })
-      }
-    }
-    await loadData()
-    setNoteRefreshTrigger(Date.now())
   }
 
   // ---- Trades ----
@@ -902,80 +852,6 @@ function App() {
     setShowAnalyzeDialog(true)
   }
 
-  // 2e temps de la capture (1.8.0) : l'étude. Relit la note dans le cadre de
-  // l'académie et écrit la lecture DANS la note, contrairement à « Analyser »
-  // qui envoie la note vers l'IA personnelle de l'élève et laisse la réponse
-  // là-bas. Les deux gardent leur raison d'être.
-  //
-  // Volontairement déclenchée à la main : la lecture n'est voulue qu'une fois
-  // sur cinq, et elle vaut le plus au moment de la relecture, deux semaines
-  // après la capture, pas dans la seconde qui suit.
-  const handleEtudierNote = async () => {
-    if (!currentNoteId || etudeEnCours) return
-    const full = await storage.getNote(currentNoteId)
-    if (!full) return
-
-    setEtudeEnCours(true)
-    try {
-      // On relit le contenu BRUT de la note, pas un résumé : au banc, la
-      // meilleure trouvaille venait de la lecture du tableau brut.
-      const image = full.messages?.find(m => m.type === 'image')?.content ?? null
-      const { sortie, refus, message } = await etudierNote(
-        {
-          url: full.url,
-          pageTitle: full.title,
-          content: full.content || full.messages?.filter(m => m.type === 'text').map(m => m.content).join('\n') || '',
-          summary: full.summary,
-          keyPoints: full.keyPoints,
-          concepts: full.concepts,
-          tags: full.tags,
-        },
-        image,
-        currentNoteId,
-        settings.modeleEtude ?? null
-      )
-
-      if (refus === 'reservee') {
-        toast.info(message || t('note.approfondirRefus'))
-        setShowMentorat(true)
-        return
-      }
-      if (refus || !sortie) {
-        toast.error(message || t('note.etudeIndisponible'))
-        return
-      }
-
-      let bloc = '<hr><p><strong>Étude de la note</strong></p>'
-      if (sortie.resume) bloc += `<p><em>${sortie.resume}</em></p>`
-      if (sortie.pointsCles?.length) {
-        bloc += '<p><strong>Ce qu’il faut en retenir :</strong></p><ul>'
-        sortie.pointsCles.forEach(p => { bloc += `<li>${p}</li>` })
-        bloc += '</ul>'
-      }
-      if (sortie.pourToi) bloc += `<p><strong>Pour toi :</strong> ${sortie.pourToi}</p>`
-      await storage.addMessageToNote(currentNoteId, { type: 'text', content: bloc })
-
-      // Les concepts et tags trouvés par l'étude enrichissent la note sans
-      // écraser ce que l'élève a posé à la main.
-      if (sortie.concepts?.length || sortie.tags?.length) {
-        await storage.saveNote({
-          ...full,
-          concepts: [...new Set([...(full.concepts ?? []), ...(sortie.concepts ?? [])])].slice(0, 12),
-          tags: [...new Set([...(full.tags ?? []), ...(sortie.tags ?? [])])].slice(0, 10),
-        })
-      }
-
-      await loadData()
-      setNoteRefreshTrigger(Date.now())
-      toast.success(t('note.etudeAjoutee'))
-    } catch (e) {
-      console.error('[etude]', e)
-      toast.error(t('note.etudeIndisponible'))
-    } finally {
-      setEtudeEnCours(false)
-    }
-  }
-
   return (
     <div className="sidebar-container">
       <Header
@@ -1197,58 +1073,14 @@ function App() {
         {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
             flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
         {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && !showAiConfig && !showPlans && !showTools && !showDiagnostic && (
-          <div className="bg-background px-4 pt-1.5 flex flex-wrap items-center gap-1">
-            <DolBar
-              dols={[]}
-              onAdd={handleAddDolFromBar}
-              onCycleStatus={() => {}}
-              onDelete={() => {}}
-            />
-            <button
-              onClick={handleRitualWarmup}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 [@media(max-width:400px)]:px-1.5 [@media(max-width:400px)]:gap-1 rounded-md text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-              title={t('panneau.warmupAide')}
-            >
-              <Sunrise size={13} className="flex-shrink-0" />
-              {t('capture.warmup')}
-            </button>
-            {/* « Approfondir » (1.8.0, descendu ici en 1.8.13). Il était en tête
-                de note ; Brice, le 05/11 : on approfondit plusieurs fois, à des
-                moments différents de l'écriture, il a sa place en bas, avec
-                les autres gestes de la séance, l'action d'étude en dernier.
-                Libellé court pour tenir sur la ligne à 360 px ; le texte
-                complet et l'aide sont dans le title. Même à 11 px, les trois
-                débordaient à 360 px : à 400 px et moins, les trois lanceurs
-                resserrent leurs marges (px-1.5, gap-1). Verrouillé, il reste
-                visible (voir la fonction convertit mieux qu'un bouton absent) :
-                le clic passe quand même, le serveur refuse et ouvre
-                l'explication du forfait (handleEtudierNote). */}
-            <button
-              onClick={() => { if (!etudeEnCours) void handleEtudierNote() }}
-              disabled={etudeEnCours}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 [@media(max-width:400px)]:px-1.5 [@media(max-width:400px)]:gap-1 rounded-md text-[11px] font-medium transition-colors ${
-                etudeEnCours
-                  ? 'text-muted-foreground cursor-wait'
-                  : etudeOuverte
-                    ? 'aura-ia aura-ia-discrete text-foreground/80 hover:text-foreground hover:bg-muted'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-              title={etudeEnCours
-                ? t('note.approfondirEnCours')
-                : etudeOuverte
-                  ? `${t('note.approfondir')}\n${t('note.approfondirAide')}`
-                  : `${t('note.approfondirVerrouille')}\n${t('note.approfondirRefus')}`}
-              aria-label={etudeOuverte || etudeEnCours ? t('note.approfondir') : t('note.approfondirVerrouille')}
-              aria-busy={etudeEnCours}
-            >
-              {etudeEnCours
-                ? <Loader2 size={13} className="animate-spin flex-shrink-0" />
-                : etudeOuverte
-                  ? <Sparkles size={13} className="flex-shrink-0" />
-                  : <Lock size={13} className="flex-shrink-0" />}
-              {t('note.approfondirCourt')}
-            </button>
-          </div>
+          <OutilsNoteRangee
+            noteId={currentNoteId}
+            etudeOuverte={etudeOuverte}
+            modeleEtude={settings?.modeleEtude ?? null}
+            onChange={async () => { await loadData(); setNoteRefreshTrigger(Date.now()) }}
+            onEtudeReservee={() => { closeAllViews(); setShowMentorat(true) }}
+            className="bg-background px-4 pt-1.5"
+          />
         )}
 
         {/* Hub de capture — masqué dans l'écran support : il a sa propre
