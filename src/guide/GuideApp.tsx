@@ -112,9 +112,12 @@ const CONFIDENTIALITE: CleI18n[] = [
 const CHANGELOG = [
   {
     version: '1.8.15',
-    title: 'Les outils de la note aussi en plein écran',
+    title: 'Le plein écran fait tout ce que fait le panneau pendant ta séance',
     items: [
       'En plein écran, la rangée « Poser un DOL », « Lancer un warmup » et « Approfondir » est maintenant juste au-dessus de la barre d\'écriture, comme dans le panneau. Mêmes gestes, même comportement : sans le Carnet Premium, « Approfondir » garde son cadenas et te dit pourquoi.',
+      'En plein écran, tu peux lancer un trade depuis la barre d\'écriture, comme dans le panneau. Le graphique TradingView est capturé au lancement s\'il est affiché dans une autre fenêtre, et changer de note clôt le trade en cours.',
+      'Le plein écran prend le thème du panneau (clair, sombre ou celui de ton appareil) et le suit si tu le changes. La « Capture intelligente » y garde aussi son aura quand l\'IA est ouverte sur ton compte.',
+      'En plein écran, « Me connecter » (dans la carte de prix d\'un trade ou l\'import de tes trades) ouvre le panneau à côté, directement sur ton compte. Et si l\'export en PDF ou en Word échoue, un message te le dit.',
       'Correction : quand l\'étude d\'« Approfondir » ajoutait des concepts ou des tags à la note, son bloc « Étude de la note » pouvait disparaître aussitôt écrit. Il reste maintenant dans la note.',
     ],
   },
