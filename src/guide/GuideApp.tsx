@@ -111,6 +111,14 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.15',
+    title: 'Les outils de la note aussi en plein écran',
+    items: [
+      'En plein écran, la rangée « Poser un DOL », « Lancer un warmup » et « Approfondir » est maintenant juste au-dessus de la barre d\'écriture, comme dans le panneau. Mêmes gestes, même comportement : sans le Carnet Premium, « Approfondir » garde son cadenas et te dit pourquoi.',
+      'Correction : quand l\'étude d\'« Approfondir » ajoutait des concepts ou des tags à la note, son bloc « Étude de la note » pouvait disparaître aussitôt écrit. Il reste maintenant dans la note.',
+    ],
+  },
+  {
     version: '1.8.14',
     title: 'Ta carte de prix lit ton panneau d\'ordre, un diagnostic à nous envoyer, un affichage de secours',
     items: [
