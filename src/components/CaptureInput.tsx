@@ -35,6 +35,11 @@ interface CaptureInputProps {
     url: string
     title: string
   }
+  /** La page de la capture d'écran, lue APRÈS la capture (1.8.15) : le plein
+   *  écran choisit l'onglet dans son sélecteur pendant `onInsertScreenshot`,
+   *  et la ligne sous l'image doit nommer cet onglet, pas le plein écran.
+   *  Absent ou vide : `currentPageInfo`. */
+  pageCapturee?: () => { url: string; title: string } | null
 }
 
 const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function CaptureInput({
@@ -51,6 +56,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
   onStartTrade,
   hasActiveTrade = false,
   currentPageInfo,
+  pageCapturee,
   className = ''
 }, ref) {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -350,8 +356,9 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
           const processedDataUrl = await prepareImageForStorage(screenshotDataUrl)
 
           const currentDate = new Date().toLocaleString('fr-FR')
-          const pageUrl = currentPageInfo?.url || 'Page inconnue'
-          const pageTitle = currentPageInfo?.title || 'Titre inconnu'
+          const page = pageCapturee?.() ?? currentPageInfo
+          const pageUrl = page?.url || 'Page inconnue'
+          const pageTitle = page?.title || 'Titre inconnu'
 
           // Note ouverte → blocs image+meta directement dans la note, éditeur intact
           if (onScreenshotToNote && await onScreenshotToNote(processedDataUrl, `📅 ${currentDate} • 🌐 ${pageTitle} (${pageUrl})`)) {
@@ -398,7 +405,7 @@ const CaptureInput = forwardRef<CaptureInputHandle, CaptureInputProps>(function 
         setIsCapturingScreenshot(false)
       }
     }
-  }, [onInsertScreenshot, currentPageInfo, handleInput, insertImageAtCursor])
+  }, [onInsertScreenshot, onScreenshotToNote, pageCapturee, currentPageInfo, handleInput, insertImageAtCursor])
 
   // Paste images
   const handlePaste = useCallback(async (event: React.ClipboardEvent) => {

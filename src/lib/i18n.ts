@@ -558,9 +558,6 @@ const FR = {
   'pleinEcran.ouvrirJournal': "Ouvrir Journal d'Études",
   'pleinEcran.retourCompact': 'Retour au mode compact',
   'pleinEcran.modeCompact': 'Mode compact',
-  'pleinEcran.connexionDansPanneau': 'Pour te connecter, ouvre le panneau du Carnet : Mode compact, puis Compte.',
-  'pleinEcran.bienvenue': 'Bienvenue dans Le Carnet du Trader',
-  'pleinEcran.bienvenueSous': 'Sélectionnez une note dans la sidebar ou écrivez dans la zone ci-dessous.',
 
   // Choix d'un onglet (TabPicker, utilisé par le plein écran)
   'onglets.titre': 'Choisir un onglet',
@@ -645,6 +642,7 @@ const FR = {
   'guide.confidentialite7': "Ton adresse email sert à ton compte et à vérifier ton forfait. L'extension n'embarque aucun outil de mesure d'audience ni aucun traceur publicitaire, et tes données ne sont pas revendues.",
   'guide.confidentialite8': "« Envoyer un diagnostic », dans le menu de la roue, ne part qu'à ton clic : la version du Carnet, ton navigateur, ta carte graphique, ton écran, ton email, les dernières erreurs et le déroulé du dernier envoi vers une IA. Rien de tes notes, et tu vois avant d'envoyer exactement ce qui part.",
   'guide.confidentialite9': "« Lire une capture », dans la carte de prix d'un trade, ne part qu'à ton geste : la capture que tu choisis passe par nos serveurs, qui l'envoient à Claude (Anthropic) pour en lire les champs de l'ordre. Elle n'est pas gardée, et rien n'est enregistré dans ta carte avant que tu cliques sur Enregistrer.",
+  'guide.confidentialite10': "« Il me manque quelque chose » (dans « Aide et idées » ou le menu de la roue) envoie à l'équipe, avec ton compte, ce que tu écris et la capture si tu en joins une. Quand le Carnet bute (une capture impossible, une synchronisation ou un export qui échoue), il nous envoie aussi un signal, une fois, et seulement si tu es connecté : le type d'incident et un détail court (la plateforme si elle est connue, sinon « autre », le code de l'erreur, le format de l'export). Jamais le contenu de tes notes, jamais un texte libre, jamais l'adresse d'une page.",
 
   // Bascule de thème (ThemeToggle : panneau et guide)
   'theme.clair': 'Clair',
@@ -1621,9 +1619,6 @@ const EN: Partial<Record<CleI18n, string>> = {
   'pleinEcran.ouvrirJournal': 'Open Study Journal',
   'pleinEcran.retourCompact': 'Back to compact mode',
   'pleinEcran.modeCompact': 'Compact mode',
-  'pleinEcran.connexionDansPanneau': 'To sign in, open the Carnet panel: Compact mode, then Account.',
-  'pleinEcran.bienvenue': 'Welcome to Le Carnet du Trader',
-  'pleinEcran.bienvenueSous': 'Pick a note in the sidebar, or write in the box below.',
 
   'onglets.titre': 'Choose a tab',
   'onglets.description': 'Select the tab to capture',
@@ -1702,6 +1697,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'guide.confidentialite7': 'Your email address is used for your account and to check your plan. The extension includes no audience-measurement tool and no advertising tracker, and your data is not resold.',
   'guide.confidentialite8': '"Send a diagnostic", in the wheel menu, only leaves when you click: the Carnet version, your browser, your graphics card, your screen, your email, the latest errors and how the last send to an AI went. Nothing from your notes, and before sending you see exactly what leaves.',
   'guide.confidentialite9': '"Read a screenshot", in the price card of a trade, only leaves on your gesture: the screenshot you pick goes through our servers, which send it to Claude (Anthropic) to read the order fields. It is not kept, and nothing is saved in your card before you click Save.',
+  'guide.confidentialite10': '"Something is missing" (in "Help & ideas" or the wheel menu) sends the team, with your account, what you write and the screenshot if you attach one. When the Carnet hits a wall (a capture that fails, a sync or an export that fails), it also sends us a signal, once, and only if you are signed in: the kind of incident and a short detail (the platform if it is a known one, otherwise "other", the error code, the export format). Never the content of your notes, never free text, never the address of a page.',
 
   'theme.clair': 'Light',
   'theme.sombre': 'Dark',

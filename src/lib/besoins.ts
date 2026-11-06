@@ -16,7 +16,7 @@ import {
   type BesoinPrevu,
 } from './besoins-pur'
 import {
-  envoyerSignal, lireLivres, type BesoinLivre, type CleSignal, type IssueSignal,
+  envoyerSignal, lireLivres, plateformeDe, type BesoinLivre, type CleSignal, type IssueSignal,
 } from './besoins-decouverte'
 
 export type ReponsePrevus =
@@ -98,6 +98,22 @@ export async function signalerBesoin(texte: string, capture?: string, signal?: C
  */
 export function signalerFriction(cle: CleSignal, contexte?: Record<string, unknown>): Promise<IssueSignal> {
   return envoyerSignal(cle, contexte, { api: JOURNAL_API, jeton: () => getBearerToken().catch(() => null) })
+}
+
+/**
+ * La plateforme d'une capture ratée, dans la liste connue, sinon « autre » :
+ * l'adresse ne sort jamais d'ici. Le panneau lit l'onglet actif ; le plein
+ * écran donne l'onglet choisi dans le sélecteur (1.8.15).
+ */
+export async function plateformeOnglet(tabId?: number): Promise<string> {
+  try {
+    const onglet = tabId === undefined
+      ? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]
+      : await chrome.tabs.get(tabId)
+    return plateformeDe(onglet?.url)
+  } catch {
+    return 'autre'
+  }
 }
 
 /**

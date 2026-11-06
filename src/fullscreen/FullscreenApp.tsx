@@ -1,7 +1,6 @@
 import { toast } from '../lib/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import {
-  BookOpen,
   Plus,
   Search,
   Download,
@@ -38,13 +37,17 @@ import CurrentNoteView from '@/components/CurrentNoteView'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
 import OutilsNoteRangee from '@/components/OutilsNoteRangee'
-import { fetchAccesCaptureIA } from '@/lib/sync'
+import EcransCarnet from '@/components/EcransCarnet'
+import PiedCarnet from '@/components/PiedCarnet'
+import EmptyNoteView from '@/components/EmptyNoteView'
+import { useTravailDeFond } from '@/lib/use-travail-fond'
 import { useTradeNote } from '@/lib/use-trade-note'
-import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
-import { DEMANDE_OUVRIR_COMPTE, MESSAGE_OUVRIR_COMPTE } from '@/lib/ouvrir-compte'
+import { useEcransCarnet } from '@/lib/use-ecrans-carnet'
+import { useSessionCarnet, useAccesCompte } from '@/lib/use-session-carnet'
+import { plateformeOnglet } from '@/lib/besoins'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
-import { poserBlocsDeCapture } from '@/lib/capture-blocs'
+import { poserBlocsDeCapture, poserCaptureDansNote, enregistrerNoteDeLaPage } from '@/lib/capture-blocs'
 import { stateSync } from '@/lib/state-sync'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
@@ -104,23 +107,32 @@ function FullscreenApp() {
   // Note complète chargée seulement le temps de l'analyse, puis relâchée
   const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
 
-  // Droit à l'étude (« Approfondir »), pour l'affichage seulement : aura ou
-  // cadenas. Une seule question au serveur, à l'ouverture de la vue, comme le
-  // panneau latéral à la connexion ; le serveur re-vérifie à chaque étude.
-  const [etudeOuverte, setEtudeOuverte] = useState(false)
-  // Aura de « Capture intelligente » (1.8.15) : la capture IA est ouverte ET il reste du budget
-  const [captureIaActive, setCaptureIaActive] = useState(false)
-  const accesDemandeRef = useRef(false)
-  useEffect(() => {
-    if (!settings || accesDemandeRef.current) return
-    accesDemandeRef.current = true
-    fetchAccesCaptureIA(settings.modeleEtude ?? null)
-      .then(({ acces }) => {
-        setEtudeOuverte(Boolean(acces?.etude))
-        setCaptureIaActive(Boolean(acces?.capture && acces?.autorise))
-      })
-      .catch(() => { /* hors ligne ou déconnecté : cadenas, le serveur tranchera */ })
-  }, [settings])
+  // Les écrans (Compte, Paramètres, Mentorat, Support, « Mon forfait »...), le
+  // pied et le menu de la roue : les mêmes que dans le panneau (1.8.15). Un
+  // écran ouvert prend la place de la note, une seule vue à la fois.
+  const ecrans = useEcransCarnet()
+  const { connecte, email, relireSession } = useSessionCarnet()
+  const [isCapturing, setIsCapturing] = useState(false)
+
+  // Ouvrir une note referme l'écran en cours, comme dans le panneau.
+  const ouvrirNote = (id: string) => {
+    ecrans.fermer()
+    setCurrentNoteId(id)
+    void noterConsultation(id)
+  }
+
+  // Droit à l'étude (« Approfondir » : aura ou cadenas) et aura de « Capture
+  // intelligente », pour l'affichage seulement, comme dans le panneau : une
+  // question au serveur quand la session est lue ; le serveur re-vérifie à
+  // chaque appel.
+  const acces = useAccesCompte(connecte, settings?.modeleEtude)
+  const etudeOuverte = acces.etude
+  const captureIaActive = acces.captureIa
+
+  // Le travail de fond du panneau (rattrapage de la sync, compteurs d'activité,
+  // note « Mentorat AOK ») : un plein écran ouvert seul le fait aussi, mais une
+  // seule vue à la fois quand les deux sont ouvertes (1.8.15, lib/use-travail-fond).
+  useTravailDeFond({ connecte, acces, notes, notesChargees: !isLoading, recharger: loadData })
 
   // Le trade de la note (1.8.15), le même que dans le panneau : quitter la note
   // clôt son trade actif, « Lancer un trade » capture le graphique au lancement.
@@ -136,23 +148,8 @@ function FullscreenApp() {
     }, 100)
   }
 
-  // « Me connecter » (panneau d'un trade, « Lire une capture », boîte d'import).
-  // Le plein écran n'a pas d'écran Compte : il ouvre le panneau latéral à côté,
-  // sur son écran Compte. sidePanel.open exige le geste du clic : la fenêtre est
-  // connue d'avance, et l'appel part avant tout await.
-  const fenetreRef = useRef<number | null>(null)
-  useEffect(() => {
-    chrome.windows.getCurrent().then(f => { fenetreRef.current = f.id ?? null }).catch(() => {})
-    const ouvrirCompte = () => {
-      void chrome.storage.session.set({ [DEMANDE_OUVRIR_COMPTE]: true })
-      chrome.runtime.sendMessage({ type: MESSAGE_OUVRIR_COMPTE }).catch(() => { /* panneau fermé : il lira la demande */ })
-      const fenetre = fenetreRef.current
-      if (fenetre === null) { toast.info(t('pleinEcran.connexionDansPanneau')); return }
-      chrome.sidePanel.open({ windowId: fenetre }).catch(() => toast.info(t('pleinEcran.connexionDansPanneau')))
-    }
-    window.addEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
-    return () => window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
-  }, [])
+  // « Me connecter » (panneau d'un trade, « Lire une capture », boîte d'import)
+  // ouvre l'écran Compte ici même : useEcransCarnet écoute la demande.
 
   // Tab Picker (pour capturer depuis un autre onglet en fullscreen)
   const [tabPickerConfig, setTabPickerConfig] = useState<{
@@ -239,9 +236,11 @@ function FullscreenApp() {
     }
   }
 
+  // L'attente plein écran ne vaut qu'au premier chargement (isLoading part à
+  // true) : la reposer à chaque relecture démontait la note et l'écran ouvert
+  // (un écran Compte perdait le résultat de sa synchronisation).
   async function loadData() {
     try {
-      setIsLoading(true)
       const [loadedNotes, loadedSettings] = await Promise.all([
         storage.getNoteSummaries(1000),
         storage.getSettings()
@@ -249,6 +248,8 @@ function FullscreenApp() {
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
+      // Qui est connecté, pour le pied (relu au geste, comme dans le panneau)
+      relireSession()
 
       // Diagnostic mémoire : c'est ce chiffre qui dit si la correction tient
       const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
@@ -337,11 +338,18 @@ function FullscreenApp() {
     }
   }
 
-  // Capture d'écran — avec Tab Picker en fullscreen
+  // Capture d'écran — avec Tab Picker en fullscreen. La ligne sous l'image
+  // nomme l'onglet choisi, pas le plein écran (1.8.15) : la barre d'écriture
+  // la lit dans `pageCaptureeRef` une fois l'image prise.
+  const pageCaptureeRef = useRef<{ url: string; title: string } | null>(null)
   const handleScreenshot = async (): Promise<string | null> => {
+    pageCaptureeRef.current = null
     try {
       const targetTabId = await selectTab(t('capture.ecran'), t('pleinEcran.choisirCapture'))
       if (!targetTabId) return null
+
+      const onglet = await chrome.tabs.get(targetTabId).catch(() => null)
+      if (onglet) pageCaptureeRef.current = { url: onglet.url || '', title: onglet.title || 'Page sans titre' }
 
       const response = await chrome.runtime.sendMessage({
         type: 'CAPTURE_SCREENSHOT',
@@ -354,14 +362,53 @@ function FullscreenApp() {
     }
   }
 
+  // Note ouverte : la capture part DANS la note, image puis sa ligne, comme
+  // dans le panneau (1.8.15). Sans note : false, la barre d'écriture la garde.
+  const handleScreenshotToNote = async (dataUrl: string, metaText: string): Promise<boolean> => {
+    if (!currentNoteId) return false
+    await poserCaptureDansNote(currentNoteId, dataUrl, metaText)
+    await loadData()
+    setNoteRefreshTrigger(Date.now())
+    return true
+  }
+
+  // « Capturer cette page » (carte de l'accueil) : l'onglet se choisit dans le
+  // sélecteur, la note est la même que dans le panneau (lib/capture-page).
+  const handleCapturePage = async () => {
+    const targetTabId = await selectTab(t('accueil.capturerPage'), t('pleinEcran.choisirCapture'))
+    if (!targetTabId) return
+    setIsCapturing(true)
+    try {
+      const onglet = await chrome.tabs.get(targetTabId)
+      let capture: string | null = null
+      try {
+        const r = await chrome.runtime.sendMessage({ type: 'CAPTURE_SCREENSHOT', payload: { targetTabId } })
+        capture = r?.dataUrl || null
+      } catch (e) {
+        console.warn('Screenshot capture failed:', e)
+      }
+      const id = await enregistrerNoteDeLaPage(onglet, capture)
+      ouvrirNote(id)
+      await loadData()
+    } catch (error) {
+      console.error('Error capturing page:', error)
+      toast.error(t('panneau.erreurCapturePage'))
+      void plateformeOnglet(targetTabId).then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'page' }))
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
   // Capture intelligente — nouvelle note (avec Tab Picker en fullscreen)
   const handleSmartCapture = async () => {
     setSmartCaptureError(null)
+    let ongletCible: number | null = null
 
     try {
       // Sélectionner l'onglet cible via le Tab Picker
       const targetTabId = await selectTab(t('capture.intelligente'), t('pleinEcran.choisirAnalyse'))
       if (!targetTabId) return
+      ongletCible = targetTabId
 
       setIsSmartCapturing(true)
 
@@ -415,12 +462,16 @@ function FullscreenApp() {
       await storage.saveNote(newNote)
       // Même séquence que partout ailleurs : image, points clés, résumé, texte.
       await poserBlocsDeCapture(newNoteId, enrichi, result, screenshotDataUrl || null, { premiere: true })
-      setCurrentNoteId(newNoteId)
+      ouvrirNote(newNoteId)
       setEditorContent('')
       await loadData()
     } catch (error) {
       console.error('Smart capture error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
+      // Piste C, comme dans le panneau : la plateforme de l'onglet choisi (connue ou « autre »).
+      if (ongletCible !== null) {
+        void plateformeOnglet(ongletCible).then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
+      }
     } finally {
       setIsSmartCapturing(false)
     }
@@ -430,11 +481,13 @@ function FullscreenApp() {
   const handleSmartCaptureToCurrentNote = async () => {
     if (!currentNoteId) return
     setSmartCaptureError(null)
+    let ongletCible: number | null = null
 
     try {
       // Sélectionner l'onglet cible via le Tab Picker
       const targetTabId = await selectTab(t('capture.intelligente'), t('pleinEcran.choisirAnalyse'))
       if (!targetTabId) return
+      ongletCible = targetTabId
 
       setIsSmartCapturing(true)
 
@@ -479,6 +532,9 @@ function FullscreenApp() {
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
+      if (ongletCible !== null) {
+        void plateformeOnglet(ongletCible).then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
+      }
     } finally {
       setIsSmartCapturing(false)
     }
@@ -618,6 +674,7 @@ function FullscreenApp() {
     } catch (error) {
       console.error('Error exporting PDF:', error)
       toast.error(t('panneau.erreurPdf'))
+      ecrans.frictionIci('carnet.export_echec', { format: 'pdf' })
     } finally {
       setIsExporting(false)
     }
@@ -632,6 +689,7 @@ function FullscreenApp() {
     } catch (error) {
       console.error('Error exporting DOCX:', error)
       toast.error(t('panneau.erreurDocs'))
+      ecrans.frictionIci('carnet.export_echec', { format: 'docx' })
     } finally {
       setIsExporting(false)
     }
@@ -646,6 +704,7 @@ function FullscreenApp() {
     } catch (error) {
       console.error('Error exporting to Drive:', error)
       toast.error(t('pleinEcran.erreurDrive', { erreur: error instanceof Error ? error.message : t('pleinEcran.erreurInconnue') }))
+      ecrans.frictionIci('carnet.export_echec', { format: 'drive' })
     } finally {
       setIsExporting(false)
     }
@@ -765,7 +824,7 @@ function FullscreenApp() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
             <button
-              onClick={() => setCurrentNoteId(null)}
+              onClick={() => { ecrans.fermer(); setCurrentNoteId(null) }}
               className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border mb-2"
             >
               <Plus size={16} className="text-muted-foreground" />
@@ -775,7 +834,7 @@ function FullscreenApp() {
             {filteredNotes.map((note) => (
               <button
                 key={note.id}
-                onClick={() => { setCurrentNoteId(note.id); void noterConsultation(note.id) }}
+                onClick={() => ouvrirNote(note.id)}
                 className={`group w-full text-left p-3 rounded-lg transition-colors mb-1 ${
                   currentNoteId === note.id
                     ? 'bg-primary/10 border-primary/20 border'
@@ -982,8 +1041,23 @@ function FullscreenApp() {
 
         {/* Contenu principal */}
         <div className="flex-1 flex min-h-0">
-          <div ref={noteDisplayRef} className="flex-1 overflow-y-auto">
-            {currentNote ? (
+          {/* Sans note ni écran : l'accueil du panneau, dans le même cadre (p-4) */}
+          <div ref={noteDisplayRef} className={`flex-1 overflow-y-auto overflow-x-hidden ${!ecrans.ecran && !currentNote ? 'p-4' : ''}`}>
+            {ecrans.ecran ? (
+              // Les écrans du panneau (Compte, Paramètres, Mentorat, Support,
+              // « Mon forfait »...) prennent la place de la note (1.8.15).
+              <div className="h-full max-w-2xl mx-auto p-4">
+                <EcransCarnet
+                  ecrans={ecrans}
+                  notes={notes}
+                  folders={folders}
+                  settings={settings!}
+                  onReglages={setSettings}
+                  recharger={loadData}
+                  relireSession={relireSession}
+                />
+              </div>
+            ) : currentNote ? (
               <div className="p-8 max-w-4xl mx-auto">
                 <CurrentNoteView
                   noteId={currentNoteId!}
@@ -993,60 +1067,62 @@ function FullscreenApp() {
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                {isSmartCapturing ? (
-                  <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
-                    <p className="text-muted-foreground">{t('smart.analyse')}</p>
-                  </div>
-                ) : (
-                  <>
-                    <BookOpen size={64} className="text-muted-foreground mb-6" />
-                    <h3 className="text-2xl font-semibold text-foreground mb-4">
-                      {t('pleinEcran.bienvenue')}
-                    </h3>
-                    <p className="text-muted-foreground max-w-md mb-6">
-                      {t('pleinEcran.bienvenueSous')}
-                    </p>
-                    {smartCaptureError && (
-                      <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md">
-                        <p className="text-sm text-destructive">{smartCaptureError}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              // L'accueil du panneau (1.8.15) : les cartes de capture, la dernière note, l'activité.
+              <EmptyNoteView
+                onCapturePage={handleCapturePage}
+                onSmartCapture={handleSmartCapture}
+                isCapturing={isCapturing}
+                analyseEnCours={isSmartCapturing}
+                erreurCapture={smartCaptureError}
+                captureIaActive={captureIaActive}
+                onSelectNote={ouvrirNote}
+                notes={notes}
+              />
             )}
           </div>
         </div>
 
         {/* Hub de capture */}
-        <div className="border-t border-border bg-background px-6 py-3">
+        <div className="border-t border-border bg-background px-6 pt-3">
           {/* La rangée d'outils de la note, la même que dans le panneau (1.8.15) */}
-          {currentNote && (
+          {currentNote && !ecrans.ecran && (
             <OutilsNoteRangee
               noteId={currentNote.id}
               etudeOuverte={etudeOuverte}
               modeleEtude={settings?.modeleEtude ?? null}
               onChange={async () => { await loadData(); setNoteRefreshTrigger(Date.now()) }}
+              onEtudeReservee={() => ecrans.ouvrir('mentorat')}
               className="w-full max-w-4xl mx-auto pb-2"
             />
           )}
-          <CaptureInput
-            ref={editorRef}
-            value={editorContent}
-            onChange={setEditorContent}
-            placeholder={currentNoteId ? t('capture.placeholderNote') : t('capture.placeholder')}
-            onInsertScreenshot={handleScreenshot}
-            onInsertExternalScreenshot={handleExternalScreenshot}
-            onSubmit={(content) => handleAddContent(content, currentNoteId)}
-            onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
-            isSmartCapturing={isSmartCapturing}
-            captureIaActive={captureIaActive}
-            onStartTrade={handleStartTrade}
-            hasActiveTrade={!!currentNote?.hasOpenTrade}
-            currentPageInfo={currentPageInfo || undefined}
-            className="w-full max-w-4xl mx-auto"
+          {/* Masquée dans le Support, qui a sa propre saisie (règle du panneau) */}
+          {ecrans.ecran !== 'support' && (
+            <CaptureInput
+              ref={editorRef}
+              value={editorContent}
+              onChange={setEditorContent}
+              placeholder={currentNoteId ? t('capture.placeholderNote') : t('capture.placeholder')}
+              onInsertScreenshot={handleScreenshot}
+              onInsertExternalScreenshot={handleExternalScreenshot}
+              onScreenshotToNote={handleScreenshotToNote}
+              onSubmit={(content) => handleAddContent(content, currentNoteId)}
+              onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
+              isSmartCapturing={isSmartCapturing}
+              captureIaActive={captureIaActive}
+              onStartTrade={handleStartTrade}
+              hasActiveTrade={!!currentNote?.hasOpenTrade}
+              currentPageInfo={currentPageInfo || undefined}
+              pageCapturee={() => pageCaptureeRef.current}
+              className="w-full max-w-4xl mx-auto"
+            />
+          )}
+          {/* Le pied et le menu de la roue du panneau (1.8.15) */}
+          <PiedCarnet
+            ecrans={ecrans}
+            connecte={connecte}
+            email={email}
+            notes={notes}
+            className="w-full max-w-4xl mx-auto pt-2"
           />
         </div>
       </div>

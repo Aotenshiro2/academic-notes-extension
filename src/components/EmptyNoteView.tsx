@@ -2,13 +2,24 @@ import React from 'react'
 import { t } from '@/lib/i18n'
 import { BookOpen, Camera, History, Sparkles, Loader2 } from 'lucide-react'
 import { formatSmartDate } from '@/lib/date-utils'
+import { noteLaPlusRecente } from '@/lib/ecrans-carnet'
 import type { NoteSummary } from '@/types/academic'
 import ActivityPanel from './ActivityPanel'
+
+// L'accueil sans note, le même dans le panneau latéral et le plein écran
+// (1.8.15) : les cartes de capture, la dernière note, l'activité. Pendant une
+// capture intelligente, l'attente remplace les cartes ; son échec s'affiche
+// au-dessus.
 
 interface EmptyNoteViewProps {
   onCapturePage?: () => void
   onSmartCapture?: () => void
   isCapturing?: boolean
+  /** Capture intelligente en cours : l'attente à la place des cartes. */
+  analyseEnCours?: boolean
+  /** Message d'échec de la dernière capture intelligente. */
+  erreurCapture?: string | null
+  /** Absent : la note la plus récente de `notes`. */
   lastNote?: NoteSummary
   onSelectNote?: (id: string) => void
   /** Même signal que dans le menu ＋ : l'anneau arc-en-ciel dit que la capture
@@ -16,11 +27,24 @@ interface EmptyNoteViewProps {
    *  geste depuis l'accueil (remonté par Brice le 01/09). */
   captureIaActive?: boolean
   /** Résumés de toutes les notes : nourrissent le panneau d'activité. Absent =
-   *  pas de panneau (le plein écran n'en a pas l'usage). */
+   *  pas de panneau. */
   notes?: NoteSummary[]
 }
 
-function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, lastNote, onSelectNote, captureIaActive = false, notes }: EmptyNoteViewProps) {
+function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, analyseEnCours = false, erreurCapture = null, lastNote: derniere, onSelectNote, captureIaActive = false, notes }: EmptyNoteViewProps) {
+  const lastNote = derniere ?? (notes ? noteLaPlusRecente(notes) : undefined)
+
+  if (analyseEnCours) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">{t('smart.analyse')}</p>
+        </div>
+      </div>
+    )
+  }
+
   // Mise en page rééquilibrée avec le panneau d'activité (1.8.9) : la
   // salutation et les cartes se centrent dans la place qui reste, le panneau
   // se cale en bas, juste au-dessus de la barre d'écriture. min-h-full et pas
@@ -30,6 +54,11 @@ function EmptyNoteView({ onCapturePage, onSmartCapture, isCapturing = false, las
   // Sur un panneau bas, l'icône puis la phrase d'aide s'effacent d'abord.
   return (
     <div className="flex flex-col items-center min-h-full">
+      {erreurCapture && (
+        <div className="self-stretch mx-4 mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-sm text-destructive">{erreurCapture}</p>
+        </div>
+      )}
       <div className="flex-1 flex flex-col items-center justify-center w-full py-6 [@media(max-height:700px)]:py-2">
         {/* Salutation */}
         <div className="text-center mb-6 [@media(max-height:700px)]:mb-3">

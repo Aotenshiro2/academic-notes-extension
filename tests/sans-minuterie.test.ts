@@ -34,8 +34,9 @@ const FICHIERS_1814 = [
   'src/components/DiagnosticView.tsx',
 ]
 
-// 1.8.15 : la rangée d'outils de la note, partagée par le panneau et le plein
-// écran. Tout part d'un clic ; l'accès à l'étude est demandé une fois, à l'ouverture.
+// 1.8.15 : la rangée d'outils de la note, les écrans, le pied, le menu de la
+// roue et l'accueil, partagés par le panneau et le plein écran. Tout part d'un
+// clic ; la session et l'accès à l'étude se relisent au geste, jamais en fond.
 const FICHIERS_1815 = [
   'src/lib/outils-note.ts',
   'src/components/OutilsNoteRangee.tsx',
@@ -43,7 +44,16 @@ const FICHIERS_1815 = [
   'src/lib/trade-note.ts',
   'src/lib/use-trade-note.ts',
   'src/lib/theme.ts',
-  'src/lib/ouvrir-compte.ts',
+  'src/lib/travail-fond.ts',
+  'src/lib/use-travail-fond.ts',
+  'src/lib/use-ecrans-carnet.ts',
+  'src/lib/use-session-carnet.ts',
+  'src/lib/ecrans-carnet.ts',
+  'src/lib/capture-page.ts',
+  'src/components/EcransCarnet.tsx',
+  'src/components/PiedCarnet.tsx',
+  'src/components/EmptyNoteView.tsx',
+  'src/sidepanel/App.tsx',
 ]
 
 test('aucune minuterie périodique dans le code de la 1.8.13, de la 1.8.14 et de la 1.8.15', () => {

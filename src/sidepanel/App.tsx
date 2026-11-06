@@ -1,182 +1,57 @@
 import { toast } from '../lib/toast'
 import React, { useState, useEffect, useRef } from 'react'
-import {
-  Settings,
-  ArrowLeft,
-  Loader2,
-  User,
-  GraduationCap,
-  LifeBuoy,
-  BookOpen,
-  Star,
-  Link2,
-  Clock,
-  BadgeCheck,
-  UserPlus,
-  Compass,
-  Globe,
-  FileUp,
-  Stethoscope,
-  Lightbulb,
-  X
-} from 'lucide-react'
 import OutilsNoteRangee from '@/components/OutilsNoteRangee'
-import DiagnosticView from '@/components/DiagnosticView'
-import ImportTradesDialog from '@/components/ImportTradesDialog'
-import MentoratView from '@/components/MentoratView'
-import SupportView from '@/components/SupportView'
-import AiConfigView from '@/components/AiConfigView'
-import PlansView from '@/components/PlansView'
-import ToolsView from '@/components/ToolsView'
+import EcransCarnet from '@/components/EcransCarnet'
+import PiedCarnet from '@/components/PiedCarnet'
 
 import Header from '@/components/Header'
 import CurrentNoteView from '@/components/CurrentNoteView'
 import EmptyNoteView from '@/components/EmptyNoteView'
 import { noterConsultation } from '@/lib/consultations'
-import { envoyerActivite } from '@/lib/activite-sync'
 import CaptureInput, { type CaptureInputHandle } from '@/components/CaptureInput'
 import HistoryDropdown from '@/components/HistoryDropdown'
 import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
-import SettingsView from '@/components/SettingsView'
-import AccountView from '@/components/AccountView'
-import ThemeToggle from '@/components/ThemeToggle'
 
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
-import { poserBlocsDeCapture } from '@/lib/capture-blocs'
-import { fetchAccesCaptureIA } from '@/lib/sync'
-import { obtenirNoteMentorat, desepinglerSiPlusDeMentorat } from '@/lib/note-mentorat'
-import { t, tp, getLangue, setLangue, subscribeLangue, langueSuivante, infoLangue, type Langue } from '@/lib/i18n'
-import { getSession } from '@/lib/auth'
+import { poserBlocsDeCapture, poserCaptureDansNote, enregistrerNoteDeLaPage } from '@/lib/capture-blocs'
+import { t } from '@/lib/i18n'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { stateSync } from '@/lib/state-sync'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
-import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
-import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
-import { DEMANDE_OUVRIR_COMPTE, MESSAGE_OUVRIR_COMPTE } from '@/lib/ouvrir-compte'
 import { useTradeNote } from '@/lib/use-trade-note'
+import { useEcransCarnet } from '@/lib/use-ecrans-carnet'
+import { useSessionCarnet, useAccesCompte } from '@/lib/use-session-carnet'
+import { useTravailDeFond } from '@/lib/use-travail-fond'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
-import { prepareImageForStorage } from '@/lib/image-utils'
-import { memoireBrouillon, signalerFriction } from '@/lib/besoins'
-import { bulleDejaVue, codeDeSync, composerPrerempli, marquerBulleVue, plateformeDe, type CleSignal } from '@/lib/besoins-decouverte'
-import { LigneBesoin } from '@/components/BesoinForm'
-import type { CleI18n } from '@/lib/i18n'
-import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
-
-// Besoins des membres, suite du 06/11/2026 (piste C) : la ligne et la phrase
-// pré-remplie de chaque friction du panneau. Textes : i18n.ts (A VALIDER PAR BRICE).
-const LIGNES_FRICTION: Record<CleSignal, { phrase: CleI18n; prerempli: CleI18n }> = {
-  'carnet.capture_impossible': { phrase: 'besoin.frictionCapture', prerempli: 'besoin.frictionCapturePrerempli' },
-  'carnet.sync_echec': { phrase: 'besoin.frictionSync', prerempli: 'besoin.frictionSyncPrerempli' },
-  'carnet.export_echec': { phrase: 'besoin.frictionExport', prerempli: 'besoin.frictionExportPrerempli' },
-}
-
-/** La plateforme de l'onglet actif, dans la liste connue, sinon « autre » : l'adresse ne sort jamais d'ici. */
-async function plateformeActive(): Promise<string> {
-  try {
-    const [onglet] = await chrome.tabs.query({ active: true, currentWindow: true })
-    return plateformeDe(onglet?.url)
-  } catch {
-    return 'autre'
-  }
-}
+import { plateformeOnglet } from '@/lib/besoins'
+import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
 function App() {
   // Suppression du système de vue par tabs
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showAccount, setShowAccount] = useState(false)
-  const [showMentorat, setShowMentorat] = useState(false)
-  const [showSupport, setShowSupport] = useState(false)
-  const [showAiConfig, setShowAiConfig] = useState(false)
-  const [showPlans, setShowPlans] = useState(false)
-  const [showTools, setShowTools] = useState(false)
-  // « Envoyer un diagnostic » (1.8.14), et Paramètres ouverts depuis lui, placés sur l'affichage de secours
-  const [showDiagnostic, setShowDiagnostic] = useState(false)
-  const [focusReglage, setFocusReglage] = useState<'affichageSecours' | undefined>(undefined)
-  // Besoins des membres (lot 2, 06/11/2026) : le Support ouvert depuis le menu
-  // de la roue s'ouvre directement sur « Il me manque quelque chose ».
-  const [supportBesoin, setSupportBesoin] = useState(false)
-  // Suite du 06/11/2026 : la friction rencontrée (ligne C), la clé qui part
-  // avec la demande pré-remplie, et la bulle de découverte (piste B).
-  const [friction, setFriction] = useState<CleSignal | null>(null)
-  const [signalBesoin, setSignalBesoin] = useState<CleSignal | null>(null)
-  const [ouvertureBesoin, setOuvertureBesoin] = useState(0)
-  const [bulleAide, setBulleAide] = useState(false)
-  useEffect(() => { setBulleAide(!bulleDejaVue()) }, [])
-  const fermerBulleAide = () => {
-    if (bulleAide) marquerBulleVue()
-    setBulleAide(false)
-  }
-  /** Un refus ou une impasse : le signal (une fois, en silence, connecté seulement) et la ligne C. */
-  const frictionIci = (cle: CleSignal, contexte?: Record<string, unknown>) => {
-    setFriction(cle)
-    void signalerFriction(cle, contexte)
-  }
-  /** Une synchronisation lancée à la main qui laisse des notes en échec : le code du premier échec, jamais son texte. */
-  const suivreSync = <R extends { failed: number; errors: Array<{ error: string }> }>(resultat: R): R => {
-    if (resultat.failed > 0) frictionIci('carnet.sync_echec', { code: codeDeSync(resultat.errors[0]?.error) })
-    return resultat
-  }
-  // Ferme tous les écrans (une seule vue à la fois)
-  const closeAllViews = () => {
-    setShowSettings(false)
-    setShowAccount(false)
-    setShowMentorat(false)
-    setShowSupport(false)
-    setSupportBesoin(false)
-    setShowAiConfig(false)
-    setShowPlans(false)
-    setShowTools(false)
-    setShowDiagnostic(false)
-    setFocusReglage(undefined)
-  }
-
-  /** La ligne C : le Support s'ouvre sur « Il me manque quelque chose », la phrase posée dans le brouillon. */
-  const ouvrirBesoinPrerempli = (cle: CleSignal) => {
-    const actuel = memoireBrouillon.lire()
-    memoireBrouillon.ecrire({ ...actuel, texte: composerPrerempli(t(LIGNES_FRICTION[cle].prerempli), actuel.texte) })
-    closeAllViews()
-    setSignalBesoin(cle)
-    setOuvertureBesoin(n => n + 1)
-    setSupportBesoin(true)
-    setShowSupport(true)
-    setFriction(null)
-    marquerBulleVue()
-    setBulleAide(false)
-  }
+  // Les écrans (Compte, Paramètres, Mentorat, Support, « Mon forfait »...),
+  // une seule vue à la fois, et le pied qui les ouvre : partagés avec le plein
+  // écran depuis la 1.8.15 (use-ecrans-carnet, EcransCarnet, PiedCarnet).
+  // « Importer mes trades » (1.8.13) est une ligne du menu de la roue, plus une
+  // carte de l'accueil. Brice, le 05/11 : la carte chargeait une interface qui
+  // se veut épurée, et l'import n'a pas besoin d'être au premier plan.
+  const ecrans = useEcransCarnet()
+  const { connecte: isAuthed, email: emailConnecte, relireSession: rafraichirAuth } = useSessionCarnet()
 
   // Ouvrir une note referme l ecran en cours. Sans ca, choisir une note
   // depuis l historique alors qu on etait dans le mentorat laissait l ecran
   // mentorat au premier plan, par-dessus la note qu on venait de demander.
   const ouvrirNote = (id: string) => {
-    closeAllViews()
+    ecrans.fermer()
     setCurrentNoteId(id)
     // Relire une note est une activité (panneau de l'accueil, 1.8.10)
     void noterConsultation(id)
   }
 
-  // Menu pop-up du bouton ⚙️ — le hub des écrans secondaires (retour Brice
-  // 28/08) : un petit menu plutôt qu'un écran-fleuve à scroller
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
-  const settingsMenuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!settingsMenuOpen) return
-    const onDown = (e: MouseEvent) => {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
-        setSettingsMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [settingsMenuOpen])
-  // « Importer mes trades » (1.8.13) : une ligne du menu de la roue, plus une
-  // carte de l'accueil. Brice, le 05/11 : la carte chargeait une interface qui
-  // se veut épurée, et l'import n'a pas besoin d'être au premier plan.
-  const [importTradesOuvert, setImportTradesOuvert] = useState(false)
   // Résumés, pas les notes complètes : charger 1000 notes entières (donc toutes
   // les images en base64) à chaque rafraîchissement saturait la mémoire
   const [notes, setNotes] = useState<NoteSummary[]>([])
@@ -190,120 +65,23 @@ function App() {
   const [isSmartCapturing, setIsSmartCapturing] = useState(false)
   const [smartCaptureError, setSmartCaptureError] = useState<string | null>(null)
   const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0)
-  // Capture IA et étude (1.8.0). Ces deux drapeaux ne servent QU'À AFFICHER —
-  // l'aura sur « Capture intelligente », le bouton « Approfondir » de la rangée
-  // du bas (1.8.13). Le serveur re-vérifie le droit et le budget à chaque appel : un
-  // client bidouillé ne contourne rien.
-  const [captureIaActive, setCaptureIaActive] = useState(false)
-  const [etudeOuverte, setEtudeOuverte] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [showAnalyzeDialog, setShowAnalyzeDialog] = useState(false)
   // Note complète chargée UNIQUEMENT le temps de l'analyse, puis relâchée
   const [analyzeNote, setAnalyzeNote] = useState<AcademicNote | null>(null)
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
-  // L'email du compte connecté, affiché en tête du menu des paramètres. On
-  // sait ainsi d'un coup d'œil AVEC QUEL COMPTE on travaille : plusieurs
-  // emails coexistent (perso, aoknowledge, celui du Skool) et se tromper de
-  // compte veut dire synchroniser dans le mauvais journal.
-  const [emailConnecte, setEmailConnecte] = useState<string | null>(null)
 
-  // Langue d'usage. Le drapeau du pied de panneau la fait tourner ; toutes les
-  // vues ouvertes suivent sans rechargement, comme pour l'affichage des métas.
-  const [langue, setLangueLocale] = useState<Langue>(getLangue)
-  useEffect(() => subscribeLangue(setLangueLocale), [])
+  // Ce à quoi le compte a droit (1.8.0) : l'aura sur « Capture intelligente »
+  // et le bouton « Approfondir » de la rangée du bas. Ne sert QU'À AFFICHER,
+  // le serveur re-vérifie le droit et le budget à chaque appel.
+  const acces = useAccesCompte(isAuthed, settings?.modeleEtude)
+  const captureIaActive = acces.captureIa
+  const etudeOuverte = acces.etude
 
-  // « Me connecter » depuis la boîte d'import ou le panneau d'un trade (1.8.13) : l'écran Compte.
-  useEffect(() => {
-    const ouvrirCompte = () => { closeAllViews(); setShowAccount(true) }
-    window.addEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
-    // 1.8.15 : la même demande venue du plein écran, qui ouvre ce panneau à côté.
-    // Panneau déjà ouvert : le message. Panneau qui s'ouvre : la demande en session.
-    const surDemande = () => {
-      void chrome.storage.session.remove(DEMANDE_OUVRIR_COMPTE)
-      ouvrirCompte()
-    }
-    chrome.storage.session.get(DEMANDE_OUVRIR_COMPTE)
-      .then(r => { if (r[DEMANDE_OUVRIR_COMPTE]) surDemande() })
-      .catch(() => {})
-    const surMessage = (message: { type?: string }) => { if (message?.type === MESSAGE_OUVRIR_COMPTE) surDemande() }
-    chrome.runtime.onMessage.addListener(surMessage)
-    return () => {
-      window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
-      chrome.runtime.onMessage.removeListener(surMessage)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Relit la session. Appelée à l'ouverture ET au retour de l'écran Compte :
-  // sans ça, on se connectait et le panneau continuait d'afficher « Visiteur »
-  // jusqu'à la prochaine réouverture.
-  const rafraichirAuth = () => {
-    getSession()
-      .then(s => { setIsAuthed(!!s); setEmailConnecte(s?.user?.email ?? null) })
-      .catch(() => { setIsAuthed(false); setEmailConnecte(null) })
-  }
-
-  // Notes qui ne sont pas encore dans le journal (hors exclues volontaires)
-  const pendingSyncCount = notes.filter(n => !n.lastSyncAt && !n.syncExcluded).length
-
-  // Rattrapage automatique : l'auto-sync à la sauvegarde échoue en silence si la
-  // session est absente/expirée à ce moment-là, et RIEN ne réessayait ensuite —
-  // les notes restaient « à synchroniser » jusqu'au clic manuel (bug signalé par
-  // Brice le 17/07). Ici : dès que le panel s'ouvre connecté avec des notes en
-  // attente, on les renvoie en arrière-plan (une seule tentative par ouverture).
-  const autoRetryDoneRef = useRef(false)
-  useEffect(() => {
-    if (autoRetryDoneRef.current || isAuthed !== true || pendingSyncCount === 0) return
-    autoRetryDoneRef.current = true
-    const pending = notes.filter(n => !n.lastSyncAt && !n.syncExcluded)
-    console.log(`[AOK AutoSync] Rattrapage de ${pending.length} note(s) en attente`)
-    forceSyncAll(pending, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
-      .then(r => { if (r.synced > 0) loadData() })
-      .catch(err => console.warn('[AOK AutoSync] Rattrapage échoué:', err))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthed, pendingSyncCount])
-
-  // Ce à quoi le compte a droit (1.8.0). Une seule question au backend à la
-  // connexion. `captureIaActive` exige aussi qu'il reste du budget : allumer
-  // l'aura alors que le quota est épuisé promettrait quelque chose qu'on ne
-  // tiendrait pas, et la capture retomberait sur les heuristiques.
-  useEffect(() => {
-    if (isAuthed !== true) {
-      setEtudeOuverte(false)
-      setCaptureIaActive(false)
-      // Déconnecté : la note « Mentorat AOK » n'est ni supprimée ni cachée —
-      // elle contient ce que l'élève a écrit — mais elle perd son épinglage et
-      // redescend dans l'ordre chronologique. Tenir la première place à vie
-      // pour une fonction fermée n'aurait aucun sens.
-      desepinglerSiPlusDeMentorat().then(() => loadData()).catch(() => { /* pas bloquant */ })
-      return
-    }
-    let vivant = true
-    fetchAccesCaptureIA(settings?.modeleEtude ?? null)
-      .then(({ acces }) => {
-        if (!vivant || !acces) return
-        setEtudeOuverte(Boolean(acces.etude))
-        setCaptureIaActive(Boolean(acces.capture && acces.autorise))
-        // La note « Mentorat AOK » est creee des l ouverture pour ceux qui y
-        // ont droit, pas seulement quand on visite l ecran mentorat : elle est
-        // epinglee en tete de l historique, elle doit donc y etre AVANT qu on
-        // la cherche. Les comptes sans mentorat n heritent pas d une note
-        // qu ils ne peuvent pas utiliser.
-        if (acces.etude) {
-          obtenirNoteMentorat()
-            .then(() => loadData())
-            .catch(err => console.warn('[mentorat] note indisponible', err))
-        } else {
-          // Connecté mais sans mentorat (niveau libre, abonnement terminé) :
-          // même règle que la déconnexion, on désépingle sans rien effacer.
-          desepinglerSiPlusDeMentorat().then(() => loadData()).catch(() => { /* pas bloquant */ })
-        }
-      })
-      .catch(() => { /* le serveur tranchera de toute façon */ })
-    return () => { vivant = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthed])
+  // Le travail de fond (rattrapage de la sync, compteurs d'activité, note
+  // « Mentorat AOK ») : partagé avec le plein écran depuis la 1.8.15, et fait
+  // par une seule vue à la fois (lib/use-travail-fond).
+  useTravailDeFond({ connecte: isAuthed, acces, notes, notesChargees: !isLoading, recharger: loadData })
 
   // Charger les données initiales
   useEffect(() => {
@@ -401,9 +179,6 @@ function App() {
       setNotes(loadedNotes)
       setFolders(loadedSettings.folders ?? [])
       setSettings(loadedSettings)
-      // Compteurs d'activité vers le journal (1.8.10) : au plus toutes les
-      // 15 minutes, seulement connecté et sync active, jamais de contenu
-      void envoyerActivite(loadedNotes)
 
       // Diagnostic mémoire : c'est ce chiffre qui dit si la correction tient
       const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
@@ -432,14 +207,10 @@ function App() {
   // Screenshot avec une note ouverte : image + bloc meta DIRECTEMENT dans la note
   // (contrat 0.1.2 — une métadonnée n'est jamais du contenu, et l'éditeur reste propre).
   // Retourne false si aucune note ouverte → CaptureInput garde son flux éditeur.
+  // (1.8.15 : le même geste en plein écran, voir poserCaptureDansNote.)
   const handleScreenshotToNote = async (dataUrl: string, metaText: string): Promise<boolean> => {
     if (!currentNoteId) return false
-    await storage.addMessageToNote(currentNoteId, {
-      type: 'image',
-      content: dataUrl,
-      metadata: { alt: 'Capture d\'écran' }
-    })
-    await storage.addMessageToNote(currentNoteId, { type: 'meta', content: metaText })
+    await poserCaptureDansNote(currentNoteId, dataUrl, metaText)
     await loadData()
     setNoteRefreshTrigger(Date.now())
     return true
@@ -520,7 +291,7 @@ function App() {
   const handleGoHome = () => {
     // Ferme aussi les écrans (mentorat, support, forfait…) : le + du header
     // depuis l'écran mentorat ne faisait rien de visible (retour Brice 02/09)
-    closeAllViews()
+    ecrans.fermer()
     setCurrentNoteId(null)
   }
 
@@ -563,7 +334,9 @@ function App() {
     await loadData()
   }
 
-  // Fonction pour capturer la page actuelle et créer une note avec screenshot
+  // « Capturer cette page » (carte de l'accueil) : une note neuve avec la
+  // capture de l'onglet actif. La note elle-même : lib/capture-page (1.8.15,
+  // partagée avec le plein écran, qui capture l'onglet choisi).
   const handleCapturePage = async () => {
     setIsCapturing(true)
     try {
@@ -575,62 +348,22 @@ function App() {
         return
       }
 
-      let domain = ''
-      try {
-        if (currentTab.url) {
-          domain = new URL(currentTab.url).hostname.replace('www.', '')
-        }
-      } catch (urlError) {
-        console.warn('Invalid URL:', currentTab.url)
-      }
-
-      // Capturer le screenshot de la page
-      let screenshotDataUrl = ''
+      // Capturer le screenshot de la page (la note se fait sans s'il échoue)
+      let screenshotDataUrl: string | null = null
       try {
         screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
       } catch (screenshotError) {
         console.warn('Screenshot capture failed:', screenshotError)
-        // Continue sans screenshot si la capture échoue
       }
 
-      // Créer une note avec les infos de la page + screenshot
-      const newNoteId = Date.now().toString()
-      const pageTitle = currentTab.title || 'Page sans titre'
-
-      // Contenu enrichi avec screenshot
-      let content = `<p><strong>${pageTitle}</strong></p><p><a href="${currentTab.url}" target="_blank">${currentTab.url}</a></p>`
-      if (screenshotDataUrl) {
-        const optimized = await prepareImageForStorage(screenshotDataUrl)
-        content += `<p><img src="${optimized}" alt="Capture de ${domain}" style="max-width:100%; border-radius:8px; margin-top:8px;"/></p>`
-      }
-      content += '<p></p>'
-
-      const newNote: AcademicNote = {
-        id: newNoteId,
-        title: pageTitle.slice(0, 50) + (pageTitle.length > 50 ? '...' : ''),
-        content,
-        url: currentTab.url || '',
-        favicon: currentTab.favIconUrl || '',
-        timestamp: Date.now(),
-        type: 'webpage',
-        tags: [],
-        concepts: [],
-        screenshots: [],
-        metadata: {
-          domain,
-          title: pageTitle,
-          language: 'fr'
-        }
-      }
-
-      await storage.saveNote(newNote)
+      const newNoteId = await enregistrerNoteDeLaPage(currentTab, screenshotDataUrl)
       setCurrentNoteId(newNoteId)
       await loadData()
     } catch (error) {
       console.error('Error capturing page:', error)
       toast.error(t('panneau.erreurCapturePage'))
       // Piste C : la capture de la page a échoué (plateforme connue ou « autre »).
-      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'page' }))
+      void plateformeOnglet().then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'page' }))
     } finally {
       setIsCapturing(false)
     }
@@ -731,7 +464,7 @@ function App() {
       console.error('Smart capture error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
       // Piste C : la capture intelligente n'a rien pu extraire (le message d'erreur ne part pas).
-      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
+      void plateformeOnglet().then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -789,7 +522,7 @@ function App() {
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
-      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
+      void plateformeOnglet().then(plateforme => ecrans.frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -810,7 +543,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting PDF:', error)
       toast.error(t('panneau.erreurPdf'))
-      frictionIci('carnet.export_echec', { format: 'pdf' })
+      ecrans.frictionIci('carnet.export_echec', { format: 'pdf' })
     } finally {
       setIsExporting(false)
     }
@@ -825,7 +558,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting DOCX:', error)
       toast.error(t('panneau.erreurDocs'))
-      frictionIci('carnet.export_echec', { format: 'docx' })
+      ecrans.frictionIci('carnet.export_echec', { format: 'docx' })
     } finally {
       setIsExporting(false)
     }
@@ -840,7 +573,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting to Drive:', error)
       toast.error(t('pleinEcran.erreurDrive', { erreur: error instanceof Error ? error.message : t('pleinEcran.erreurInconnue') }))
-      frictionIci('carnet.export_echec', { format: 'drive' })
+      ecrans.frictionIci('carnet.export_echec', { format: 'drive' })
     } finally {
       setIsExporting(false)
     }
@@ -914,178 +647,18 @@ function App() {
             quelques pixels sur le côté. Rien ne doit dépasser en largeur
             (images et contenu en max-w-full) : on coupe ce défilement. */}
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
-          {showSupport ? (
-            <SupportView
-              key={`${supportBesoin ? 'besoin' : 'chat'}-${ouvertureBesoin}`}
-              vueInitiale={supportBesoin ? 'besoin' : 'chat'}
-              onBack={() => setShowSupport(false)}
-              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
-              signal={signalBesoin}
-              onSignalEnvoye={() => setSignalBesoin(null)}
-            />
-          ) : showMentorat ? (
-            <MentoratView
-              onBack={() => setShowMentorat(false)}
-              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
-              onOpenSupport={() => { closeAllViews(); setShowSupport(true) }}
-              onOpenPlans={() => { closeAllViews(); setShowPlans(true) }}
-            />
-          ) : showAiConfig ? (
-            <AiConfigView
-              settings={settings!}
-              onChange={async (newSettings) => {
-                await storage.saveSettings(newSettings)
-                const updated = await storage.getSettings()
-                setSettings(updated)
-              }}
-              onBack={() => setShowAiConfig(false)}
-            />
-          ) : showPlans ? (
-            <PlansView onBack={() => setShowPlans(false)} />
-          ) : showTools ? (
-            <ToolsView onBack={() => setShowTools(false)} />
-          ) : showDiagnostic ? (
-            <DiagnosticView
-              onBack={() => setShowDiagnostic(false)}
-              onOpenSettings={() => { closeAllViews(); setFocusReglage('affichageSecours'); setShowSettings(true) }}
-              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
-            />
-          ) : showAccount ? (
-            <AccountView
+          {ecrans.ecran ? (
+            // Les écrans (Compte, Paramètres, Mentorat, Support...) : les
+            // mêmes qu'en plein écran depuis la 1.8.15 (EcransCarnet).
+            <EcransCarnet
+              ecrans={ecrans}
               notes={notes}
+              folders={folders}
               settings={settings!}
-              onSettingsChange={async (newSettings) => {
-                await storage.saveSettings(newSettings)
-                const updated = await storage.getSettings()
-                setSettings(updated)
-              }}
-              onSyncAll={async () => {
-                const result = await forceSyncAll(notes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
-                await loadData()
-                return suivreSync(result)
-              }}
-              onVerifySync={async () => {
-                const result = await verifySyncStatus(notes, (id, changes) => storage.updateNote(id, changes))
-                await loadData()
-                return result
-              }}
-              onResyncMissing={(missingNotes) => {
-                // Reset lastSyncAt sur les notes manquantes puis les synquer
-                return Promise.all(missingNotes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined })))
-                  .then(() => forceSyncAll(
-                    missingNotes.map(n => ({ ...n, lastSyncAt: undefined })),
-                    (id) => storage.updateNote(id, { lastSyncAt: Date.now() })
-                  ))
-                  .then(suivreSync)
-              }}
-              onForceResyncAll={async () => {
-                // Reset lastSyncAt sur TOUTES les notes (inclut les exclues via includeExcluded)
-                await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined })))
-                const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined }))
-                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }), { includeExcluded: true })
-                await loadData()
-                return suivreSync(result)
-              }}
-              onRebuildJournal={async () => {
-                // Supprime toutes les notes dans le journal, reset les flags, re-sync complet
-                const { ok, error } = await deleteJournalNotes()
-                if (!ok) {
-                  frictionIci('carnet.sync_echec', { code: codeDeSync(error) })
-                  return { synced: 0, failed: 0, errors: [{ title: 'Journal', error: error ?? 'Erreur inconnue' }] }
-                }
-                await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined, syncExcluded: false })))
-                const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined, syncExcluded: false }))
-                const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
-                await loadData()
-                return suivreSync(result)
-              }}
-              onPullFromJournal={async () => {
-                const { notes: journalNotes, folders: journalFolders, error } = await pullFromJournal()
-                if (error) {
-                  frictionIci('carnet.sync_echec', { code: codeDeSync(error) })
-                  return { imported: 0, skipped: 0, error }
-                }
-                // Restaurer d'abord l'arborescence des dossiers (ids stables).
-                // Racines AVANT sous-dossiers : saveFolder refuse un parentId
-                // dont le parent n'existe pas encore localement.
-                const knownFolders = new Map(folders.map(f => [f.id, f]))
-                const sortedFolders = [...(journalFolders ?? [])].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0))
-                for (const folder of sortedFolders) {
-                  const known = knownFolders.get(folder.id)
-                  if (!known) {
-                    await storage.saveFolder(folder)
-                  } else if ((known.parentId ?? null) !== (folder.parentId ?? null)) {
-                    // Hiérarchie changée côté journal (autre appareil) → répercuter
-                    await storage.saveFolder({ ...known, parentId: folder.parentId })
-                  }
-                }
-                const existingIds = new Set(notes.map(n => n.id))
-                const existingUrls = new Set(notes.map(n => n.url).filter(Boolean))
-                let imported = 0
-                let skipped = 0
-                for (const note of journalNotes) {
-                  if (existingIds.has(note.id) || (note.url && existingUrls.has(note.url))) {
-                    skipped++
-                  } else {
-                    await storage.saveNote(note)
-                    imported++
-                  }
-                }
-                await loadData()
-                return { imported, skipped }
-              }}
-              onBack={() => { setShowAccount(false); rafraichirAuth() }}
+              onReglages={setSettings}
+              recharger={loadData}
+              relireSession={rafraichirAuth}
             />
-          ) : showSettings ? (
-            <div className="space-y-4">
-              {/* Header avec bouton retour */}
-              <div className="flex items-center space-x-3 pb-3 border-b border-border">
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                  title={t('commun.retour')}
-                  aria-label={t('commun.retour')}
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <h2 className="text-lg font-semibold text-foreground">{t('menu.parametres')}</h2>
-              </div>
-              <SettingsView
-                settings={settings!}
-                onChange={async (newSettings) => {
-                  await storage.saveSettings(newSettings)
-                  const updated = await storage.getSettings()
-                  setSettings(updated)
-                }}
-                onExport={async () => {
-                  const data = await storage.exportData()
-                  const blob = new Blob([data], { type: 'application/json' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `carnet-du-trader-backup-${new Date().toISOString().split('T')[0]}.json`
-                  a.click()
-                  URL.revokeObjectURL(url)
-                }}
-                onImport={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    const text = await file.text()
-                    const result = await storage.importData(text)
-                    if (result.success) {
-                      toast.success(t('reglages.importReussi'))
-                      await loadData()
-                    } else {
-                      toast.error(t('reglages.importErreur', { erreur: String(result.error) }))
-                    }
-                  }
-                }}
-                onSyncToJournal={() => {
-                  toast.info(t('reglages.syncNonImplemente'))
-                }}
-                focus={focusReglage}
-              />
-            </div>
           ) : currentNoteId ? (
             <CurrentNoteView
               noteId={currentNoteId}
@@ -1093,54 +666,35 @@ function App() {
               refreshTrigger={noteRefreshTrigger}
             />
           ) : (
-            <>
-              {isSmartCapturing && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">{t('smart.analyse')}</p>
-                  </div>
-                </div>
-              )}
-              {smartCaptureError && !isSmartCapturing && (
-                <div className="mx-4 mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <p className="text-sm text-destructive">{smartCaptureError}</p>
-                </div>
-              )}
-              {!isSmartCapturing && (
-                <EmptyNoteView
-                  onCapturePage={handleCapturePage}
-                  onSmartCapture={handleSmartCapture}
-                  isCapturing={isCapturing}
-                  captureIaActive={captureIaActive}
-                  lastNote={notes.length > 0
-                    ? notes.reduce((latest, n) => n.timestamp > latest.timestamp ? n : latest)
-                    : undefined
-                  }
-                  onSelectNote={ouvrirNote}
-                  notes={notes}
-                />
-              )}
-            </>
+            <EmptyNoteView
+              onCapturePage={handleCapturePage}
+              onSmartCapture={handleSmartCapture}
+              isCapturing={isCapturing}
+              analyseEnCours={isSmartCapturing}
+              erreurCapture={smartCaptureError}
+              captureIaActive={captureIaActive}
+              onSelectNote={ouvrirNote}
+              notes={notes}
+            />
           )}
         </div>
-        
+
         {/* Lanceurs de rituel — dockés au-dessus de la barre d'envoi : en
             flottant au milieu du panneau ils gênaient la lecture (Brice 28/08) */}
-        {currentNoteId && !showSettings && !showAccount && !showMentorat && !showSupport && !showAiConfig && !showPlans && !showTools && !showDiagnostic && (
+        {currentNoteId && !ecrans.ecran && (
           <OutilsNoteRangee
             noteId={currentNoteId}
             etudeOuverte={etudeOuverte}
             modeleEtude={settings?.modeleEtude ?? null}
             onChange={async () => { await loadData(); setNoteRefreshTrigger(Date.now()) }}
-            onEtudeReservee={() => { closeAllViews(); setShowMentorat(true) }}
+            onEtudeReservee={() => ecrans.ouvrir('mentorat')}
             className="bg-background px-4 pt-1.5"
           />
         )}
 
         {/* Hub de capture — masqué dans l'écran support : il a sa propre
             saisie, la double barre était illisible (retour Brice 28/08) */}
-        {!showSupport && (
+        {ecrans.ecran !== 'support' && (
           <div className="bg-background px-4 pt-3 pb-1">
             <CaptureInput
               ref={editorRef}
@@ -1162,232 +716,14 @@ function App() {
           </div>
         )}
 
-        {/* Piste C (06/11) : la ligne d'une friction (capture, synchronisation, export), au-dessus du pied. */}
-        {friction && !showSupport && (
-          <div className="px-4 pb-2">
-            <LigneBesoin
-              phrase={t(LIGNES_FRICTION[friction].phrase)}
-              onOuvrir={() => ouvrirBesoinPrerempli(friction)}
-              onMasquer={() => setFriction(null)}
-            />
-          </div>
-        )}
-
-        {/* Footer utilitaire */}
-        <div className="relative px-4 pb-2 flex items-center justify-between">
-            {/* Piste B (06/11) : la bulle de découverte, une seule fois, au-dessus
-                de « Aide et idées ». Dessinée à la main dans le langage du menu
-                de la roue (bg-popover, border, shadow-lg), apparition en CSS. */}
-            {bulleAide && !showSupport && !settingsMenuOpen && (
-              <div
-                id="aide-bulle"
-                role="note"
-                className="aide-bulle absolute bottom-full right-4 mb-1 z-40 w-56 rounded-lg border border-border bg-popover py-2 pl-3 pr-7 text-xs leading-snug text-foreground shadow-lg"
-              >
-                <span aria-hidden="true" className="absolute -bottom-[5px] right-16 w-2.5 h-2.5 rotate-45 border-b border-r border-border bg-popover" />
-                {t('besoin.aideBulle')}
-                <button
-                  onClick={fermerBulleAide}
-                  className="absolute top-1.5 right-1.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title={t('commun.fermer')}
-                  aria-label={t('commun.fermer')}
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground/60 select-none">v{chrome.runtime.getManifest().version}</span>
-              <span className="text-muted-foreground/30">|</span>
-              {/* Le drapeau était décoratif depuis toujours. Il fait maintenant
-                  tourner les langues disponibles — un cycle plutôt qu'une
-                  bascule, pour que le geste reste juste quand il y en aura
-                  quatre. */}
-              <button
-                onClick={() => setLangue(langueSuivante())}
-                className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground/60 hover:text-foreground hover:bg-muted rounded transition-colors"
-                title={`${t('sync.langue')} : ${infoLangue(langue).nom} — ${infoLangue(langueSuivante(langue)).nom}`}
-                aria-label={`${t('sync.langue')} : ${infoLangue(langue).nom}`}
-              >
-                {/* Plus de drapeau emoji : les indicateurs régionaux (🇫🇷) n'ont
-                    pas de police sur Windows et retombent sur leurs deux
-                    lettres. Brice voyait donc « FR FR ». Un globe est lisible
-                    partout, et le code dit déjà le pays. */}
-                <Globe size={11} className="flex-shrink-0" aria-hidden="true" />
-                {langue.toUpperCase()}
-              </button>
-              <span className="text-muted-foreground/30">|</span>
-              {/* État de sync — l'échec silencieux de sync ne doit plus JAMAIS être invisible */}
-              <button
-                onClick={() => { closeAllViews(); setShowAccount(true) }}
-                className={`px-1.5 py-0.5 text-[10px] rounded-full transition-colors ${
-                  isAuthed === false
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium'
-                    : pendingSyncCount > 0
-                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                      : 'text-muted-foreground/50 hover:text-muted-foreground'
-                }`}
-                title={
-                  isAuthed === false
-                    ? t('sync.nonConnecteAide')
-                    : pendingSyncCount > 0
-                      ? tp('sync.enAttenteUn', 'sync.enAttentePlur', pendingSyncCount)
-                      : t('sync.toutEstLa')
-                }
-              >
-                {isAuthed === false
-                  ? t('sync.horsLigne')
-                  : pendingSyncCount > 0
-                    ? `${pendingSyncCount} ${t('sync.aFaire')}`
-                    : `✓ ${t('sync.ok')}`}
-              </button>
-            </div>
-            <div className="flex items-center gap-1">
-              <ThemeToggle compact />
-              {/* Footer allégé (retour Brice 28/08) : « Nous contacter » supprimé
-                  (le support intégré le remplace), Guide et « Évaluez-nous »
-                  déménagés dans Paramètres > Aide */}
-              {/* Piste A (06/11) : l'icône et le mot « Aide et idées » ; le mot se
-                  retire seulement si le panneau est plus étroit que 340 px. */}
-              <button
-                onClick={() => { fermerBulleAide(); setSignalBesoin(null); setSupportBesoin(false); setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
-                className={`flex items-center gap-1 p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
-                title={t('besoin.aideLibelle')}
-                aria-label={t('besoin.aideLibelle')}
-                aria-describedby={bulleAide && !showSupport ? 'aide-bulle' : undefined}
-              >
-                <LifeBuoy size={14} className="flex-shrink-0" />
-                <span className="hidden min-[340px]:inline text-[11px] leading-none whitespace-nowrap">{t('besoin.aideLibelle')}</span>
-              </button>
-              <button
-                onClick={() => { setShowMentorat(!showMentorat); setShowSupport(false); setShowAccount(false); setShowSettings(false) }}
-                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showMentorat ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
-                title={t('mentorat.titre')}
-                aria-label={t('mentorat.titre')}
-              >
-                <GraduationCap size={14} />
-              </button>
-              <div className="relative" ref={settingsMenuRef}>
-                <button
-                  onClick={() => setSettingsMenuOpen(o => !o)}
-                  className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSettings || settingsMenuOpen ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
-                  title={t('menu.aide')}
-                  aria-label={t('menu.aide')}
-                  aria-haspopup="menu"
-                  aria-expanded={settingsMenuOpen}
-                >
-                  <Settings size={14} />
-                </button>
-                {settingsMenuOpen && (() => {
-                  const item = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-muted transition-colors'
-                  const open = (setter: (v: boolean) => void) => () => { setSettingsMenuOpen(false); closeAllViews(); setter(true) }
-                  const tab = (url: string) => () => { setSettingsMenuOpen(false); chrome.tabs.create({ url }) }
-                  return (
-                    <div className="absolute bottom-8 right-0 z-50 w-52 rounded-lg border border-border bg-popover shadow-lg p-1" role="menu">
-                      {/* Qui est connecté. En tête de menu parce que c'est la
-                          question qu'on se pose avant de cliquer sur quoi que
-                          ce soit ici : plusieurs comptes coexistent, et se
-                          tromper veut dire synchroniser dans le mauvais
-                          journal. Cliquer ouvre le compte. */}
-                      <button
-                        onClick={open(setShowAccount)}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors text-left"
-                        role="menuitem"
-                        title={emailConnecte ?? t('menu.seConnecter')}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isAuthed ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
-                          aria-hidden="true"
-                        />
-                        <span className="min-w-0">
-                          <span className="block text-[11px] leading-tight text-foreground truncate">
-                            {emailConnecte ?? t('menu.visiteur')}
-                          </span>
-                          <span className="block text-[10px] leading-tight text-muted-foreground">
-                            {isAuthed ? t('menu.connecte') : t('menu.nonConnecte')}
-                          </span>
-                        </span>
-                      </button>
-                      <div className="my-1 border-t border-border/60" />
-                      <button onClick={open(setShowSettings)} className={item} role="menuitem">
-                        <Settings size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.parametres')}
-                      </button>
-                      <button onClick={open(setShowAiConfig)} className={item} role="menuitem">
-                        <Link2 size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.configurerIA')}
-                      </button>
-                      <button onClick={open(setShowAccount)} className={item} role="menuitem">
-                        <User size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.compte')}
-                      </button>
-                      {/* Pas un écran : la boîte d'import s'ouvre par-dessus ce qui est affiché. */}
-                      <button
-                        onClick={() => { setSettingsMenuOpen(false); setImportTradesOuvert(true) }}
-                        className={item}
-                        role="menuitem"
-                      >
-                        <FileUp size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.importerTrades')}
-                      </button>
-                      <div className="my-1 border-t border-border/60" />
-                      <button onClick={tab(chrome.runtime.getURL('src/guide/index.html'))} className={item} role="menuitem">
-                        <BookOpen size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.bonnesPratiques')}
-                      </button>
-                      <button onClick={tab(chrome.runtime.getURL('src/guide/index.html') + '#versions')} className={item} role="menuitem">
-                        <Clock size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.versions')}
-                      </button>
-                      {/* 1.8.14 : les infos de la machine et le déroulé du dernier envoi IA, à l'équipe au geste du membre */}
-                      <button onClick={open(setShowDiagnostic)} className={item} role="menuitem">
-                        <Stethoscope size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.diagnostic')}
-                      </button>
-                      {/* Besoins des membres (lot 2, 06/11) : à côté du diagnostic, le même formulaire que la bande du Support */}
-                      <button
-                        onClick={() => { setSettingsMenuOpen(false); closeAllViews(); setSupportBesoin(true); setShowSupport(true) }}
-                        className={item}
-                        role="menuitem"
-                      >
-                        <Lightbulb size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.besoin')}
-                      </button>
-                      <div className="my-1 border-t border-border/60" />
-                      <button onClick={open(setShowPlans)} className={item} role="menuitem">
-                        <BadgeCheck size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.forfait')}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          setSettingsMenuOpen(false)
-                          try {
-                            await navigator.clipboard.writeText('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic')
-                            toast.success(t('panneau.lienCopie'))
-                          } catch {
-                            toast.error(t('mentorat.copieImpossible'))
-                          }
-                        }}
-                        className={item}
-                        role="menuitem"
-                      >
-                        <UserPlus size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.inviter')}
-                      </button>
-                      <button onClick={open(setShowTools)} className={item} role="menuitem">
-                        <Compass size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.autresOutils')}
-                      </button>
-                      <button onClick={tab('https://chromewebstore.google.com/detail/trading-notes-by-aoknowle/phajegonlmgnjkkfdooedoddnmgpheic/reviews')} className={item} role="menuitem">
-                        <Star size={13} className="text-muted-foreground flex-shrink-0" />
-                        {t('menu.evaluer')}
-                      </button>
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-        </div>
+        {/* Le pied et le menu de la roue (1.8.15 : les mêmes qu'en plein écran) */}
+        <PiedCarnet
+          ecrans={ecrans}
+          connecte={isAuthed}
+          email={emailConnecte}
+          notes={notes}
+          className="px-4"
+        />
       </main>
 
       {/* Dropdown historique des notes */}
@@ -1417,8 +753,6 @@ function App() {
         />
       )}
 
-      {/* Boîte « Importer mes trades », ouverte depuis le menu de la roue (1.8.13) */}
-      {importTradesOuvert && <ImportTradesDialog onClose={() => setImportTradesOuvert(false)} />}
     </div>
   )
 }

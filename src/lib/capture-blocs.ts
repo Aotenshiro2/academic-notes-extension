@@ -33,6 +33,8 @@
 // dans le bloc de texte. Ils vivent UNE fois, dans leur bloc. Le bloc de texte
 // porte la page, c'est son seul travail — et c'est lui que l'élève retouche.
 import storage from './storage'
+import { prepareImageForStorage } from './image-utils'
+import { noteDeLaPage, type OngletCapture } from './capture-page'
 import type { CaptureEnrichie } from './capture-ia'
 
 /** Les champs du modèle sont du texte, pas du HTML : on les échappe avant de
@@ -130,4 +132,34 @@ export async function poserBlocsDeCapture(
   if (typeof transcriptionHtml === 'string' && transcriptionHtml.trim()) {
     await storage.addMessageToNote(noteId, { type: 'text', content: transcriptionHtml })
   }
+}
+
+/**
+ * Une capture d'écran prise avec une note ouverte : l'image et sa ligne
+ * (date, titre et adresse de la page, ou « Capture externe ») partent
+ * DIRECTEMENT dans la note, en blocs image puis meta (contrat 0.1.2 : une
+ * métadonnée n'est jamais du contenu, et la barre d'écriture reste propre).
+ * Partagé par le panneau latéral et le plein écran depuis la 1.8.15 : avant,
+ * le plein écran glissait l'image dans la barre d'écriture.
+ */
+export async function poserCaptureDansNote(noteId: string, image: string, ligne: string): Promise<void> {
+  await storage.addMessageToNote(noteId, {
+    type: 'image',
+    content: image,
+    metadata: { alt: 'Capture d\'écran' },
+  })
+  await storage.addMessageToNote(noteId, { type: 'meta', content: ligne })
+}
+
+/**
+ * « Capturer cette page » (carte de l'accueil) : optimise la capture, enregistre
+ * la note de la page (règle : capture-page.ts) et rend son identifiant. Le
+ * panneau donne l'onglet actif, le plein écran l'onglet choisi (1.8.15).
+ */
+export async function enregistrerNoteDeLaPage(onglet: OngletCapture, capture: string | null): Promise<string> {
+  const maintenant = Date.now()
+  const image = capture ? await prepareImageForStorage(capture) : null
+  const note = noteDeLaPage(onglet, image, maintenant.toString(), maintenant)
+  await storage.saveNote(note)
+  return note.id
 }
