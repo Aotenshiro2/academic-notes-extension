@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { t } from '@/lib/i18n'
-
-type Theme = 'light' | 'dark' | 'system'
+import { appliquerTheme as applyTheme, themeEnregistre, CLE_THEME, type Theme } from '@/lib/theme'
 
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [theme, setTheme] = useState<Theme>('system')
@@ -11,28 +10,10 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     setMounted(true)
     // Récupérer le thème sauvegardé ou utiliser 'system' par défaut
-    const savedTheme = (localStorage.getItem('theme') as Theme) || 'system'
+    const savedTheme = themeEnregistre()
     setTheme(savedTheme)
     applyTheme(savedTheme)
   }, [])
-
-  const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement
-    
-    if (newTheme === 'dark') {
-      root.classList.add('dark')
-    } else if (newTheme === 'light') {
-      root.classList.remove('dark')
-    } else {
-      // System theme
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      if (systemPrefersDark) {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-    }
-  }
 
   const cycleTheme = () => {
     const themes: Theme[] = ['light', 'dark', 'system']
@@ -40,7 +21,7 @@ function ThemeToggle({ compact = false }: { compact?: boolean }) {
     const nextTheme = themes[(currentIndex + 1) % themes.length]
     
     setTheme(nextTheme)
-    localStorage.setItem('theme', nextTheme)
+    localStorage.setItem(CLE_THEME, nextTheme)
     applyTheme(nextTheme)
   }
 

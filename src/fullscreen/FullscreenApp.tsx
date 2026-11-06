@@ -39,6 +39,9 @@ import AnalyzeNoteDialog from '@/components/AnalyzeNoteDialog'
 import ImageLightbox from '@/components/ImageLightbox'
 import OutilsNoteRangee from '@/components/OutilsNoteRangee'
 import { fetchAccesCaptureIA } from '@/lib/sync'
+import { useTradeNote } from '@/lib/use-trade-note'
+import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
+import { DEMANDE_OUVRIR_COMPTE, MESSAGE_OUVRIR_COMPTE } from '@/lib/ouvrir-compte'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
 import { poserBlocsDeCapture } from '@/lib/capture-blocs'
@@ -105,14 +108,51 @@ function FullscreenApp() {
   // cadenas. Une seule question au serveur, à l'ouverture de la vue, comme le
   // panneau latéral à la connexion ; le serveur re-vérifie à chaque étude.
   const [etudeOuverte, setEtudeOuverte] = useState(false)
+  // Aura de « Capture intelligente » (1.8.15) : la capture IA est ouverte ET il reste du budget
+  const [captureIaActive, setCaptureIaActive] = useState(false)
   const accesDemandeRef = useRef(false)
   useEffect(() => {
     if (!settings || accesDemandeRef.current) return
     accesDemandeRef.current = true
     fetchAccesCaptureIA(settings.modeleEtude ?? null)
-      .then(({ acces }) => setEtudeOuverte(Boolean(acces?.etude)))
+      .then(({ acces }) => {
+        setEtudeOuverte(Boolean(acces?.etude))
+        setCaptureIaActive(Boolean(acces?.capture && acces?.autorise))
+      })
       .catch(() => { /* hors ligne ou déconnecté : cadenas, le serveur tranchera */ })
   }, [settings])
+
+  // Le trade de la note (1.8.15), le même que dans le panneau : quitter la note
+  // clôt son trade actif, « Lancer un trade » capture le graphique au lancement.
+  const { lancer: lancerTradeNote } = useTradeNote(currentNoteId, {
+    ouvrirNote: setCurrentNoteId,
+    rafraichir: async () => { await loadData(); setNoteRefreshTrigger(Date.now()) },
+  })
+  const handleStartTrade = async () => {
+    if (!(await lancerTradeNote())) return
+    setTimeout(() => {
+      editorRef.current?.focus()
+      if (noteDisplayRef.current) noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
+    }, 100)
+  }
+
+  // « Me connecter » (panneau d'un trade, « Lire une capture », boîte d'import).
+  // Le plein écran n'a pas d'écran Compte : il ouvre le panneau latéral à côté,
+  // sur son écran Compte. sidePanel.open exige le geste du clic : la fenêtre est
+  // connue d'avance, et l'appel part avant tout await.
+  const fenetreRef = useRef<number | null>(null)
+  useEffect(() => {
+    chrome.windows.getCurrent().then(f => { fenetreRef.current = f.id ?? null }).catch(() => {})
+    const ouvrirCompte = () => {
+      void chrome.storage.session.set({ [DEMANDE_OUVRIR_COMPTE]: true })
+      chrome.runtime.sendMessage({ type: MESSAGE_OUVRIR_COMPTE }).catch(() => { /* panneau fermé : il lira la demande */ })
+      const fenetre = fenetreRef.current
+      if (fenetre === null) { toast.info(t('pleinEcran.connexionDansPanneau')); return }
+      chrome.sidePanel.open({ windowId: fenetre }).catch(() => toast.info(t('pleinEcran.connexionDansPanneau')))
+    }
+    window.addEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+    return () => window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+  }, [])
 
   // Tab Picker (pour capturer depuis un autre onglet en fullscreen)
   const [tabPickerConfig, setTabPickerConfig] = useState<{
@@ -577,6 +617,7 @@ function FullscreenApp() {
       await exportNoteToPDF(fresh)
     } catch (error) {
       console.error('Error exporting PDF:', error)
+      toast.error(t('panneau.erreurPdf'))
     } finally {
       setIsExporting(false)
     }
@@ -590,6 +631,7 @@ function FullscreenApp() {
       await exportNoteToDocx(fresh)
     } catch (error) {
       console.error('Error exporting DOCX:', error)
+      toast.error(t('panneau.erreurDocs'))
     } finally {
       setIsExporting(false)
     }
@@ -1000,6 +1042,9 @@ function FullscreenApp() {
             onSubmit={(content) => handleAddContent(content, currentNoteId)}
             onSmartCapture={currentNoteId ? handleSmartCaptureToCurrentNote : handleSmartCapture}
             isSmartCapturing={isSmartCapturing}
+            captureIaActive={captureIaActive}
+            onStartTrade={handleStartTrade}
+            hasActiveTrade={!!currentNote?.hasOpenTrade}
             currentPageInfo={currentPageInfo || undefined}
             className="w-full max-w-4xl mx-auto"
           />

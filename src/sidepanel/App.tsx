@@ -53,7 +53,8 @@ import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
 import { forceSyncAll, verifySyncStatus, pullFromJournal, deleteJournalNotes } from '@/lib/sync'
 import { EVENEMENT_OUVRIR_COMPTE } from '@/lib/pilotage-api'
-import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
+import { DEMANDE_OUVRIR_COMPTE, MESSAGE_OUVRIR_COMPTE } from '@/lib/ouvrir-compte'
+import { useTradeNote } from '@/lib/use-trade-note'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
@@ -153,7 +154,21 @@ function App() {
   useEffect(() => {
     const ouvrirCompte = () => { closeAllViews(); setShowAccount(true) }
     window.addEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
-    return () => window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+    // 1.8.15 : la même demande venue du plein écran, qui ouvre ce panneau à côté.
+    // Panneau déjà ouvert : le message. Panneau qui s'ouvre : la demande en session.
+    const surDemande = () => {
+      void chrome.storage.session.remove(DEMANDE_OUVRIR_COMPTE)
+      ouvrirCompte()
+    }
+    chrome.storage.session.get(DEMANDE_OUVRIR_COMPTE)
+      .then(r => { if (r[DEMANDE_OUVRIR_COMPTE]) surDemande() })
+      .catch(() => {})
+    const surMessage = (message: { type?: string }) => { if (message?.type === MESSAGE_OUVRIR_COMPTE) surDemande() }
+    chrome.runtime.onMessage.addListener(surMessage)
+    return () => {
+      window.removeEventListener(EVENEMENT_OUVRIR_COMPTE, ouvrirCompte)
+      chrome.runtime.onMessage.removeListener(surMessage)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -446,66 +461,21 @@ function App() {
     setCurrentNoteId(null)
   }
 
-  // ---- Trades ----
-  // Fermer/quitter la note clôt silencieusement le segment actif
-  const prevNoteIdRef = useRef<string | null>(null)
-  useEffect(() => {
-    const prev = prevNoteIdRef.current
-    if (prev && prev !== currentNoteId) {
-      storage.closeActiveTrade(prev).catch(() => {})
-    }
-    prevNoteIdRef.current = currentNoteId
-  }, [currentNoteId])
-
-  // Démarrer un trade : dans la note courante, ou dans une note de séance créée à la volée
+  // ---- Trades ---- (1.8.15 : partagé avec le plein écran, voir lib/use-trade-note)
+  // Quitter la note clôt silencieusement son trade actif ; « Lancer un trade »
+  // démarre dans la note ouverte, ou dans une note de séance créée à la volée.
+  const { lancer: lancerTradeNote } = useTradeNote(currentNoteId, {
+    ouvrirNote: setCurrentNoteId,
+    rafraichir: async () => { await loadData(); setNoteRefreshTrigger(Date.now()) },
+  })
   const handleStartTrade = async () => {
-    try {
-      let noteId = currentNoteId
-      if (!noteId) {
-        const newNoteId = Date.now().toString()
-        const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-        const newNote: AcademicNote = {
-          id: newNoteId,
-          title: `Séance du ${today}`,
-          content: '',
-          url: '',
-          timestamp: Date.now(),
-          type: 'manual',
-          tags: [],
-          concepts: [],
-          screenshots: [],
-          metadata: { domain: '', title: `Séance du ${today}`, language: 'fr' }
-        }
-        await storage.saveNote(newNote)
-        noteId = newNoteId
-        setCurrentNoteId(newNoteId)
+    if (!(await lancerTradeNote())) return
+    setTimeout(() => {
+      editorRef.current?.focus()
+      if (noteDisplayRef.current) {
+        noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
       }
-      const tradeId = await storage.startTrade(noteId)
-      // Capture du graphique au lancement (1.8.13) : sans attendre, le trade
-      // est lancé tout de suite et la capture suit. Pas de capture (réglage
-      // coupé, rien qui montre l'actif) : rien, ou un message discret.
-      if (tradeId) {
-        const noteDuTrade = noteId
-        void capturerGraphiqueDuTrade(noteDuTrade, tradeId, 'lancement').then(resultat => {
-          if (!resultat) return
-          if (resultat.message) toast.info(resultat.message)
-          if (resultat.faites > 0) {
-            void loadData()
-            setNoteRefreshTrigger(Date.now())
-          }
-        })
-      }
-      await loadData()
-      setNoteRefreshTrigger(Date.now())
-      setTimeout(() => {
-        editorRef.current?.focus()
-        if (noteDisplayRef.current) {
-          noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
-        }
-      }, 100)
-    } catch (error) {
-      console.error('Error starting trade:', error)
-    }
+    }, 100)
   }
 
   // ---- Folder handlers ----

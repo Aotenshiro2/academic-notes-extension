@@ -498,6 +498,7 @@ const FR = {
   'pleinEcran.ouvrirJournal': "Ouvrir Journal d'Études",
   'pleinEcran.retourCompact': 'Retour au mode compact',
   'pleinEcran.modeCompact': 'Mode compact',
+  'pleinEcran.connexionDansPanneau': 'Pour te connecter, ouvre le panneau du Carnet : Mode compact, puis Compte.',
   'pleinEcran.bienvenue': 'Bienvenue dans Le Carnet du Trader',
   'pleinEcran.bienvenueSous': 'Sélectionnez une note dans la sidebar ou écrivez dans la zone ci-dessous.',
 
@@ -1502,6 +1503,7 @@ const EN: Partial<Record<CleI18n, string>> = {
   'pleinEcran.ouvrirJournal': 'Open Study Journal',
   'pleinEcran.retourCompact': 'Back to compact mode',
   'pleinEcran.modeCompact': 'Compact mode',
+  'pleinEcran.connexionDansPanneau': 'To sign in, open the Carnet panel: Compact mode, then Account.',
   'pleinEcran.bienvenue': 'Welcome to Le Carnet du Trader',
   'pleinEcran.bienvenueSous': 'Pick a note in the sidebar, or write in the box below.',
 

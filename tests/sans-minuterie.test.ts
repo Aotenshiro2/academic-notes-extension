@@ -40,6 +40,10 @@ const FICHIERS_1815 = [
   'src/lib/outils-note.ts',
   'src/components/OutilsNoteRangee.tsx',
   'src/fullscreen/FullscreenApp.tsx',
+  'src/lib/trade-note.ts',
+  'src/lib/use-trade-note.ts',
+  'src/lib/theme.ts',
+  'src/lib/ouvrir-compte.ts',
 ]
 
 test('aucune minuterie périodique dans le code de la 1.8.13, de la 1.8.14 et de la 1.8.15', () => {
