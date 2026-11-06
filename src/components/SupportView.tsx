@@ -9,6 +9,15 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowLeft, LifeBuoy, Send, Loader2, User } from 'lucide-react'
 import { sendSupportMessage, escalateSupport, fetchSupportThread } from '@/lib/sync'
 import { t } from '@/lib/i18n'
+import { EntreeBesoin, FormulaireBesoin } from '@/components/BesoinForm'
+import type { CleSignal } from '@/lib/besoins-decouverte'
+
+// Besoins des membres, lot 2 (06/11/2026) : sous l'en-tête, la bande « Il me
+// manque quelque chose » bascule la vue sur un petit formulaire (BesoinForm)
+// et la ramène au chat. Dans la vue plutôt qu'en onglet : même geste que sur
+// le site, la Masterclass et Pilotage, et le libellé tient sur une ligne à
+// 360 px. Le menu de la roue ouvre la même vue directement sur le formulaire
+// (`vueInitiale`).
 
 interface ChatMessage {
   // 'human' = une vraie personne de l'équipe a répondu depuis le cockpit.
@@ -45,7 +54,19 @@ function Linkified({ text }: { text: string }) {
   )
 }
 
-function SupportView({ onBack }: { onBack: () => void }) {
+interface SupportViewProps {
+  onBack: () => void
+  /** 'besoin' : ouvert depuis le menu de la roue, directement sur le formulaire. */
+  vueInitiale?: 'chat' | 'besoin'
+  /** Sans session, le formulaire des besoins propose d'ouvrir le compte. */
+  onOpenAccount?: () => void
+  /** Suite du 06/11 (piste C) : la clé de friction d'une ligne C, qui part avec la demande. */
+  signal?: CleSignal | null
+  onSignalEnvoye?: () => void
+}
+
+function SupportView({ onBack, vueInitiale = 'chat', onOpenAccount, signal = null, onSignalEnvoye }: SupportViewProps) {
+  const [vue, setVue] = useState<'chat' | 'besoin'>(vueInitiale)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -127,6 +148,14 @@ function SupportView({ onBack }: { onBack: () => void }) {
         <h2 className="flex-1 text-sm font-semibold text-foreground">{t('support.titre')}</h2>
       </div>
 
+      {/* Il me manque quelque chose : visible connecté ou non. */}
+      <EntreeBesoin actif={vue === 'besoin'} onClick={() => setVue(v => (v === 'besoin' ? 'chat' : 'besoin'))} />
+
+      {vue === 'besoin' ? (
+        <div className="flex-1 overflow-y-auto pr-1">
+          <FormulaireBesoin onOpenAccount={onOpenAccount} signal={signal} onEnvoye={onSignalEnvoye} />
+        </div>
+      ) : (<>
       {/* Fil */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {messages.length === 0 && (
@@ -199,6 +228,7 @@ function SupportView({ onBack }: { onBack: () => void }) {
           <Send size={15} />
         </button>
       </div>
+      </>)}
     </div>
   )
 }

@@ -16,7 +16,9 @@ import {
   Compass,
   Globe,
   FileUp,
-  Stethoscope
+  Stethoscope,
+  Lightbulb,
+  X
 } from 'lucide-react'
 import OutilsNoteRangee from '@/components/OutilsNoteRangee'
 import DiagnosticView from '@/components/DiagnosticView'
@@ -57,7 +59,29 @@ import { DEMANDE_OUVRIR_COMPTE, MESSAGE_OUVRIR_COMPTE } from '@/lib/ouvrir-compt
 import { useTradeNote } from '@/lib/use-trade-note'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { prepareImageForStorage } from '@/lib/image-utils'
+import { memoireBrouillon, signalerFriction } from '@/lib/besoins'
+import { bulleDejaVue, codeDeSync, composerPrerempli, marquerBulleVue, plateformeDe, type CleSignal } from '@/lib/besoins-decouverte'
+import { LigneBesoin } from '@/components/BesoinForm'
+import type { CleI18n } from '@/lib/i18n'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType, Screenshot } from '@/types/academic'
+
+// Besoins des membres, suite du 06/11/2026 (piste C) : la ligne et la phrase
+// pré-remplie de chaque friction du panneau. Textes : i18n.ts (A VALIDER PAR BRICE).
+const LIGNES_FRICTION: Record<CleSignal, { phrase: CleI18n; prerempli: CleI18n }> = {
+  'carnet.capture_impossible': { phrase: 'besoin.frictionCapture', prerempli: 'besoin.frictionCapturePrerempli' },
+  'carnet.sync_echec': { phrase: 'besoin.frictionSync', prerempli: 'besoin.frictionSyncPrerempli' },
+  'carnet.export_echec': { phrase: 'besoin.frictionExport', prerempli: 'besoin.frictionExportPrerempli' },
+}
+
+/** La plateforme de l'onglet actif, dans la liste connue, sinon « autre » : l'adresse ne sort jamais d'ici. */
+async function plateformeActive(): Promise<string> {
+  try {
+    const [onglet] = await chrome.tabs.query({ active: true, currentWindow: true })
+    return plateformeDe(onglet?.url)
+  } catch {
+    return 'autre'
+  }
+}
 
 function App() {
   // Suppression du système de vue par tabs
@@ -73,17 +97,56 @@ function App() {
   // « Envoyer un diagnostic » (1.8.14), et Paramètres ouverts depuis lui, placés sur l'affichage de secours
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [focusReglage, setFocusReglage] = useState<'affichageSecours' | undefined>(undefined)
+  // Besoins des membres (lot 2, 06/11/2026) : le Support ouvert depuis le menu
+  // de la roue s'ouvre directement sur « Il me manque quelque chose ».
+  const [supportBesoin, setSupportBesoin] = useState(false)
+  // Suite du 06/11/2026 : la friction rencontrée (ligne C), la clé qui part
+  // avec la demande pré-remplie, et la bulle de découverte (piste B).
+  const [friction, setFriction] = useState<CleSignal | null>(null)
+  const [signalBesoin, setSignalBesoin] = useState<CleSignal | null>(null)
+  const [ouvertureBesoin, setOuvertureBesoin] = useState(0)
+  const [bulleAide, setBulleAide] = useState(false)
+  useEffect(() => { setBulleAide(!bulleDejaVue()) }, [])
+  const fermerBulleAide = () => {
+    if (bulleAide) marquerBulleVue()
+    setBulleAide(false)
+  }
+  /** Un refus ou une impasse : le signal (une fois, en silence, connecté seulement) et la ligne C. */
+  const frictionIci = (cle: CleSignal, contexte?: Record<string, unknown>) => {
+    setFriction(cle)
+    void signalerFriction(cle, contexte)
+  }
+  /** Une synchronisation lancée à la main qui laisse des notes en échec : le code du premier échec, jamais son texte. */
+  const suivreSync = <R extends { failed: number; errors: Array<{ error: string }> }>(resultat: R): R => {
+    if (resultat.failed > 0) frictionIci('carnet.sync_echec', { code: codeDeSync(resultat.errors[0]?.error) })
+    return resultat
+  }
   // Ferme tous les écrans (une seule vue à la fois)
   const closeAllViews = () => {
     setShowSettings(false)
     setShowAccount(false)
     setShowMentorat(false)
     setShowSupport(false)
+    setSupportBesoin(false)
     setShowAiConfig(false)
     setShowPlans(false)
     setShowTools(false)
     setShowDiagnostic(false)
     setFocusReglage(undefined)
+  }
+
+  /** La ligne C : le Support s'ouvre sur « Il me manque quelque chose », la phrase posée dans le brouillon. */
+  const ouvrirBesoinPrerempli = (cle: CleSignal) => {
+    const actuel = memoireBrouillon.lire()
+    memoireBrouillon.ecrire({ ...actuel, texte: composerPrerempli(t(LIGNES_FRICTION[cle].prerempli), actuel.texte) })
+    closeAllViews()
+    setSignalBesoin(cle)
+    setOuvertureBesoin(n => n + 1)
+    setSupportBesoin(true)
+    setShowSupport(true)
+    setFriction(null)
+    marquerBulleVue()
+    setBulleAide(false)
   }
 
   // Ouvrir une note referme l ecran en cours. Sans ca, choisir une note
@@ -566,6 +629,8 @@ function App() {
     } catch (error) {
       console.error('Error capturing page:', error)
       toast.error(t('panneau.erreurCapturePage'))
+      // Piste C : la capture de la page a échoué (plateforme connue ou « autre »).
+      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'page' }))
     } finally {
       setIsCapturing(false)
     }
@@ -665,6 +730,8 @@ function App() {
     } catch (error) {
       console.error('Smart capture error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
+      // Piste C : la capture intelligente n'a rien pu extraire (le message d'erreur ne part pas).
+      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -722,6 +789,7 @@ function App() {
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
+      void plateformeActive().then(plateforme => frictionIci('carnet.capture_impossible', { plateforme, raison: 'extraction' }))
     } finally {
       setIsSmartCapturing(false)
     }
@@ -742,6 +810,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting PDF:', error)
       toast.error(t('panneau.erreurPdf'))
+      frictionIci('carnet.export_echec', { format: 'pdf' })
     } finally {
       setIsExporting(false)
     }
@@ -756,6 +825,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting DOCX:', error)
       toast.error(t('panneau.erreurDocs'))
+      frictionIci('carnet.export_echec', { format: 'docx' })
     } finally {
       setIsExporting(false)
     }
@@ -770,6 +840,7 @@ function App() {
     } catch (error) {
       console.error('Error exporting to Drive:', error)
       toast.error(t('pleinEcran.erreurDrive', { erreur: error instanceof Error ? error.message : t('pleinEcran.erreurInconnue') }))
+      frictionIci('carnet.export_echec', { format: 'drive' })
     } finally {
       setIsExporting(false)
     }
@@ -844,7 +915,14 @@ function App() {
             (images et contenu en max-w-full) : on coupe ce défilement. */}
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
           {showSupport ? (
-            <SupportView onBack={() => setShowSupport(false)} />
+            <SupportView
+              key={`${supportBesoin ? 'besoin' : 'chat'}-${ouvertureBesoin}`}
+              vueInitiale={supportBesoin ? 'besoin' : 'chat'}
+              onBack={() => setShowSupport(false)}
+              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
+              signal={signalBesoin}
+              onSignalEnvoye={() => setSignalBesoin(null)}
+            />
           ) : showMentorat ? (
             <MentoratView
               onBack={() => setShowMentorat(false)}
@@ -884,7 +962,7 @@ function App() {
               onSyncAll={async () => {
                 const result = await forceSyncAll(notes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
                 await loadData()
-                return result
+                return suivreSync(result)
               }}
               onVerifySync={async () => {
                 const result = await verifySyncStatus(notes, (id, changes) => storage.updateNote(id, changes))
@@ -898,6 +976,7 @@ function App() {
                     missingNotes.map(n => ({ ...n, lastSyncAt: undefined })),
                     (id) => storage.updateNote(id, { lastSyncAt: Date.now() })
                   ))
+                  .then(suivreSync)
               }}
               onForceResyncAll={async () => {
                 // Reset lastSyncAt sur TOUTES les notes (inclut les exclues via includeExcluded)
@@ -905,21 +984,27 @@ function App() {
                 const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined }))
                 const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }), { includeExcluded: true })
                 await loadData()
-                return result
+                return suivreSync(result)
               }}
               onRebuildJournal={async () => {
                 // Supprime toutes les notes dans le journal, reset les flags, re-sync complet
                 const { ok, error } = await deleteJournalNotes()
-                if (!ok) return { synced: 0, failed: 0, errors: [{ title: 'Journal', error: error ?? 'Erreur inconnue' }] }
+                if (!ok) {
+                  frictionIci('carnet.sync_echec', { code: codeDeSync(error) })
+                  return { synced: 0, failed: 0, errors: [{ title: 'Journal', error: error ?? 'Erreur inconnue' }] }
+                }
                 await Promise.all(notes.map(n => storage.updateNote(n.id, { lastSyncAt: undefined, syncExcluded: false })))
                 const freshNotes = notes.map(n => ({ ...n, lastSyncAt: undefined, syncExcluded: false }))
                 const result = await forceSyncAll(freshNotes, (id) => storage.updateNote(id, { lastSyncAt: Date.now() }))
                 await loadData()
-                return result
+                return suivreSync(result)
               }}
               onPullFromJournal={async () => {
                 const { notes: journalNotes, folders: journalFolders, error } = await pullFromJournal()
-                if (error) return { imported: 0, skipped: 0, error }
+                if (error) {
+                  frictionIci('carnet.sync_echec', { code: codeDeSync(error) })
+                  return { imported: 0, skipped: 0, error }
+                }
                 // Restaurer d'abord l'arborescence des dossiers (ids stables).
                 // Racines AVANT sous-dossiers : saveFolder refuse un parentId
                 // dont le parent n'existe pas encore localement.
@@ -1077,8 +1162,40 @@ function App() {
           </div>
         )}
 
+        {/* Piste C (06/11) : la ligne d'une friction (capture, synchronisation, export), au-dessus du pied. */}
+        {friction && !showSupport && (
+          <div className="px-4 pb-2">
+            <LigneBesoin
+              phrase={t(LIGNES_FRICTION[friction].phrase)}
+              onOuvrir={() => ouvrirBesoinPrerempli(friction)}
+              onMasquer={() => setFriction(null)}
+            />
+          </div>
+        )}
+
         {/* Footer utilitaire */}
-        <div className="px-4 pb-2 flex items-center justify-between">
+        <div className="relative px-4 pb-2 flex items-center justify-between">
+            {/* Piste B (06/11) : la bulle de découverte, une seule fois, au-dessus
+                de « Aide et idées ». Dessinée à la main dans le langage du menu
+                de la roue (bg-popover, border, shadow-lg), apparition en CSS. */}
+            {bulleAide && !showSupport && !settingsMenuOpen && (
+              <div
+                id="aide-bulle"
+                role="note"
+                className="aide-bulle absolute bottom-full right-4 mb-1 z-40 w-56 rounded-lg border border-border bg-popover py-2 pl-3 pr-7 text-xs leading-snug text-foreground shadow-lg"
+              >
+                <span aria-hidden="true" className="absolute -bottom-[5px] right-16 w-2.5 h-2.5 rotate-45 border-b border-r border-border bg-popover" />
+                {t('besoin.aideBulle')}
+                <button
+                  onClick={fermerBulleAide}
+                  className="absolute top-1.5 right-1.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title={t('commun.fermer')}
+                  aria-label={t('commun.fermer')}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground/60 select-none">v{chrome.runtime.getManifest().version}</span>
               <span className="text-muted-foreground/30">|</span>
@@ -1130,13 +1247,17 @@ function App() {
               {/* Footer allégé (retour Brice 28/08) : « Nous contacter » supprimé
                   (le support intégré le remplace), Guide et « Évaluez-nous »
                   déménagés dans Paramètres > Aide */}
+              {/* Piste A (06/11) : l'icône et le mot « Aide et idées » ; le mot se
+                  retire seulement si le panneau est plus étroit que 340 px. */}
               <button
-                onClick={() => { setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
-                className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
-                title={t('panneau.contacterSupport')}
-                aria-label={t('panneau.contacterSupport')}
+                onClick={() => { fermerBulleAide(); setSignalBesoin(null); setSupportBesoin(false); setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
+                className={`flex items-center gap-1 p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
+                title={t('besoin.aideLibelle')}
+                aria-label={t('besoin.aideLibelle')}
+                aria-describedby={bulleAide && !showSupport ? 'aide-bulle' : undefined}
               >
-                <LifeBuoy size={14} />
+                <LifeBuoy size={14} className="flex-shrink-0" />
+                <span className="hidden min-[340px]:inline text-[11px] leading-none whitespace-nowrap">{t('besoin.aideLibelle')}</span>
               </button>
               <button
                 onClick={() => { setShowMentorat(!showMentorat); setShowSupport(false); setShowAccount(false); setShowSettings(false) }}
@@ -1222,6 +1343,15 @@ function App() {
                       <button onClick={open(setShowDiagnostic)} className={item} role="menuitem">
                         <Stethoscope size={13} className="text-muted-foreground flex-shrink-0" />
                         {t('menu.diagnostic')}
+                      </button>
+                      {/* Besoins des membres (lot 2, 06/11) : à côté du diagnostic, le même formulaire que la bande du Support */}
+                      <button
+                        onClick={() => { setSettingsMenuOpen(false); closeAllViews(); setSupportBesoin(true); setShowSupport(true) }}
+                        className={item}
+                        role="menuitem"
+                      >
+                        <Lightbulb size={13} className="text-muted-foreground flex-shrink-0" />
+                        {t('menu.besoin')}
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowPlans)} className={item} role="menuitem">
