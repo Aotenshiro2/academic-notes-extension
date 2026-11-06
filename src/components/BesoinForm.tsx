@@ -17,6 +17,7 @@ import {
   type CaptureBesoin, type ReponsePrevus,
 } from '@/lib/besoins'
 import { cleMessageSignalement, texteEnvoyable, TEXTE_MAX, type BesoinPrevu } from '@/lib/besoins-pur'
+import type { CleSignal } from '@/lib/besoins-decouverte'
 
 /** La bande sous l'en-tête du Support : ouvre le formulaire, ou ramène au chat. */
 export function EntreeBesoin({ actif, onClick }: { actif: boolean; onClick: () => void }) {
@@ -37,7 +38,45 @@ export function EntreeBesoin({ actif, onClick }: { actif: boolean; onClick: () =
 
 type EtatPrevus = { etat: 'chargement' } | ReponsePrevus
 
-export function FormulaireBesoin({ onOpenAccount }: { onOpenAccount?: () => void }) {
+/**
+ * Piste C (suite du 06/11) : la ligne courte d'un refus ou d'une impasse
+ * (capture, synchronisation, export), au-dessus du pied du panneau. Elle ouvre
+ * le Support sur ce formulaire, pré-rempli ; « Masquer » la retire. Dessinée à
+ * la main dans le langage de la bande du Support (bleu, rounded-lg).
+ */
+export function LigneBesoin({ phrase, onOuvrir, onMasquer }: { phrase: string; onOuvrir: () => void; onMasquer: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-2 rounded-lg border border-blue-500/25 bg-blue-500/5 text-xs" role="status">
+      <Lightbulb size={14} className="text-blue-500 flex-shrink-0" />
+      <span className="min-w-0 flex-[1_1_10rem] leading-snug text-foreground">{phrase}</span>
+      <button
+        onClick={onOuvrir}
+        className="flex-shrink-0 px-2 py-1 rounded-md border border-blue-500/40 font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-colors"
+      >
+        {t('besoin.ligneAction')}
+      </button>
+      <button
+        onClick={onMasquer}
+        className="flex-shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title={t('besoin.ligneFermer')}
+        aria-label={t('besoin.ligneFermer')}
+      >
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * `signal` : la clé de friction quand le formulaire vient d'une ligne C (la
+ * phrase pré-remplie est déjà dans le brouillon) ; elle part avec la demande,
+ * puis `onEnvoye` la fait oublier.
+ */
+export function FormulaireBesoin({ onOpenAccount, signal = null, onEnvoye }: {
+  onOpenAccount?: () => void
+  signal?: CleSignal | null
+  onEnvoye?: () => void
+}) {
   const [connecte, setConnecte] = useState<boolean | null>(null)
   const [texte, setTexte] = useState(() => memoireBrouillon.lire().texte)
   const [capture, setCapture] = useState<CaptureBesoin | null>(() => memoireBrouillon.lire().capture)
@@ -97,13 +136,14 @@ export function FormulaireBesoin({ onOpenAccount }: { onOpenAccount?: () => void
     if (envoi || prepCapture || !texteEnvoyable(texte)) return
     setErreur(null)
     setEnvoi(true)
-    const r = await signalerBesoin(texte, capture?.dataUrl)
+    const r = await signalerBesoin(texte, capture?.dataUrl, signal)
     setEnvoi(false)
     if (r.etat === 'ok') {
       memoireBrouillon.ecrire({ texte: '', capture: null })
       setTexte('')
       setCapture(null)
       setPhrase(r.phrase ?? t('besoin.merciDefaut'))
+      onEnvoye?.()
     } else {
       setErreur(t(cleMessageSignalement(r.code), { code: r.code ?? '' }))
     }

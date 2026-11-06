@@ -514,6 +514,19 @@
   .aura-ia::before { animation: none; }
 }
 
+/* Besoins des membres, suite du 06/11 (piste B) : la bulle « Aide et idées »
+   apparaît en CSS, un peu après l'ouverture du panneau, sans minuterie. */
+@keyframes aide-bulle-entree {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.aide-bulle {
+  animation: aide-bulle-entree .32s ease-out 1.2s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aide-bulle { animation: none; }
+}
+
 /* ── Affichage de secours (1.8.14) ────────────────────────────────────────────
    Réglage de Paramètres, éteint par défaut (affichage-secours.ts pose la classe
    sur <html> du panneau, du plein écran et du Guide). Le fantôme au survol

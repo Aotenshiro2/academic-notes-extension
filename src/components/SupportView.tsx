@@ -10,6 +10,7 @@ import { ArrowLeft, LifeBuoy, Send, Loader2, User } from 'lucide-react'
 import { sendSupportMessage, escalateSupport, fetchSupportThread } from '@/lib/sync'
 import { t } from '@/lib/i18n'
 import { EntreeBesoin, FormulaireBesoin } from '@/components/BesoinForm'
+import type { CleSignal } from '@/lib/besoins-decouverte'
 
 // Besoins des membres, lot 2 (06/11/2026) : sous l'en-tête, la bande « Il me
 // manque quelque chose » bascule la vue sur un petit formulaire (BesoinForm)
@@ -59,9 +60,12 @@ interface SupportViewProps {
   vueInitiale?: 'chat' | 'besoin'
   /** Sans session, le formulaire des besoins propose d'ouvrir le compte. */
   onOpenAccount?: () => void
+  /** Suite du 06/11 (piste C) : la clé de friction d'une ligne C, qui part avec la demande. */
+  signal?: CleSignal | null
+  onSignalEnvoye?: () => void
 }
 
-function SupportView({ onBack, vueInitiale = 'chat', onOpenAccount }: SupportViewProps) {
+function SupportView({ onBack, vueInitiale = 'chat', onOpenAccount, signal = null, onSignalEnvoye }: SupportViewProps) {
   const [vue, setVue] = useState<'chat' | 'besoin'>(vueInitiale)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -149,7 +153,7 @@ function SupportView({ onBack, vueInitiale = 'chat', onOpenAccount }: SupportVie
 
       {vue === 'besoin' ? (
         <div className="flex-1 overflow-y-auto pr-1">
-          <FormulaireBesoin onOpenAccount={onOpenAccount} />
+          <FormulaireBesoin onOpenAccount={onOpenAccount} signal={signal} onEnvoye={onSignalEnvoye} />
         </div>
       ) : (<>
       {/* Fil */}

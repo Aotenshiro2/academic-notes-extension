@@ -8,9 +8,12 @@ import {
   ArrowLeft,
   Command,
   Map,
+  PackageCheck,
 } from 'lucide-react'
 import ThemeToggle from '@/components/ThemeToggle'
-import { t, getLangue, subscribeLangue, type Langue, type CleI18n } from '@/lib/i18n'
+import { t, tp, getLangue, subscribeLangue, type Langue, type CleI18n } from '@/lib/i18n'
+import { chargerLivres } from '@/lib/besoins'
+import type { BesoinLivre } from '@/lib/besoins-decouverte'
 
 const version = chrome.runtime.getManifest().version
 
@@ -720,6 +723,18 @@ export default function GuideApp() {
     window.scrollTo(0, 0)
   }, [page])
 
+  // Besoins des membres, suite du 06/11 (piste D) : « Livré grâce à vos
+  // demandes », lu une fois quand l'écran Versions s'ouvre (jamais en fond) ;
+  // caché sans compte, sans livraison, ou tant que la route n'est pas en ligne.
+  const [livres, setLivres] = useState<BesoinLivre[] | null>(null)
+  useEffect(() => {
+    if (page !== 'versions' || livres !== null) return
+    let vivant = true
+    void chargerLivres().then(liste => { if (vivant) setLivres(liste) })
+    return () => { vivant = false }
+  }, [page, livres])
+  const jourDe = (iso: string) => new Intl.DateTimeFormat(langue === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso))
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -817,6 +832,25 @@ export default function GuideApp() {
         </>)}
 
         {page === 'versions' && (<>
+        {/* Livré grâce à vos demandes (06/11) : la même Section que les autres, rien de dessiné à part. */}
+        {livres && livres.length > 0 && (
+          <Section icon={PackageCheck} title={t('besoin.livresTitre')}>
+            <div className="space-y-4">
+              {livres.map(livre => (
+                <div key={livre.id}>
+                  <h3 className="text-sm font-semibold text-foreground mb-1">{livre.titre}</h3>
+                  <p className="text-sm text-muted-foreground ml-4">
+                    {[
+                      livre.livreLe ? t('besoin.livresDepuis', { date: jourDe(livre.livreLe) }) : null,
+                      livre.personnes > 0 ? tp('besoin.livresUn', 'besoin.livresPlur', livre.personnes) : null,
+                    ].filter(Boolean).join(', ')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* Feuille de route */}
         <Section icon={Map} title={t('guide.feuilleDeRoute')}>
           <div className="space-y-4">

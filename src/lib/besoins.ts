@@ -15,6 +15,9 @@ import {
   APP_BESOIN, CAPTURE_TAILLE_MAX, dimensionsCible, lireBesoins, phraseDuServeur,
   type BesoinPrevu,
 } from './besoins-pur'
+import {
+  envoyerSignal, lireLivres, type BesoinLivre, type CleSignal, type IssueSignal,
+} from './besoins-decouverte'
 
 export type ReponsePrevus =
   | { etat: 'ok'; besoins: BesoinPrevu[] }
@@ -70,19 +73,49 @@ export async function voterBesoin(besoinId: string): Promise<ReponseVote> {
   }
 }
 
-export async function signalerBesoin(texte: string, capture?: string): Promise<ReponseSignalement> {
+/** `signal` : la clé de friction quand le formulaire s'est ouvert depuis une ligne C (besoins-decouverte.ts). */
+export async function signalerBesoin(texte: string, capture?: string, signal?: CleSignal | null): Promise<ReponseSignalement> {
   const jeton = await getBearerToken().catch(() => null)
   if (!jeton) return { etat: 'erreur', code: 401 }
   try {
     const res = await fetch(`${JOURNAL_API}/api/besoins/signaler`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jeton}` },
-      body: JSON.stringify({ app: APP_BESOIN, texte, capture }),
+      body: JSON.stringify({ app: APP_BESOIN, texte, capture, ...(signal ? { signal } : {}) }),
     })
     if (!res.ok) return { etat: 'erreur', code: res.status }
     return { etat: 'ok', phrase: phraseDuServeur(await res.json().catch(() => null)) }
   } catch {
     return { etat: 'erreur', code: null }
+  }
+}
+
+// ─── Suite du 06/11 : signaux de friction (C) et besoins livrés (D) ──────────
+
+/**
+ * Le signal d'un refus ou d'une impasse, une fois, en silence, seulement
+ * connecté (règles : besoins-decouverte.ts). Jamais attendu par l'appelant.
+ */
+export function signalerFriction(cle: CleSignal, contexte?: Record<string, unknown>): Promise<IssueSignal> {
+  return envoyerSignal(cle, contexte, { api: JOURNAL_API, jeton: () => getBearerToken().catch(() => null) })
+}
+
+/**
+ * GET /api/besoins/livres?app=extension, lu une fois à l'ouverture de l'écran
+ * Versions du Guide. Pas de session, route pas encore en ligne, réseau : liste
+ * vide (la section reste cachée).
+ */
+export async function chargerLivres(): Promise<BesoinLivre[]> {
+  const jeton = await getBearerToken().catch(() => null)
+  if (!jeton) return []
+  try {
+    const res = await fetch(`${JOURNAL_API}/api/besoins/livres?app=${APP_BESOIN}`, {
+      headers: { 'Authorization': `Bearer ${jeton}` },
+    })
+    if (!res.ok) return []
+    return lireLivres(await res.json().catch(() => null))
+  } catch {
+    return []
   }
 }
 
