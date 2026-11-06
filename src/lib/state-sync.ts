@@ -9,6 +9,8 @@ export type SyncMessageType =
   | 'NOTE_UPDATED'
   | 'NOTE_DELETED'
   | 'NOTES_BULK_UPDATE'
+  // 1.8.15 : les dossiers se gèrent aussi en plein écran ; l'autre vue ouverte relit.
+  | 'FOLDERS_UPDATED'
 
 export interface SyncMessage {
   type: SyncMessageType
@@ -116,6 +118,15 @@ class StateSync {
    */
   notesBulkUpdate(noteIds: string[], source: SyncMessage['source'] = 'sidepanel') {
     this.broadcast({ type: 'NOTES_BULK_UPDATE', noteIds, source })
+  }
+
+  /**
+   * Broadcast that the folders changed (created, renamed, deleted). Avant la
+   * 1.8.15, seul le panneau gérait les dossiers : un plein écran ouvert à côté
+   * ne voyait un dossier neuf qu'à sa prochaine relecture.
+   */
+  foldersUpdated(source: SyncMessage['source'] = 'sidepanel') {
+    this.broadcast({ type: 'FOLDERS_UPDATED', source })
   }
 
   /**

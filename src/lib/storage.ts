@@ -1204,6 +1204,8 @@ export const storage = {
       folders.push(clean)
     }
     await this.saveSettings({ folders })
+    // L'autre vue ouverte (panneau ou plein écran) relit ses dossiers (1.8.15)
+    stateSync.foldersUpdated()
   },
 
   async deleteFolder(id: string): Promise<void> {
@@ -1216,6 +1218,7 @@ export const storage = {
     await this.saveSettings({ folders })
     // Détacher toutes les notes qui appartiennent à ce dossier
     await db.notes.where('folderId').equals(id).modify({ folderId: undefined })
+    stateSync.foldersUpdated()
   },
 
   async moveNoteToFolder(noteId: string, folderId: string | null): Promise<void> {

@@ -2,7 +2,6 @@ import { toast } from '../lib/toast'
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Plus,
-  Search,
   Download,
   Loader2,
   Menu,
@@ -40,6 +39,7 @@ import OutilsNoteRangee from '@/components/OutilsNoteRangee'
 import EcransCarnet from '@/components/EcransCarnet'
 import PiedCarnet from '@/components/PiedCarnet'
 import EmptyNoteView from '@/components/EmptyNoteView'
+import HistoriqueNotes from '@/components/HistoriqueNotes'
 import { useTravailDeFond } from '@/lib/use-travail-fond'
 import { useTradeNote } from '@/lib/use-trade-note'
 import { useEcransCarnet } from '@/lib/use-ecrans-carnet'
@@ -53,7 +53,7 @@ import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
 import { exportNoteToDocx } from '@/lib/docx-export'
 import { exportNoteToDrive } from '@/lib/drive-export'
-import { formatSmartDate, formatCompactDate } from '@/lib/date-utils'
+import { formatSmartDate } from '@/lib/date-utils'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { collectNoteImages } from '@/lib/note-images'
 import { noterConsultation } from '@/lib/consultations'
@@ -79,11 +79,9 @@ function FullscreenApp() {
   // Résumés uniquement : cf. sidepanel/App.tsx
   const [notes, setNotes] = useState<NoteSummary[]>([])
   const [folders, setFolders] = useState<NoteFolder[]>([])
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editorContent, setEditorContent] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPageInfo, setCurrentPageInfo] = useState<{url: string, title: string} | null>(null)
   const editorRef = useRef<CaptureInputHandle>(null)
@@ -724,16 +722,6 @@ function FullscreenApp() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showExportMenu])
 
-  // Filtrer les notes selon le dossier actif et la recherche
-  const filteredNotes = notes
-    .filter(note => activeFolderId === null || note.folderId === activeFolderId)
-    .filter(note =>
-      !searchQuery ||
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.searchText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-
   // Mode image viewer (ouvert depuis le sidepanel via clic image)
   if (imageViewMode) {
     return (
@@ -763,109 +751,41 @@ function FullscreenApp() {
 
   return (
     <div className="h-screen bg-background flex">
-      {/* Sidebar */}
+      {/* Sidebar : l'Historique du panneau (1.8.15, option A de Brice) */}
       <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 border-r border-border bg-background overflow-hidden flex flex-col`}>
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-semibold text-foreground">Le Carnet du Trader</h1>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-1 rounded-md hover:bg-muted"
-              aria-label={t('pleinEcran.fermerSidebar')}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Recherche */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-            <input
-              type="text"
-              placeholder={t('pleinEcran.rechercher')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          {/* Folder filter pills */}
-          {folders.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
+        <div className="w-80 flex-1 min-h-0 flex flex-col">
+          <div className="p-4 pb-2">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-lg font-semibold text-foreground">Le Carnet du Trader</h1>
               <button
-                onClick={() => setActiveFolderId(null)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                  activeFolderId === null
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 rounded-md hover:bg-muted"
+                aria-label={t('pleinEcran.fermerSidebar')}
               >
-                {t('commun.toutes')}
+                <X size={16} />
               </button>
-              {folders.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setActiveFolderId(f.id)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors truncate max-w-[120px] ${
-                    activeFolderId === f.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:text-foreground'
-                  }`}
-                  title={f.name}
-                >
-                  {f.name}
-                </button>
-              ))}
             </div>
-          )}
-        </div>
 
-        {/* Liste des notes */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2">
+            {/* « Nouvelle note » : propre au plein écran (le panneau a son + dans l'en-tête), gardé */}
             <button
               onClick={() => { ecrans.fermer(); setCurrentNoteId(null) }}
-              className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border mb-2"
+              className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border"
             >
               <Plus size={16} className="text-muted-foreground" />
               <span className="text-muted-foreground">{t('pleinEcran.nouvelleNote')}</span>
             </button>
-
-            {filteredNotes.map((note) => (
-              <button
-                key={note.id}
-                onClick={() => ouvrirNote(note.id)}
-                className={`group w-full text-left p-3 rounded-lg transition-colors mb-1 ${
-                  currentNoteId === note.id
-                    ? 'bg-primary/10 border-primary/20 border'
-                    : 'hover:bg-muted/50'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground text-sm line-clamp-1 mb-1">
-                      {note.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                      {note.preview.slice(0, 100)}...
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatCompactDate(note.timestamp)}
-                    </div>
-                  </div>
-                  <span
-                    role="button"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id) }}
-                    className="p-1 mt-0.5 text-muted-foreground hover:text-destructive rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
-                    title={t('commun.supprimer')}
-                    aria-label={t('historique.supprimerNote')}
-                  >
-                    <Trash2 size={14} />
-                  </span>
-                </div>
-              </button>
-            ))}
           </div>
+
+          {/* Recherche, « à trier » et tags, dossiers, glisser-déposer : le même
+              composant que le tiroir « Historique » du panneau */}
+          <HistoriqueNotes
+            notes={notes}
+            folders={folders}
+            currentNoteId={currentNoteId}
+            onSelectNote={ouvrirNote}
+            onNotesUpdate={loadData}
+            onNoteSupprimee={(id) => { if (id === currentNoteId) setCurrentNoteId(null) }}
+          />
         </div>
       </div>
 

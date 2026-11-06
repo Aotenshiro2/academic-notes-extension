@@ -312,27 +312,9 @@ function App() {
     }, 100)
   }
 
-  // ---- Folder handlers ----
-  const handleFolderCreate = async (name: string, parentId?: string) => {
-    await storage.saveFolder({ id: crypto.randomUUID(), name, createdAt: Date.now(), ...(parentId ? { parentId } : {}) })
-    await loadData()
-  }
-
-  const handleFolderRename = async (id: string, name: string) => {
-    const existing = folders.find(f => f.id === id)
-    if (existing) await storage.saveFolder({ ...existing, name })
-    await loadData()
-  }
-
-  const handleFolderDelete = async (id: string) => {
-    await storage.deleteFolder(id)
-    await loadData()
-  }
-
-  const handleMoveNoteToFolder = async (noteId: string, folderId: string | null) => {
-    await storage.moveNoteToFolder(noteId, folderId)
-    await loadData()
-  }
+  // Les dossiers (créer, renommer, supprimer, déplacer une note) se gèrent
+  // dans l'Historique lui-même depuis la 1.8.15 (HistoriqueNotes, partagé
+  // avec le plein écran) : le panneau relit seulement ses notes.
 
   // « Capturer cette page » (carte de l'accueil) : une note neuve avec la
   // capture de l'onglet actif. La note elle-même : lib/capture-page (1.8.15,
@@ -735,10 +717,7 @@ function App() {
         currentNoteId={currentNoteId}
         onSelectNote={ouvrirNote}
         onNotesUpdate={loadData}
-        onFolderCreate={handleFolderCreate}
-        onFolderRename={handleFolderRename}
-        onFolderDelete={handleFolderDelete}
-        onMoveNoteToFolder={handleMoveNoteToFolder}
+        onNoteSupprimee={(id) => { if (id === currentNoteId) setCurrentNoteId(null) }}
       />
 
       {/* Dialog d'analyse AI */}

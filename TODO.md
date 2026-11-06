@@ -676,15 +676,23 @@ on verra aux retours.
         `use-travail-fond.ts`, faits par UNE vue à la fois (verrou
         `navigator.locks`, `travail-fond.ts`). La seconde vue attend sans
         minuterie et prend la relève quand la première se ferme.
-      - Tests : `ecrans-carnet`, `capture-page`, `travail-fond`,
+      - Dossiers en plein écran (point 7, option A de Brice) : la barre
+        latérale du plein écran est l'Historique du panneau,
+        `HistoriqueNotes` (recherche, « à trier », tags, arbre des dossiers,
+        glisser-déposer), règles pures dans `historique.ts`. Le tiroir du
+        panneau (`HistoryDropdown`) n'est plus que son cadre. Les pastilles et
+        les aperçus du plein écran disparaissent ; « Nouvelle note » reste
+        (le panneau a son + dans l'en-tête). `saveFolder` et `deleteFolder`
+        préviennent l'autre vue (`FOLDERS_UPDATED`). Supprimer la note ouverte
+        depuis l'Historique ramène à l'accueil, dans les deux vues.
+      - Tests : `ecrans-carnet`, `capture-page`, `travail-fond`, `historique`,
         `sans-minuterie` étendu. Essais visuels :
         `carnet-essais-visuels/carnet-1815/essai-1815-c.mjs` (manques 3, 4, 5,
-        8) et `essai-1815-d.mjs` (deux vues ouvertes, verrou).
-      - Reste : le point 7 (dossiers en plein écran : créer, renommer,
-        supprimer, déplacer) attend un choix de présentation de Brice ; la
-        capture d'un AUTRE onglet ne s'essaie pas en Edge sans tête (réponse
-        du service worker remplacée dans l'essai) ; écrans et travail de fond
-        jamais essayés connectés.
+        8), `essai-1815-d.mjs` (deux vues ouvertes, verrou) et
+        `essai-1815-e.mjs` (dossiers en plein écran, vus par le panneau).
+      - Reste : la capture d'un AUTRE onglet ne s'essaie pas en Edge sans
+        tête (réponse du service worker remplacée dans l'essai) ; écrans et
+        travail de fond jamais essayés connectés.
 
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
