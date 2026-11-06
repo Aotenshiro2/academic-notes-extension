@@ -648,6 +648,44 @@ on verra aux retours.
         « ne répond pas » : 404 lu comme indisponible) ; l'instrument lu par
         l'IA n'est pas posé sur le trade (seulement montré).
 
+- [x] **1.8.15 - Le plein écran fait ce que fait le panneau (06/11, briefs
+      `D:\7_Agents\briefs\2026-11-06-carnet-plein-ecran-outils.md` puis
+      `2026-11-06-carnet-1815-suite.md`).** Une seule version, jamais sortie :
+      la rangée d'outils partagée (Sora), le trade, le thème, l'aura et les
+      erreurs d'export en plein écran (Sora), la branche `besoins-bouton`
+      fusionnée, puis les manques 3, 4, 5, 8 et 9 relevés par Sora et choisis
+      par Brice. Règle tenue : les composants du panneau sont PARTAGÉS, pas
+      recopiés.
+      - Écrans : `EcransCarnet` (Compte, Paramètres, Configurer son IA,
+        Mentorat, Support, Mon forfait, Autres outils, Diagnostic), état unique
+        `use-ecrans-carnet` (une seule vue à la fois, règles pures dans
+        `ecrans-carnet.ts`). Pied et menu de la roue : `PiedCarnet` (langue,
+        pastille de sync, thème, Aide et idées, mentorat, menu, import des
+        trades, ligne de friction et bulle des besoins). « Me connecter »
+        ouvre maintenant l'écran Compte dans la vue même (le détour par le
+        panneau de Sora, `ouvrir-compte.ts`, est retiré).
+      - Accueil : `EmptyNoteView` dans les deux vues (attente et erreur de la
+        capture intelligente rentrées dedans) ; « Capturer cette page » passe
+        par `capture-page.ts` + `enregistrerNoteDeLaPage` (le plein écran
+        choisit l'onglet).
+      - Capture d'écran dans la note : `poserCaptureDansNote` (image puis sa
+        ligne) ; la ligne nomme l'onglet choisi (`pageCapturee` de
+        `CaptureInput`), plus le plein écran lui-même.
+      - Travail de fond (point 9) : rattrapage de la sync, compteurs
+        d'activité, note « Mentorat AOK », sortis du panneau dans
+        `use-travail-fond.ts`, faits par UNE vue à la fois (verrou
+        `navigator.locks`, `travail-fond.ts`). La seconde vue attend sans
+        minuterie et prend la relève quand la première se ferme.
+      - Tests : `ecrans-carnet`, `capture-page`, `travail-fond`,
+        `sans-minuterie` étendu. Essais visuels :
+        `carnet-essais-visuels/carnet-1815/essai-1815-c.mjs` (manques 3, 4, 5,
+        8) et `essai-1815-d.mjs` (deux vues ouvertes, verrou).
+      - Reste : le point 7 (dossiers en plein écran : créer, renommer,
+        supprimer, déplacer) attend un choix de présentation de Brice ; la
+        capture d'un AUTRE onglet ne s'essaie pas en Edge sans tête (réponse
+        du service worker remplacée dans l'essai) ; écrans et travail de fond
+        jamais essayés connectés.
+
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
       précédent, faute d'écart suffisant (`space-y-1.5` = 6 px pour une pastille

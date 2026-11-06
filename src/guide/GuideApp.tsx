@@ -99,7 +99,9 @@ const TIPS: CleI18n[] = [
 // Les textes vivent dans le dictionnaire (clés `guide.confidentialite1` à `9`) :
 // toute modification de fond se fait des deux côtés, FR puis EN. La 8
 // (1.8.14) : « Envoyer un diagnostic », qui ne part qu'au clic du membre. La 9
-// (1.8.14) : « Lire une capture », l'image envoyée à l'IA à son geste.
+// (1.8.14) : « Lire une capture », l'image envoyée à l'IA à son geste. La 10
+// (1.8.15) : « Il me manque quelque chose » et les signaux de friction
+// (section 6 de la politique publiée).
 const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite1',
   'guide.confidentialite2',
@@ -110,18 +112,23 @@ const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite7',
   'guide.confidentialite8',
   'guide.confidentialite9',
+  'guide.confidentialite10',
 ]
 
 const CHANGELOG = [
   {
     version: '1.8.15',
-    title: 'Le plein écran fait tout ce que fait le panneau pendant ta séance',
+    title: 'Le plein écran fait tout ce que fait le panneau, et tu peux nous dire ce qui te manque',
     items: [
-      'En plein écran, la rangée « Poser un DOL », « Lancer un warmup » et « Approfondir » est maintenant juste au-dessus de la barre d\'écriture, comme dans le panneau. Mêmes gestes, même comportement : sans le Carnet Premium, « Approfondir » garde son cadenas et te dit pourquoi.',
-      'En plein écran, tu peux lancer un trade depuis la barre d\'écriture, comme dans le panneau. Le graphique TradingView est capturé au lancement s\'il est affiché dans une autre fenêtre, et changer de note clôt le trade en cours.',
-      'Le plein écran prend le thème du panneau (clair, sombre ou celui de ton appareil) et le suit si tu le changes. La « Capture intelligente » y garde aussi son aura quand l\'IA est ouverte sur ton compte.',
-      'En plein écran, « Me connecter » (dans la carte de prix d\'un trade ou l\'import de tes trades) ouvre le panneau à côté, directement sur ton compte. Et si l\'export en PDF ou en Word échoue, un message te le dit.',
+      'En plein écran, tu peux lancer un trade depuis la barre d\'écriture, comme dans le panneau. Le graphique TradingView est capturé au lancement s\'il est affiché dans une autre fenêtre, et changer de note clôt le trade en cours. Le plein écran prend aussi le thème du panneau (clair, sombre ou celui de ton appareil) et le suit si tu le changes, la « Capture intelligente » y garde son aura quand l\'IA est ouverte sur ton compte, et si l\'export en PDF ou en Word échoue, un message te le dit.',
+      'En plein écran, la rangée « Poser un DOL », « Lancer un warmup » et « Approfondir » est maintenant juste au-dessus de la barre d\'écriture, comme dans le panneau. Mêmes gestes, même comportement.',
       'Correction : quand l\'étude d\'« Approfondir » ajoutait des concepts ou des tags à la note, son bloc « Étude de la note » pouvait disparaître aussitôt écrit. Il reste maintenant dans la note.',
+      'Nouveau : « Il me manque quelque chose ». En bas du panneau, le Support s\'appelle maintenant « Aide et idées » : tu y poses ta question, ou tu nous dis ce qui te manque, avec une capture si tu veux. La même ligne est dans le menu de la roue. Avant d\'écrire, tu vois ce qui est « Déjà prévu » : si ton besoin y est, un clic sur « Moi aussi » suffit.',
+      'Quand le Carnet bute (une page qu\'il n\'arrive pas à capturer, une synchronisation ou un export qui échoue), une ligne te propose de nous le dire, avec le message déjà commencé. Et dans « Versions et feuille de route », une section « Livré grâce à vos demandes » montre ce qui est sorti parce que vous l\'avez demandé.',
+      'En plein écran, tout le bas du panneau est là aussi : la version, la langue, l\'état de ta synchronisation, le thème, « Aide et idées », le mentorat et le menu de la roue (ton compte, les paramètres, l\'import de tes trades, le Guide, le diagnostic, ton forfait...). Chaque écran s\'ouvre à la place de la note, et « Me connecter » ouvre ton compte sur place.',
+      'En plein écran, sans note ouverte, tu retrouves l\'accueil du panneau : « Capture intelligente », « Capturer cette page » (tu choisis l\'onglet), ta dernière note et ton activité.',
+      'En plein écran, une capture d\'écran prise avec une note ouverte va directement dans la note, comme dans le panneau, et elle retient la page que tu as choisie, pas le plein écran lui-même. Et quand « Approfondir » est réservé au Carnet Premium, le plein écran t\'ouvre l\'écran qui explique ton forfait, et plus seulement un message.',
+      'Le plein écran ouvert seul fait aussi ce que le panneau fait en coulisse : renvoyer au journal les notes restées « à synchroniser », mettre à jour ton activité, préparer ta note « Mentorat AOK ». Si les deux sont ouverts, un seul s\'en charge, jamais les deux en même temps.',
     ],
   },
   {
