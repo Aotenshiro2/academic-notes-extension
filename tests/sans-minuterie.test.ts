@@ -40,3 +40,19 @@ test('aucune minuterie périodique dans le code de la 1.8.13 et de la 1.8.14', (
     assert.doesNotMatch(source, /\bsetInterval\s*\(/, `${chemin} relance une minuterie`)
   }
 })
+
+// Besoins des membres, lot 2 (06/11/2026) : « Déjà prévu » se lit à
+// l'ouverture du formulaire, au geste. Ni relecture ni délai.
+const FICHIERS_BESOINS = [
+  'src/lib/besoins-pur.ts',
+  'src/lib/besoins.ts',
+  'src/components/BesoinForm.tsx',
+  'src/components/SupportView.tsx',
+]
+
+test('aucune minuterie dans le bouton « Il me manque quelque chose »', () => {
+  for (const chemin of FICHIERS_BESOINS) {
+    const source = readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8')
+    assert.doesNotMatch(source, /\bset(Interval|Timeout)\s*\(/, `${chemin} lance une minuterie`)
+  }
+})

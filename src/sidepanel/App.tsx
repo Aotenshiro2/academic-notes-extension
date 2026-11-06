@@ -19,7 +19,8 @@ import {
   FileUp,
   Sparkles,
   Lock,
-  Stethoscope
+  Stethoscope,
+  Lightbulb
 } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import DiagnosticView from '@/components/DiagnosticView'
@@ -75,12 +76,16 @@ function App() {
   // « Envoyer un diagnostic » (1.8.14), et Paramètres ouverts depuis lui, placés sur l'affichage de secours
   const [showDiagnostic, setShowDiagnostic] = useState(false)
   const [focusReglage, setFocusReglage] = useState<'affichageSecours' | undefined>(undefined)
+  // Besoins des membres (lot 2, 06/11/2026) : le Support ouvert depuis le menu
+  // de la roue s'ouvre directement sur « Il me manque quelque chose ».
+  const [supportBesoin, setSupportBesoin] = useState(false)
   // Ferme tous les écrans (une seule vue à la fois)
   const closeAllViews = () => {
     setShowSettings(false)
     setShowAccount(false)
     setShowMentorat(false)
     setShowSupport(false)
+    setSupportBesoin(false)
     setShowAiConfig(false)
     setShowPlans(false)
     setShowTools(false)
@@ -998,7 +1003,12 @@ function App() {
             (images et contenu en max-w-full) : on coupe ce défilement. */}
         <div ref={noteDisplayRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
           {showSupport ? (
-            <SupportView onBack={() => setShowSupport(false)} />
+            <SupportView
+              key={supportBesoin ? 'besoin' : 'chat'}
+              vueInitiale={supportBesoin ? 'besoin' : 'chat'}
+              onBack={() => setShowSupport(false)}
+              onOpenAccount={() => { closeAllViews(); setShowAccount(true) }}
+            />
           ) : showMentorat ? (
             <MentoratView
               onBack={() => setShowMentorat(false)}
@@ -1329,7 +1339,7 @@ function App() {
                   (le support intégré le remplace), Guide et « Évaluez-nous »
                   déménagés dans Paramètres > Aide */}
               <button
-                onClick={() => { setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
+                onClick={() => { setSupportBesoin(false); setShowSupport(!showSupport); setShowMentorat(false); setShowAccount(false); setShowSettings(false) }}
                 className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${showSupport ? 'text-blue-500 bg-muted' : 'text-muted-foreground'}`}
                 title={t('panneau.contacterSupport')}
                 aria-label={t('panneau.contacterSupport')}
@@ -1420,6 +1430,15 @@ function App() {
                       <button onClick={open(setShowDiagnostic)} className={item} role="menuitem">
                         <Stethoscope size={13} className="text-muted-foreground flex-shrink-0" />
                         {t('menu.diagnostic')}
+                      </button>
+                      {/* Besoins des membres (lot 2, 06/11) : à côté du diagnostic, le même formulaire que la bande du Support */}
+                      <button
+                        onClick={() => { setSettingsMenuOpen(false); closeAllViews(); setSupportBesoin(true); setShowSupport(true) }}
+                        className={item}
+                        role="menuitem"
+                      >
+                        <Lightbulb size={13} className="text-muted-foreground flex-shrink-0" />
+                        {t('menu.besoin')}
                       </button>
                       <div className="my-1 border-t border-border/60" />
                       <button onClick={open(setShowPlans)} className={item} role="menuitem">
