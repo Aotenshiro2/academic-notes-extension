@@ -27,8 +27,9 @@ interface OutilsNoteRangeeProps {
   modeleEtude?: string | null
   /** Après chaque écriture : relire les notes et rafraîchir la vue de la note. */
   onChange: () => void | Promise<void>
-  /** Étude refusée parce que réservée au forfait : la vue montre l'explication
-   *  (le panneau latéral ouvre l'écran mentorat). Le message part en toast dans tous les cas. */
+  /** Étude refusée parce que réservée au forfait, ou parce que personne n'est
+   *  connecté (1.8.17) : la vue ouvre l'écran mentorat, qui montre l'offre ou
+   *  « Me connecter ». Le message part en toast dans tous les cas. */
   onEtudeReservee?: () => void
   className?: string
 }
@@ -85,6 +86,11 @@ export default function OutilsNoteRangee({ noteId, etudeOuverte, modeleEtude, on
 
       if (refus === 'reservee') {
         toast.info(message || t('note.approfondirRefus'))
+        onEtudeReservee?.()
+        return
+      }
+      if (refus === 'connexion') {
+        toast.info(t('premium.connecteToi'))
         onEtudeReservee?.()
         return
       }

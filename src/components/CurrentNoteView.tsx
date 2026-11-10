@@ -12,7 +12,8 @@ import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
 import TradePrixPopover from './TradePrixPopover'
 import TradeLienPopover, { texteDuLien } from './TradeLienPopover'
-import { texteR } from './TradePrevuBroker'
+import { texteR, nombreAffiche } from './TradePrevuBroker'
+import { complementPastillePrix } from '@/lib/lien-trade'
 import WarmupCard from './WarmupCard'
 import ConfirmDialog from './ConfirmDialog'
 import DolBar from './DolBar'
@@ -940,7 +941,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         )
                       })()}
                       {/* Les prix saisis à la main (1.8.12, demande de Flow) et
-                          le ratio (1.8.16) : une pastille, le détail au clic. */}
+                          le ratio (1.8.16) : une pastille, le détail au clic.
+                          Sans R, le prix d'entrée s'y lit (1.8.17). */}
+                      {(() => {
+                      const complement = complementPastillePrix(trade.r, trade.prix?.entree, liens.liesDe(trade.id))
+                      return (
                       <button
                         onClick={e => {
                           const rect = e.currentTarget.getBoundingClientRect()
@@ -948,7 +953,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                           setPrixTradeId(trade.id)
                         }}
                         className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors whitespace-nowrap ${
-                          (trade.prix && Object.keys(trade.prix).length > 0) || trade.r !== undefined
+                          (trade.prix && Object.keys(trade.prix).length > 0) || complement
                             ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                             : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
@@ -956,10 +961,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         aria-label={t('trade.prixLabel', { n })}
                       >
                         {t('trade.prixPastille')}
-                        {trade.r !== undefined && (
-                          <> · <span className={`font-medium ${R_CLASS(trade.r)}`} data-r-pastille>{texteR(trade.r)}</span></>
+                        {complement && 'r' in complement && (
+                          <> · <span className={`font-medium ${R_CLASS(complement.r)}`} data-r-pastille>{texteR(complement.r)}</span></>
+                        )}
+                        {complement && 'entree' in complement && (
+                          <> · <span className="font-medium" data-entree-pastille>{nombreAffiche(complement.entree)}</span></>
                         )}
                       </button>
+                      )
+                      })()}
                       <button
                         onClick={e => {
                           const rect = e.currentTarget.getBoundingClientRect()

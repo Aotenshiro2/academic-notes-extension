@@ -535,6 +535,12 @@ function AnalyzeNoteDialog({
           </button>
         </div>
 
+        {/* 1.8.17 : Cédric confondait l'analyse et le mentor. Une ligne dit
+            ce que fait cette entrée, et où trouver l'autre. */}
+        <p className="px-5 -mt-1 pb-3 text-xs text-muted-foreground leading-relaxed" data-role-analyse>
+          {t('analyse.role')}
+        </p>
+
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1">
 

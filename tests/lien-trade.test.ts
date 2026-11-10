@@ -7,7 +7,7 @@ process.env.TZ = 'Europe/Paris'
 // et le R tapé dans « Prix » (lireR, rAEnregistrer).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bornesDesTrades, candidatsALier, liesAuTrade, rDuBroker, ECART_LIENS, LISTE_COURTE } from '../src/lib/lien-trade.ts'
+import { bornesDesTrades, candidatsALier, complementPastillePrix, liesAuTrade, rDuBroker, ECART_LIENS, LISTE_COURTE } from '../src/lib/lien-trade.ts'
 import { bornesJours, type PositionImportee } from '../src/lib/positions-jour.ts'
 import { lireR, rAEnregistrer, rDuPrix, R_MAX } from '../src/lib/prix-trade.ts'
 
@@ -102,4 +102,15 @@ test('R enregistré : le tapé prime, le champ vide garde le calcul des prix, ri
   assert.deepEqual(rAEnregistrer(-R_MAX, null), { r: -R_MAX, invalide: false })
   // Le calcul vient de la carte : achat 21 450, stop 21 435, sortie 21 480 = +2 R.
   assert.equal(rAEnregistrer(undefined, rDuPrix({ entree: 21450, stop: 21435, sortie: 21480 })).r, 2)
+})
+
+// 1.8.17 (Cédric, 10/11 : « il y a pas le prix d'entrée ») : la pastille
+// « Prix » garde le R quand il est connu, sinon montre l'entrée.
+test("pastille Prix : le R d'abord, sinon l'entrée tapée, sinon celle du broker lié", () => {
+  const lie = pos({ positionId: 'p1', entreLe: '2026-11-10T14:14:00Z', segmentRef: 't2' })
+  assert.deepEqual(complementPastillePrix(2, 21400, [lie]), { r: 2 })
+  assert.deepEqual(complementPastillePrix(undefined, 21400, [lie]), { entree: 21400 })
+  assert.deepEqual(complementPastillePrix(undefined, undefined, [lie]), { entree: 21450 })
+  assert.deepEqual(complementPastillePrix(undefined, undefined, [pos({ positionId: 'p2', entreLe: '2026-11-10T14:14:00Z', prixEntree: null })]), null)
+  assert.equal(complementPastillePrix(undefined, undefined, []), null)
 })

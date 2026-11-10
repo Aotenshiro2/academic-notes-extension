@@ -4,6 +4,24 @@ import {
 } from './positions-jour.ts'
 import { rDuPrix } from './prix-trade.ts'
 
+/**
+ * Ce que la pastille « Prix » d'un trade dit après le mot (1.8.17, retour de
+ * Cédric du 10/11 : sur un trade importé, « il y a pas le prix d'entrée »).
+ * Le R quand il est connu (« Prix · +2 R », comme en 1.8.16) ; sinon le prix
+ * d'entrée, tapé dans « Prix » ou, à défaut, celui du trade du broker lié ;
+ * sinon rien (« Prix » seul).
+ */
+export function complementPastillePrix(
+  r: number | undefined,
+  entreeTapee: number | undefined,
+  lies: PositionImportee[]
+): { r: number } | { entree: number } | null {
+  if (r !== undefined) return { r }
+  if (entreeTapee !== undefined && Number.isFinite(entreeTapee)) return { entree: entreeTapee }
+  const broker = lies.find(p => p.prixEntree !== null && Number.isFinite(p.prixEntree))?.prixEntree
+  return broker != null ? { entree: broker } : null
+}
+
 // Relier un trade de la note à un trade importé de Pilotage (1.8.16, demande
 // de Brice du 10/11/2026, en séance avec Cédric). Pur : testé par
 // tests/lien-trade.test.ts.

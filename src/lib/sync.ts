@@ -617,16 +617,19 @@ async function cadrageMentorat(): Promise<string[]> {
   }
 }
 
-export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratBriefData; error?: string }> {
+// 1.8.17 (retour de Cédric du 10/11) : les routes du mentor et de l'étude
+// rendent leur statut, et « pas de session » se lit comme un 401. L'écran
+// montre alors « Me connecter » au lieu d'une erreur muette ou d'un « réseau ? ».
+export async function fetchMentoratBrief(days = 90): Promise<{ brief?: MentoratBriefData; error?: string; statut?: number }> {
   const token = await getBearerToken()
-  if (!token) return { error: 'Non connecté — connecte-toi dans le compte.' }
+  if (!token) return { error: 'Non connecté : connecte-toi dans le compte.', statut: 401 }
   try {
     const dossiers = await cadrageMentorat()
     const cadre = dossiers.length ? `&dossiers=${encodeURIComponent(dossiers.join(','))}` : ''
     const res = await fetch(`${JOURNAL_API}/api/mentorat/brief?days=${days}${cadre}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
-    if (!res.ok) return { error: `Brief indisponible (HTTP ${res.status})` }
+    if (!res.ok) return { error: `Brief indisponible (HTTP ${res.status})`, statut: res.status }
     return { brief: await res.json() as MentoratBriefData }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erreur réseau' }
@@ -639,14 +642,14 @@ export interface MentoratAccessData {
 }
 
 /** Le mode mentorat est-il ouvert pour ce compte ? (le backend décide) */
-export async function fetchMentoratAccess(): Promise<{ access?: MentoratAccessData; error?: string }> {
+export async function fetchMentoratAccess(): Promise<{ access?: MentoratAccessData; error?: string; statut?: number }> {
   const token = await getBearerToken()
-  if (!token) return { error: 'Non connecté' }
+  if (!token) return { error: 'Non connecté', statut: 401 }
   try {
     const res = await fetch(`${JOURNAL_API}/api/mentorat/access`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
-    if (!res.ok) return { error: `Vérification impossible (HTTP ${res.status})` }
+    if (!res.ok) return { error: `Vérification impossible (HTTP ${res.status})`, statut: res.status }
     return { access: await res.json() as MentoratAccessData }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erreur réseau' }
@@ -878,7 +881,7 @@ async function posterCapture(
   d: DemandeCaptureIA
 ): Promise<{ sortie?: SortieCaptureIA; error?: string; statut?: number }> {
   const token = await getBearerToken()
-  if (!token) return { error: 'Non connecté' }
+  if (!token) return { error: 'Non connecté', statut: 401 }
   try {
     const res = await fetch(`${JOURNAL_API}${chemin}`, {
       method: 'POST',
@@ -923,7 +926,7 @@ export async function demanderAuMentor(
   days = 90
 ): Promise<{ reply?: string; error?: string; statut?: number }> {
   const token = await getBearerToken()
-  if (!token) return { error: 'Non connecté' }
+  if (!token) return { error: 'Non connecté', statut: 401 }
   try {
     const res = await fetch(`${JOURNAL_API}/api/mentorat/chat`, {
       method: 'POST',

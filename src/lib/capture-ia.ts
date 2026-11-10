@@ -199,8 +199,10 @@ export async function suggererTagsNote(note: {
 
 export interface EtudeRendue {
   sortie?: SortieCaptureIA
-  /** 'reservee' quand le palier ne l'ouvre pas — le client affiche l'upgrade */
-  refus?: 'reservee' | 'quota' | 'erreur'
+  /** 'reservee' quand le palier ne l'ouvre pas : le client affiche l'upgrade ;
+   *  'connexion' (1.8.17) quand personne n'est connecté : le client montre
+   *  « Me connecter » plutôt qu'un « Non connecté » sec. */
+  refus?: 'reservee' | 'quota' | 'connexion' | 'erreur'
   message?: string
 }
 
@@ -230,6 +232,7 @@ export async function etudierNote(
     langue: getLangueAnalyse(),
   })
   if (sortie) return { sortie }
+  if (statut === 401) return { refus: 'connexion' }
   if (statut === 403) return { refus: 'reservee', message: error }
   if (statut === 429) return { refus: 'quota', message: error }
   return { refus: 'erreur', message: error ?? 'Étude indisponible.' }

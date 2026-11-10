@@ -15,6 +15,7 @@ import {
 } from '@/lib/note-mentorat'
 import storage from '@/lib/storage'
 import { getSession } from '@/lib/auth'
+import { useMiseAJourCarnet, installerMiseAJour } from '@/lib/use-mise-a-jour'
 import type { NoteFolder, AnnotationLettre } from '@/types/academic'
 import { OFFRES, formatPrix } from '@/lib/offres'
 import { t, tp, locale, type CleI18n } from '@/lib/i18n'
@@ -108,6 +109,9 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
 
   const [gate, setGate] = useState<GateState>('checking')
   const [days, setDays] = useState(90)
+  // Un Carnet en retard sur le Store (1.8.17) : demandé après un échec du
+  // mentor, jamais à l'ouverture. Voir use-mise-a-jour.ts.
+  const { version: majVersion, verifier: verifierMaj } = useMiseAJourCarnet()
 
   // ── Cadrage par dossiers (01/09/2026, idée de Brice) ─────────────────────
   // Un carnet mélange le trading et le perso. Avant de lâcher le mentor sur
@@ -216,8 +220,16 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
         days
       )
       if (!reply) {
-        if (statut === 403) toast.info(error || t('mentorat.reservePremium'))
-        else toast.error(error || t('mentorat.indisponible'))
+        // Session partie entre-temps (1.8.17) : l'écran repasse sur
+        // « Me connecter » au lieu d'un « Non connecté » sec.
+        if (statut === 401) {
+          setGate('anon')
+          toast.info(t('premium.connecteToi'))
+        } else if (statut === 403) toast.info(error || t('mentorat.reservePremium'))
+        else {
+          toast.error(error || t('mentorat.indisponible'))
+          void verifierMaj()
+        }
         return
       }
       await ecrireReponseMentor(noteMentoratId, reply)
@@ -225,10 +237,11 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
     } catch (err) {
       console.error('[mentorat] echec', err)
       toast.error(t('mentorat.indisponible'))
+      void verifierMaj()
     } finally {
       setEnvoiEnCours(false)
     }
-  }, [noteMentoratId, brouillon, tours, envoiEnCours, relireFil, days])
+  }, [noteMentoratId, brouillon, tours, envoiEnCours, relireFil, days, verifierMaj])
   const [brief, setBrief] = useState<MentoratBriefData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -242,19 +255,29 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
       const res = await fetchMentoratAccess()
       if (!alive) return
       if (res.access) setGate(res.access.entitled ? 'ok' : 'denied')
-      else setGate('gate-error')
+      // Une session périmée (401) n'est pas un souci de réseau : avant la
+      // 1.8.17, elle donnait « Impossible de vérifier ton accès (réseau ?) ».
+      else if (res.statut === 401) setGate('anon')
+      else {
+        setGate('gate-error')
+        void verifierMaj()
+      }
     })()
     return () => { alive = false }
-  }, [])
+  }, [verifierMaj])
 
   const load = useCallback(async (d: number) => {
     setLoading(true)
     setError(null)
     const res = await fetchMentoratBrief(d)
     if (res.brief) setBrief(res.brief)
-    else setError(res.error ?? t('mentorat.briefIndisponible'))
+    else if (res.statut === 401) setGate('anon')
+    else {
+      setError(res.error ?? t('mentorat.briefIndisponible'))
+      void verifierMaj()
+    }
     setLoading(false)
-  }, [])
+  }, [verifierMaj])
 
   useEffect(() => { if (gate === 'ok') load(days) }, [gate, days, load, versionCadrage])
 
@@ -342,6 +365,26 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
           </>
         )}
       </div>
+
+      {/* Un Carnet en retard sur le Store (1.8.17) : seulement après un échec
+          du mentor, et seulement si Chrome dit qu'une version plus récente
+          existe. Le bouton redémarre le Carnet sur la nouvelle version. */}
+      {majVersion !== null && (
+        <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 space-y-2" data-mise-a-jour>
+          <p className="text-sm font-semibold text-foreground">{t('maj.titre')}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t('maj.texte', { version: chrome.runtime.getManifest().version })}
+          </p>
+          <button
+            onClick={installerMiseAJour}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <RefreshCw size={13} />
+            {t('maj.installer')}
+          </button>
+          <p className="text-[10px] text-muted-foreground/80 leading-relaxed">{t('maj.sinon')}</p>
+        </div>
+      )}
 
       {/* Portail : vérification, connexion, upgrade */}
       {gate === 'checking' && (
@@ -459,6 +502,15 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
               </div>
             ))}
           </div>
+
+          {/* Ce que le mentor lira (1.8.17, retour de Cédric du 10/11) :
+              « tout le carnet » ou « un dossier » ne disait pas ce que ça
+              change. La phrase suit les cases cochées. */}
+          <p className="text-xs text-foreground/80 leading-relaxed" data-portee-mentor>
+            {coches.length === 0
+              ? t('mentorat.porteeTout')
+              : tp('mentorat.porteeDossierUn', 'mentorat.porteeDossiersPlur', coches.length)}
+          </p>
 
           <div className="flex items-center gap-2 pt-1">
             <button
@@ -646,6 +698,11 @@ function MentoratView({ onBack, onOpenAccount, onOpenSupport, onOpenPlans }: Men
                 <span className="text-[10px] text-muted-foreground/60">{t('mentorat.noteFil', { titre: TITRE_NOTE_MENTORAT })}</span>
               )}
             </div>
+            {/* 1.8.17 : Cédric confondait l'analyse de ses notes (le brief,
+                plus haut) et le mentor. Une ligne dit ce que fait chacun. */}
+            <p className="text-xs text-muted-foreground leading-relaxed mb-2" data-role-mentor>
+              {t('mentorat.filRole')}
+            </p>
 
             {tours.length === 0 ? (
               <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
