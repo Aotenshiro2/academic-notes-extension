@@ -1,7 +1,7 @@
 import { toast } from '../lib/toast'
 import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Loader2, Trash2 } from 'lucide-react'
+import { Edit3, Check, X, Plus, Crosshair, Moon, Sunrise, Sparkles, Loader2, Trash2, Link2 } from 'lucide-react'
 import storage from '@/lib/storage'
 import { sanitizeHtml } from '@/lib/sanitize'
 import ImageLightbox from './ImageLightbox'
@@ -11,6 +11,8 @@ import TagPickerPopup from './TagPickerPopup'
 import NotationPopover from './NotationPopover'
 import CooldownPopover from './CooldownPopover'
 import TradePrixPopover from './TradePrixPopover'
+import TradeLienPopover, { texteDuLien } from './TradeLienPopover'
+import { texteR } from './TradePrevuBroker'
 import WarmupCard from './WarmupCard'
 import ConfirmDialog from './ConfirmDialog'
 import DolBar from './DolBar'
@@ -21,7 +23,8 @@ import { suggererTagsNote } from '@/lib/capture-ia'
 import { collectNoteImages } from '@/lib/note-images'
 import { instrumentDuTrade } from '@/lib/instrument'
 import { capturerGraphiqueDuTrade } from '@/lib/capture-graphique-trade'
-import { rDuPrix } from '@/lib/prix-trade'
+import { useLiensTrades } from '@/lib/use-liens-trades'
+import { useComptesPilotage } from '@/lib/use-comptes-pilotage'
 
 const REVIEW_DELAY_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -56,11 +59,10 @@ const OUTCOME_CLASS: Record<TradeOutcome, string> = {
   be: 'text-muted-foreground',
 }
 
-/** Le R tel qu'on l'écrit : virgule en français (« 1,5 R »), point en anglais.
- *  La saisie accepte les deux (handleSaveTradeR), seul l'affichage change. */
-function ecrireR(r: number): string {
-  return locale().startsWith('fr') ? String(r).replace('.', ',') : String(r)
-}
+// Le R d'un trade (1.8.16) : il se tape dans « Prix » (TradePrevuBroker) et
+// se lit sur la pastille « Prix · +1,5 R » ; sa pastille « R ? » a laissé sa
+// place à l'icône lien (TradeLienPopover).
+const R_CLASS = (r: number) => (r > 0 ? 'text-green-600 dark:text-green-400' : r < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')
 
 function formatTradeTime(ts: number): string {
   return new Date(ts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
@@ -87,13 +89,13 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [notationPos, setNotationPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null)
   const [tradeASupprimer, setTradeASupprimer] = useState<string | null>(null)
-  // Saisie du résultat en R d'un trade clos (optionnelle, « +1,5 » accepté)
-  const [editingRTradeId, setEditingRTradeId] = useState<string | null>(null)
-  const [rDraft, setRDraft] = useState('')
   const [cooldownTradeId, setCooldownTradeId] = useState<string | null>(null)
   const [cooldownPos, setCooldownPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [prixTradeId, setPrixTradeId] = useState<string | null>(null)
   const [prixPos, setPrixPos] = useState({ top: 0, bottom: 0, left: 0 })
+  // Le lien d'un trade avec un trade importé de Pilotage (1.8.16, icône de la rangée)
+  const [lienTradeId, setLienTradeId] = useState<string | null>(null)
+  const [lienPos, setLienPos] = useState({ top: 0, bottom: 0, left: 0 })
   const [addingConcept, setAddingConcept] = useState(false)
   const [conceptDraft, setConceptDraft] = useState('')
   const [remoteUpdatePending, setRemoteUpdatePending] = useState(false)
@@ -104,6 +106,12 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   const [showMeta, setShowMetaState] = useState(getShowMeta)
   useEffect(() => subscribeShowMeta(setShowMetaState), [])
   const isFirstLoad = useRef(true)
+
+  // Les liens des trades clos avec Pilotage (1.8.16) : lus à l'ouverture de la
+  // note et après chaque lien posé ou retiré, jamais en fond.
+  const liens = useLiensTrades(note?.trades)
+  const etatComptesPilotage = useComptesPilotage()
+  const comptesPilotage = etatComptesPilotage.etat === 'pret' ? etatComptesPilotage.comptes : []
 
   // Grade D proposé ou non (réglage opt-in, 24/09/2026). Lu depuis le
   // stockage et suivi en direct : le basculer dans les Paramètres doit valoir
@@ -138,7 +146,7 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
   // Quand un refresh distant arrive, vérifier si une édition est en cours.
   // Le mode sélection compte comme une édition : recharger sous les doigts
   // pourrait faire disparaître ou déplacer un bloc déjà coché.
-  const enEdition = editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || prixTradeId !== null || selection !== null
+  const enEdition = editingTitle || panelMessage !== null || tagPickerOpen || notationTarget !== null || cooldownTradeId !== null || prixTradeId !== null || lienTradeId !== null || selection !== null
   useEffect(() => {
     if (!refreshTrigger) return
     if (enEdition) {
@@ -465,22 +473,10 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
     }
   }, [selection, groupementEnCours, noteId, onNoteUpdate])
 
-  // Le R : virgule ou point acceptés, vide = effacer, bornes larges (±100)
-  const handleSaveTradeR = useCallback(async (tradeId: string, accepte?: string) => {
-    // `accepte` : le R calculé depuis la carte de prix, gardé par Entrée sur un champ vide (1.8.14).
-    const brut = (accepte ?? rDraft).trim().replace(',', '.')
-    const valeur = brut === '' ? undefined : Number(brut)
-    if (valeur === undefined || (Number.isFinite(valeur) && Math.abs(valeur) <= 100)) {
-      await storage.setTradeR(noteId, tradeId, valeur)
-      await loadNote()
-      onNoteUpdate?.()
-    }
-    setEditingRTradeId(null)
-  }, [rDraft, noteId, onNoteUpdate])
-
-  // Prix saisis à la main d'un trade (1.8.12) : restent dans le Carnet
-  const handleSaveTradePrix = useCallback(async (tradeId: string, prix: TradePrix | undefined) => {
-    await storage.setTradePrix(noteId, tradeId, prix)
+  // Prix saisis à la main d'un trade (1.8.12) : restent dans le Carnet. Le R
+  // (1.8.16) s'enregistre avec eux : sa pastille « R ? » est entrée dans « Prix ».
+  const handleSaveTradePrix = useCallback(async (tradeId: string, prix: TradePrix | undefined, r: number | undefined) => {
+    await storage.setTradePrixEtR(noteId, tradeId, prix, r)
     await loadNote()
     onNoteUpdate?.()
   }, [noteId, onNoteUpdate])
@@ -634,6 +630,15 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         </button>
       </div>
     )
+  }
+
+  /** L'instrument d'un trade lu dans la note : les captures du trade d'abord (le graphique où il a été pris), puis la note. */
+  const instrumentDeLaNote = (trade: TradeSegment) => {
+    const blocsDuTrade = note.messages.filter(m => m.tradeRef === trade.id)
+    return instrumentDuTrade({
+      adresses: [...blocsDuTrade.map(m => m.metadata?.sourceUrl), note.url],
+      titres: [...blocsDuTrade.map(m => m.metadata?.sourceTitle), note.title, note.metadata?.title],
+    })
   }
 
   return (
@@ -907,69 +912,43 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                       >
                         {trade.outcome ? t(OUTCOME_LABEL[trade.outcome]) : t('trade.resultatInconnu')}
                       </button>
-                      {/* Le R : la donnée qui rend le mentor chiffré (espérance,
-                          coût des B). Optionnel — une pastille discrète. */}
-                      {editingRTradeId === trade.id ? (() => {
-                        // 1.8.14 : le R que la carte de prix permet de calculer (sens CHOISI
-                        // d'abord, sinon déduit du stop) est proposé ; Entrée sur un champ
-                        // vide le garde, rien n'est enregistré sans ce geste.
-                        const rCalcule = trade.r === undefined ? rDuPrix(trade.prix) : null
-                        const texteCalcule = rCalcule !== null ? `${rCalcule > 0 ? '+' : ''}${ecrireR(rCalcule)}` : null
+                      {/* Le lien avec un trade importé de Pilotage (1.8.16, demande
+                          de Brice du 10/11) : à la place de la pastille « R ? ».
+                          Pleine quand le trade est lié ; le détail et « Délier » au clic. */}
+                      {(() => {
+                        const lies = liens.liesDe(trade.id)
+                        const lie = lies.length > 0
                         return (
-                          <input
-                            autoFocus
-                            value={rDraft}
-                            onChange={e => setRDraft(e.target.value)}
-                            onBlur={() => handleSaveTradeR(trade.id)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                const accepte = !rDraft.trim() && texteCalcule ? texteCalcule : undefined
-                                // Le brouillon suit : un blur qui arriverait après garde la même valeur.
-                                if (accepte) setRDraft(accepte)
-                                handleSaveTradeR(trade.id, accepte)
-                              }
-                              if (e.key === 'Escape') setEditingRTradeId(null)
+                          <button
+                            onClick={e => {
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              setLienPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
+                              setLienTradeId(trade.id)
                             }}
-                            placeholder={texteCalcule ? `= ${texteCalcule}` : t('trade.rPlaceholder')}
-                            title={texteCalcule ? t('trade.rCalcule', { r: texteCalcule }) : undefined}
-                            className="w-12 px-1 py-0 text-[10px] text-center bg-muted/40 border border-border rounded-full focus:outline-none focus:border-primary/50"
-                            aria-label={t('trade.rDuTrade', { n })}
-                          />
+                            className={`flex items-center justify-center w-[18px] h-[18px] rounded-full flex-shrink-0 transition-colors ${
+                              lie
+                                ? 'bg-blue-500/20 text-blue-600 dark:bg-blue-500/30 dark:text-blue-300'
+                                : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
+                            }`}
+                            title={lie ? t('trade.lienFait', { lien: texteDuLien(lies, comptesPilotage) }) : t('trade.lienAide')}
+                            aria-label={lie ? t('trade.lienLabelLie', { n }) : t('trade.lienLabel', { n })}
+                            aria-pressed={lie}
+                            data-lien-trade={lie ? 'lie' : 'libre'}
+                          >
+                            <Link2 size={11} strokeWidth={lie ? 2.5 : 2} />
+                          </button>
                         )
-                      })() : (
-                        <button
-                          onClick={() => {
-                            setRDraft(trade.r !== undefined ? ecrireR(trade.r) : '')
-                            setEditingRTradeId(trade.id)
-                          }}
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
-                            trade.r !== undefined
-                              ? trade.r > 0
-                                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                                : trade.r < 0
-                                  ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                                  : 'bg-muted text-muted-foreground'
-                              : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
-                          }`}
-                          title={trade.r !== undefined ? t('trade.rModifier') : t('trade.rAide')}
-                        >
-                          {trade.r !== undefined
-                            ? `${trade.r > 0 ? '+' : ''}${ecrireR(trade.r)} R`
-                            : 'R ?'}
-                        </button>
-                      )}
+                      })()}
                       {/* Les prix saisis à la main (1.8.12, demande de Flow) et
-                          le lien avec le trade importé du broker : une pastille,
-                          le détail au clic. */}
+                          le ratio (1.8.16) : une pastille, le détail au clic. */}
                       <button
                         onClick={e => {
                           const rect = e.currentTarget.getBoundingClientRect()
                           setPrixPos({ top: rect.top, bottom: rect.bottom, left: rect.left + rect.width / 2 })
                           setPrixTradeId(trade.id)
                         }}
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors ${
-                          trade.prix && Object.keys(trade.prix).length > 0
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors whitespace-nowrap ${
+                          (trade.prix && Object.keys(trade.prix).length > 0) || trade.r !== undefined
                             ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                             : 'border border-dashed border-muted-foreground/60 text-muted-foreground hover:text-foreground hover:border-foreground/70'
                         }`}
@@ -977,6 +956,9 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
                         aria-label={t('trade.prixLabel', { n })}
                       >
                         {t('trade.prixPastille')}
+                        {trade.r !== undefined && (
+                          <> · <span className={`font-medium ${R_CLASS(trade.r)}`} data-r-pastille>{texteR(trade.r)}</span></>
+                        )}
                       </button>
                       <button
                         onClick={e => {
@@ -1149,16 +1131,11 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
         />
       )}
 
-      {/* Prix du trade et lien avec le trade importé du broker (1.8.12, panneau Prévu / Broker en 1.8.13) */}
+      {/* Prix du trade et son R (1.8.12, panneau Prévu / Broker en 1.8.13, R en 1.8.16) */}
       {prixTradeId && (() => {
         const trade = (note.trades ?? []).find(tr => tr.id === prixTradeId)
         if (!trade) return null
-        // L'instrument : les captures du trade d'abord (le graphique où il a été pris), puis la note.
         const blocsDuTrade = note.messages.filter(m => m.tradeRef === trade.id)
-        const instrumentNote = instrumentDuTrade({
-          adresses: [...blocsDuTrade.map(m => m.metadata?.sourceUrl), note.url],
-          titres: [...blocsDuTrade.map(m => m.metadata?.sourceTitle), note.title, note.metadata?.title],
-        })
         // « Lire une capture » (1.8.14) : la capture automatique du lancement, en un clic.
         const captureLancement = blocsDuTrade.find(m => m.type === 'image' && m.auto === 'lancement' && m.content)?.content ?? null
         return (
@@ -1166,11 +1143,36 @@ function CurrentNoteView({ noteId, onNoteUpdate, refreshTrigger, initialLightbox
             position={prixPos}
             trade={trade}
             numero={(note.trades ?? []).findIndex(tr => tr.id === prixTradeId) + 1}
-            instrumentNote={instrumentNote}
+            instrumentNote={instrumentDeLaNote(trade)}
             captureLancement={captureLancement}
-            onSave={(prix) => handleSaveTradePrix(prixTradeId, prix)}
+            lies={liens.liesDe(trade.id)}
+            onSave={(prix, r) => handleSaveTradePrix(prixTradeId, prix, r)}
             onSaveInstrument={(instrument) => handleSaveTradeInstrument(prixTradeId, instrument)}
+            onOuvrirLien={() => {
+              // Le lien s'ouvre à la place de « Prix », au même endroit.
+              setLienPos(prixPos)
+              setPrixTradeId(null)
+              setLienTradeId(trade.id)
+            }}
             onClose={() => setPrixTradeId(null)}
+          />
+        )
+      })()}
+
+      {/* Le lien avec un trade importé de Pilotage (1.8.16, icône de la rangée) */}
+      {lienTradeId && (() => {
+        const trade = (note.trades ?? []).find(tr => tr.id === lienTradeId)
+        if (!trade) return null
+        return (
+          <TradeLienPopover
+            position={lienPos}
+            trade={trade}
+            numero={(note.trades ?? []).findIndex(tr => tr.id === lienTradeId) + 1}
+            instrumentNote={instrumentDeLaNote(trade)}
+            liesNote={liens.liesDe(trade.id)}
+            onSaveInstrument={(instrument) => handleSaveTradeInstrument(lienTradeId, instrument)}
+            onLiensChange={liens.recharger}
+            onClose={() => setLienTradeId(null)}
           />
         )
       })()}

@@ -59,10 +59,27 @@ const FICHIERS_1815 = [
   'src/sidepanel/App.tsx',
 ]
 
+// 1.8.16 : les liens des trades avec Pilotage se lisent à l'ouverture de la
+// note, puis après un lien posé ou retiré. Ni relecture ni délai.
+const FICHIERS_1816 = [
+  'src/lib/lien-trade.ts',
+  'src/lib/use-liens-trades.ts',
+  'src/components/TradeLienPopover.tsx',
+  'src/components/CadrePopoverTrade.tsx',
+  'src/components/PastilleInstrument.tsx',
+]
+
 test('aucune minuterie périodique dans le code de la 1.8.13, de la 1.8.14 et de la 1.8.15', () => {
   for (const chemin of [...FICHIERS_1813, ...FICHIERS_1814, ...FICHIERS_1815]) {
     const source = readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8')
     assert.doesNotMatch(source, /\bsetInterval\s*\(/, `${chemin} relance une minuterie`)
+  }
+})
+
+test('aucune minuterie dans le lien des trades avec Pilotage (1.8.16)', () => {
+  for (const chemin of FICHIERS_1816) {
+    const source = readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8')
+    assert.doesNotMatch(source, /\bset(Interval|Timeout)\s*\(/, `${chemin} lance une minuterie`)
   }
 })
 

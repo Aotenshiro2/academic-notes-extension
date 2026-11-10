@@ -1003,18 +1003,6 @@ export const storage = {
     await this.saveNote({ ...note, trades })
   },
 
-  /** Pose ou efface les prix saisis à la main d'un trade (undefined = effacer). */
-  async setTradePrix(noteId: string, tradeId: string, prix: import('@/types/academic').TradePrix | undefined): Promise<void> {
-    const note = await this.getNote(noteId)
-    if (!note) return
-    const trades = (note.trades ?? []).map(t => {
-      if (t.id !== tradeId) return t
-      const { prix: _ancien, ...reste } = t
-      return prix === undefined ? reste : { ...reste, prix }
-    })
-    await this.saveNote({ ...note, trades })
-  },
-
   /** Pose l'instrument d'un trade ('' = aucun filtre) ou l'efface (undefined = celui de la note). */
   async setTradeInstrument(noteId: string, tradeId: string, instrument: string | undefined): Promise<void> {
     const note = await this.getNote(noteId)
@@ -1027,14 +1015,19 @@ export const storage = {
     await this.saveNote({ ...note, trades })
   },
 
-  /** Pose ou efface le résultat en R d'un trade (undefined = effacer). */
-  async setTradeR(noteId: string, tradeId: string, r: number | undefined): Promise<void> {
+  /**
+   * La carte de prix et le R d'un trade, en une seule écriture (1.8.16 : le R
+   * se tape dans « Prix » ; il remplace setTradePrix et setTradeR, et la
+   * pastille « R ? » est partie). Prix et R restent dans le Carnet et la note
+   * du journal, jamais dans Pilotage. undefined = effacer le champ.
+   */
+  async setTradePrixEtR(noteId: string, tradeId: string, prix: import('@/types/academic').TradePrix | undefined, r: number | undefined): Promise<void> {
     const note = await this.getNote(noteId)
     if (!note) return
     const trades = (note.trades ?? []).map(t => {
       if (t.id !== tradeId) return t
-      const { r: _ancien, ...reste } = t
-      return r === undefined ? reste : { ...reste, r }
+      const { prix: _prix, r: _r, ...reste } = t
+      return { ...reste, ...(prix === undefined ? {} : { prix }), ...(r === undefined ? {} : { r }) }
     })
     await this.saveNote({ ...note, trades })
   },

@@ -4,9 +4,10 @@ import type { SensTrade, TradePrix, TypeOrdre } from '@/types/academic'
 import { t, tp, locale, type CleI18n } from '@/lib/i18n'
 import { resumeBroker, type PositionImportee } from '@/lib/positions-jour'
 import {
-  contratDe, fusionnerLecture, lectureVide, lireNombre as lireNombrePur, prixDepuisTicks, risqueDeduitUSD, sensDuPrix, ticksDepuisPrix,
-  type ChampLu, type LectureOrdre, type ModeSaisie, type Saisie,
+  contratDe, fusionnerLecture, lectureVide, lireNombre as lireNombrePur, lireR, prixDepuisTicks, rAEnregistrer, rDuPrix, risqueDeduitUSD,
+  sensDuPrix, ticksDepuisPrix, type ChampLu, type LectureOrdre, type ModeSaisie, type Saisie,
 } from '@/lib/prix-trade'
+import { rDuBroker } from '@/lib/lien-trade'
 import type { Quota } from '@/lib/documents-lecture'
 import LireCaptureOrdre, { phraseQuotaOrdre } from './LireCaptureOrdre'
 
@@ -23,6 +24,12 @@ import LireCaptureOrdre, { phraseQuotaOrdre } from './LireCaptureOrdre'
  * remplit la carte par l'IA : les champs remplis sont surlignés, ce que le
  * membre a déjà tapé n'est remplacé que s'il l'accepte, rien n'est enregistré
  * sans « Enregistrer ».
+ *
+ * 1.8.16 (demande de Brice du 10/11) : le ratio en R, qui avait sa pastille
+ * « R ? » sur la rangée du trade, est une ligne de la carte. Il se tape signé ;
+ * quand les prix de la carte permettent de le calculer, le calcul s'affiche
+ * dans le champ vide et c'est lui qu'« Enregistrer » garde (rAEnregistrer).
+ * La colonne broker dit le R du broker quand son export donne le stop.
  */
 
 export const PARTIELS_MAX = 10
@@ -54,6 +61,9 @@ export function ecrireNombre(n: number | undefined): string {
 export const lireNombre = lireNombrePur
 
 export const nombreAffiche = (n: number) => n.toLocaleString(locale(), { maximumFractionDigits: 6 })
+
+/** Le R tel qu'on l'écrit : « +1,5 R », « -1 R », « 0 R » (virgule en français). */
+export const texteR = (r: number) => `${r > 0 ? '+' : ''}${ecrireNombre(r)} R`
 
 /** « Achat limite · 20 100 -> 20 131 · SL 20 080 · risque 100 USD · 2 partiels », ou rien. */
 export function resumePrevu(prix: TradePrix | undefined): string {
@@ -91,11 +101,14 @@ const nb = (v: number | undefined | null) => (typeof v === 'number' ? v : undefi
 
 interface TradePrevuBrokerProps {
   prix: TradePrix | undefined
+  /** Le R enregistré du trade (1.8.16 : il se tape ici). */
+  r?: number
   /** Les positions liées à ce trade (les copies), pour la colonne broker. */
   lies: PositionImportee[]
   ouvert: boolean
   onToggle: () => void
-  onSave: (prix: TradePrix | undefined) => void
+  /** La carte et le R, enregistrés ensemble ; undefined = effacé. */
+  onSave: (prix: TradePrix | undefined, r: number | undefined) => void
   /** L'instrument du trade : son pas de cotation pour les ticks. Inconnu : pas de mode ticks. */
   instrument?: string | null
   /** La capture automatique du lancement du trade (data URL ou adresse), s'il y en a une. */
@@ -104,8 +117,9 @@ interface TradePrevuBrokerProps {
 
 type Resultat = { lecture: LectureOrdre; remplis: number; conflits: ChampLu[]; quota: Quota | null }
 
-function TradePrevuBroker({ prix, lies, ouvert, onToggle, onSave, instrument = null, captureLancement = null }: TradePrevuBrokerProps) {
+function TradePrevuBroker({ prix, r, lies, ouvert, onToggle, onSave, instrument = null, captureLancement = null }: TradePrevuBrokerProps) {
   const [saisie, setSaisie] = useState<Saisie>(() => saisieDe(prix))
+  const [saisieR, setSaisieR] = useState(() => ecrireNombre(r))
   const [modes, setModes] = useState<Record<CoteTicks, ModeSaisie>>({ stop: 'prix', tp: 'prix' })
   const [surlignes, setSurlignes] = useState<ChampLu[]>([])
   const [lectureOuverte, setLectureOuverte] = useState(false)
@@ -201,8 +215,8 @@ function TradePrevuBroker({ prix, lies, ouvert, onToggle, onSave, instrument = n
   const illisible = LIGNES.some(l => invalide(l.cle)) || partielsLus.some(partielIllisible)
   const ticksSansSens = (['stop', 'tp'] as const).some(c => modes[c] === 'ticks' && lus[c] === null && typeof nombre(c) === 'number')
 
-  const enregistrer = () => {
-    if (illisible) return
+  /** La carte telle qu'« Enregistrer » la garderait (champs lisibles seulement). */
+  const carteSaisie = (): TradePrix => {
     const sortie: TradePrix = {}
     for (const c of ['entree', 'stop', 'tp', 'taille', 'sortie'] as const) {
       const v = lus[c]
@@ -216,11 +230,23 @@ function TradePrevuBroker({ prix, lies, ouvert, onToggle, onSave, instrument = n
       .slice(0, PARTIELS_MAX)
       .map(p => (p.taille === undefined ? { prix: p.prix } : { prix: p.prix, taille: p.taille }))
     if (gardes.length) sortie.partiels = gardes
-    onSave(Object.keys(sortie).length ? sortie : undefined)
+    return sortie
+  }
+
+  // Le R (1.8.16) : calculé d'après la carte telle qu'elle est tapée, montré dans le champ vide.
+  const rCalcule = illisible ? null : rDuPrix(carteSaisie())
+  const texteRCalcule = rCalcule !== null ? `${rCalcule > 0 ? '+' : ''}${ecrireNombre(rCalcule)}` : null
+  const lectureR = rAEnregistrer(lireR(saisieR), rCalcule)
+  const rBroker = rDuBroker(lies)
+
+  const enregistrer = () => {
+    if (illisible || lectureR.invalide) return
+    const carte = carteSaisie()
+    onSave(Object.keys(carte).length ? carte : undefined, lectureR.r)
   }
 
   if (!ouvert) {
-    const resume = resumePrevu(prix)
+    const resume = [resumePrevu(prix), r !== undefined ? texteR(r) : ''].filter(Boolean).join(' · ')
     return (
       <button onClick={onToggle} className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted/40 hover:bg-muted/60 text-left">
         <ChevronRight size={11} className="text-muted-foreground flex-shrink-0" />
@@ -413,8 +439,27 @@ function TradePrevuBroker({ prix, lies, ouvert, onToggle, onSave, instrument = n
             </React.Fragment>
           )
         })}
+        {/* Le ratio (1.8.16) : la pastille « R ? » de la rangée, entrée dans la carte. */}
+        <span className="text-[10px] text-muted-foreground" title={t('prix.rAide')}>{t('prix.ratio')}</span>
+        <input
+          value={saisieR}
+          onChange={e => setSaisieR(e.target.value)}
+          onKeyDown={touche}
+          inputMode="decimal"
+          aria-label={t('prix.ratio')}
+          placeholder={texteRCalcule ? `= ${texteRCalcule}` : t('trade.rPlaceholder')}
+          title={texteRCalcule ? t('prix.rCalcule', { r: texteRCalcule }) : t('prix.rAide')}
+          className={classeChamp(lectureR.invalide, false)}
+          data-champ="r"
+        />
+        <span
+          className={`text-[11px] truncate ${rBroker === null ? 'text-muted-foreground/70 italic' : 'text-foreground'}`}
+          title={rBroker === null ? (lies.length ? t('prix.rBrokerSansStop') : undefined) : undefined}
+        >
+          {rBroker === null ? '-' : texteR(rBroker)}
+        </span>
       </div>
-      {ticksSansSens && <p className="text-[10px] leading-snug text-amber-700 dark:text-amber-300">{t('prix.ticksSansSens')}</p>}
+      {ticksSansSens &&<p className="text-[10px] leading-snug text-amber-700 dark:text-amber-300">{t('prix.ticksSansSens')}</p>}
 
       <div className="pt-1 space-y-1">
         <div className={colonnes}>
@@ -480,7 +525,7 @@ function TradePrevuBroker({ prix, lies, ouvert, onToggle, onSave, instrument = n
         <span className="text-[10px] leading-snug text-muted-foreground/70">{t('prix.prevuResteIci')}</span>
         <button
           onClick={enregistrer}
-          disabled={illisible}
+          disabled={illisible || lectureR.invalide}
           className="px-3 py-1 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
         >
           {t('prix.enregistrer')}

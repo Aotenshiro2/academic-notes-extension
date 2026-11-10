@@ -71,6 +71,18 @@ export function lireNombre(brut: string): number | undefined | null {
   return Number.isFinite(n) && n >= 0 ? n : null
 }
 
+/**
+ * Un R tapé (1.8.16) : signé (« -1 », « +1,5 », le vrai signe moins aussi),
+ * virgule ou point, espaces et « R » final ignorés ; vide = undefined ;
+ * null = illisible.
+ */
+export function lireR(brut: string): number | undefined | null {
+  const s = brut.trim().replace(/\s/g, '').replace(/r$/i, '').replace(/−/g, '-').replace(',', '.')
+  if (!s) return undefined
+  const n = Number(s)
+  return Number.isFinite(n) ? n : null
+}
+
 // ── Ticks et prix ───────────────────────────────────────────────────────────
 
 export type ModeSaisie = 'prix' | 'ticks'
@@ -150,6 +162,23 @@ export function rDuPrix(prix: TradePrix | null | undefined): number | null {
   if (!(risque > 0)) return null
   const r = Math.round((((sortie - entree) * signeDuSens(s.sens)) / risque) * 100) / 100
   return Object.is(r, -0) ? 0 : r
+}
+
+/** Le plus grand R accepté, dans un sens comme dans l'autre (la pastille « R ? » d'avant la 1.8.16 tenait la même borne). */
+export const R_MAX = 100
+
+/**
+ * Le R que la carte de prix enregistre (1.8.16 : le R passe dans « Prix »).
+ * `tape` : lu dans le champ (undefined = vide, null = illisible) ; `calcule` :
+ * le R que les prix de la carte permettent de calculer. Champ tapé : il prime.
+ * Champ vide : le R calculé, montré dans le champ, est gardé ; sans calcul
+ * possible, le R est effacé. `invalide` : illisible ou au-delà de R_MAX.
+ */
+export function rAEnregistrer(tape: number | undefined | null, calcule: number | null | undefined): { r: number | undefined; invalide: boolean } {
+  if (tape === null) return { r: undefined, invalide: true }
+  if (tape === undefined) return { r: typeof calcule === 'number' ? calcule : undefined, invalide: false }
+  if (!Number.isFinite(tape) || Math.abs(tape) > R_MAX) return { r: undefined, invalide: true }
+  return { r: Object.is(tape, -0) ? 0 : tape, invalide: false }
 }
 
 /**
