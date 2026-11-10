@@ -138,7 +138,7 @@ function Header({ onShowHistory, onHome, onFullscreen, onExportPDF, onExportDocx
                 ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-500/10'
                 : 'text-muted-foreground/40 cursor-not-allowed'
             }`}
-            title={onAnalyze ? t('entete.analyser') : t('entete.analyserAucune')}
+            title={onAnalyze ? `${t('entete.analyser')}\n${t('analyse.entreeAide')}` : t('entete.analyserAucune')}
             aria-label={t('entete.analyser')}
           >
             <Sparkles size={18} />

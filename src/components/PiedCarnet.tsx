@@ -173,8 +173,7 @@ export default function PiedCarnet({ ecrans, connecte, email, notes, className =
           <button
             onClick={() => ecrans.basculer('mentorat')}
             className={`p-1.5 hover:text-foreground hover:bg-muted rounded-md transition-colors ${ecran === 'mentorat' ? 'text-foreground bg-muted' : 'text-muted-foreground'}`}
-            title={`${t('mentorat.titre')}
-${t('mentorat.entreeAide')}`}
+            title={`${t('mentorat.titre')}\n${t('mentorat.entreeAide')}`}
             aria-label={t('mentorat.titre')}
           >
             <GraduationCap size={14} />
