@@ -117,6 +117,17 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.17',
+    title: "Le mentor te dit quoi faire quand il ne peut pas répondre, et ton prix d'entrée dans « Prix »",
+    items: [
+      "Pas connecté : le mentor et « Approfondir » ne s'arrêtent plus sans rien dire. L'écran du mentor te dit que tu n'es pas connecté, avec un bouton « Me connecter ».",
+      "Si ton Carnet est en retard sur le Store et que le mentor ne répond plus, il te le dit : « Une mise à jour du Carnet est disponible », un bouton pour l'installer, et la marche à suivre si rien ne change.",
+      "L'analyse de tes notes et le mentor ont chacun une ligne qui dit leur rôle : l'analyse donne un débrief brut, que tu peux envoyer à ton IA ; le mentor te répond avec un plan d'action.",
+      "Quand tu choisis ce que le mentor peut lire, une phrase dit ce qu'il lira : tout le carnet, ou seulement les dossiers cochés et leurs sous-dossiers.",
+      "Sur un trade sans R, la pastille « Prix » montre ton prix d'entrée (tapé, ou celui du trade du broker lié) : « Prix · 21 450 ». Avec un R, elle garde « Prix · +2 R ».",
+    ],
+  },
+  {
     version: '1.8.16',
     title: 'Un trade de ta note lié à Pilotage en un clic, et ton R dans « Prix »',
     items: [

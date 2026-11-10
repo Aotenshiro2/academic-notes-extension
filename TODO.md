@@ -694,6 +694,28 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.8.17 - Correctifs des retours de Cédric (Meet du 10/11, brief
+      `D:\7_Agents\briefs\2026-11-10-carnet-1817-retours-cedric.md`).**
+      Branche `carnet-1817`, PAS publiée (Yume dépose au Store).
+      - Pas connecté : statut 401 rendu par les routes du mentor et de
+        l'étude (absence de session comprise) ; l'écran mentorat passe sur
+        « Tu n'es pas connecté » + « Me connecter » (accès, brief, réponse) ;
+        « Approfondir » sans compte ouvre ce même écran.
+      - Carnet en retard : aucune version minimale côté journal, aucune route
+        qui dise « trop ancienne ». Après un échec du mentor :
+        `requestUpdateCheck` + `onUpdateAvailable` (`use-mise-a-jour.ts`),
+        bandeau « Une mise à jour du Carnet est disponible », bouton
+        (`runtime.reload`) et marche à suivre par chrome://extensions.
+      - Rôles : une ligne dans « Analyser », au-dessus du brief, sur le fil du
+        mentor et dans l'infobulle du bouton mentorat.
+      - « Prix » : sans R, le prix d'entrée (tapé, sinon broker lié) ;
+        `complementPastillePrix`, testé.
+      - Périmètre du mentor : une phrase sous les dossiers, selon les cases.
+      - Reste : la cause exacte de la panne de Cédric n'est pas prouvée (logs
+        Vercel gardés 1 h) ; une route `GET /api/carnet/version` (version
+        minimale) dirait au Carnet qu'il est trop ancien même quand Chrome ne
+        voit pas encore la mise à jour.
+
 - [x] **1.8.16 - Lier un trade de la note à Pilotage en un clic, le R dans
       « Prix » (10/11, demande de Brice en séance avec Cédric, brief
       `D:\7_Agents\briefs\2026-11-10-carnet-lien-trade-pilotage.md`).** Codée
