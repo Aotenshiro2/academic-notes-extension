@@ -117,6 +117,15 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.8.16',
+    title: 'Un trade de ta note lié à Pilotage en un clic, et ton R dans « Prix »',
+    items: [
+      'Nouveau : sur un trade clos, l\'icône lien, à côté du résultat, lie le trade de ta note à un trade importé de Pilotage. Un clic ouvre la liste : les trades du broker du jour du trade, du même instrument, le plus proche de l\'heure en tête. Un clic sur « Lier » et c\'est fait, même pour une note faite il y a longtemps.',
+      'Une fois lié, l\'icône est pleine. Un clic te montre le trade du broker (prix, heure, compte) et « Délier » défait le lien. Rien d\'importé ce jour-là : importe l\'export d\'ici, ou dans Pilotage avec « Déposer mes documents ». Le lien ne touche pas à tes prix : Pilotage dit ce que le broker a fait, ton Carnet garde ce que tu avais prévu.',
+      'La pastille « R ? » quitte la rangée : ton R se tape maintenant dans « Prix », sous la sortie. Quand tes prix permettent de le calculer, la carte le montre et le garde si tu laisses le champ vide. Dès qu\'il est connu, la pastille l\'affiche : « Prix · +2 R ». Les R que tu avais déjà saisis restent.',
+    ],
+  },
+  {
     version: '1.8.15',
     title: 'Le plein écran fait tout ce que fait le panneau, et tu peux nous dire ce qui te manque',
     items: [

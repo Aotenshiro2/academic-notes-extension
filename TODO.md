@@ -694,6 +694,46 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.8.16 - Lier un trade de la note à Pilotage en un clic, le R dans
+      « Prix » (10/11, demande de Brice en séance avec Cédric, brief
+      `D:\7_Agents\briefs\2026-11-10-carnet-lien-trade-pilotage.md`).** Codée
+      sur la branche `carnet-1816`, PAS publiée (Yume et Brice décident).
+      - Pourquoi c'était compliqué : « Lier » vivait au fond du panneau
+        « Prix » (sous « Ma position »), rien sur la rangée ne disait qu'un
+        trade pouvait être lié ni qu'il l'était, et le panneau ne lisait les
+        liens que du jour du trade.
+      - Rangée d'un trade clos : la pastille « R ? » part, une icône lien
+        (`Link2`) prend sa place, en pointillés quand le trade est libre,
+        pleine quand il est lié (titre : « Lié à : ... »). Au clic,
+        `TradeLienPopover` : le mécanisme de la 1.8.13 sorti de « Prix »
+        (jour du trade, même instrument, copies sur une ligne, sens choisi
+        devant puis heure la plus proche, 5 lignes puis « Voir les N autres
+        trades de ce jour », « Voir les autres jours ») ; lié : le trade du
+        broker (prix, heure d'entrée, écart, compte) et « Délier » ; rien
+        d'importé : « Importer l'export de ce jour » et « Déposer mes
+        documents » dans Pilotage (lien `/documents`). Même route
+        (`PATCH /api/pilotage/trades/positions`), aucun champ nouveau dans
+        la note : les liens se relisent au geste (`use-liens-trades.ts` : UNE
+        requête à l'ouverture de la note, jours des trades clos ±3 jours, puis
+        après lier ou délier). Pas connecté : aucune requête.
+      - « Prix » : le R est une ligne de la carte (« Ratio (R) », signé,
+        `lireR`). Champ vide et prix suffisants : le R calculé s'affiche
+        (« = +2 ») et « Enregistrer » le garde (`rAEnregistrer`). Colonne
+        broker : le R du broker quand l'export donne le stop (`rDuBroker`).
+        La pastille devient « Prix · +2 R ». Prix et R s'écrivent ensemble
+        (`storage.setTradePrixEtR`, qui remplace setTradePrix et setTradeR).
+        La liste « Lier » quitte la carte : une ligne « Lié à » / « Pas
+        encore lié » ouvre le lien d'un clic.
+      - Partagés : `CadrePopoverTrade` (placement, Échap, clic dehors),
+        `PastilleInstrument`, `lien-trade.ts` (pur).
+      - Tests : `tests/lien-trade.test.ts`, `sans-minuterie` étendu. Essai
+        visuel : `carnet-essais-visuels/carnet-1816/essai-1816.mjs` (avant =
+        1.8.15, après = 1.8.16, clair et sombre, journal simulé), captures
+        dans `D:\8_Developpement\carnet-captures\2026-11-10-lien-pilotage\`.
+      - Reste : essayer contre le vrai journal (lier, délier, relecture à
+        l'ouverture) ; un trade lié à plus de 3 jours de lui (« Voir tout »)
+        n'allume pas l'icône à la réouverture de la note.
+
 - [ ] **La pastille de survol déplacée en `bottom-full`.** Elle mordait sur la
       première ligne du bloc ; elle mord maintenant sur la fin du bloc
       précédent, faute d'écart suffisant (`space-y-1.5` = 6 px pour une pastille
