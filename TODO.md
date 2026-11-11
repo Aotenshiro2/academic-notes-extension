@@ -694,6 +694,25 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.9.0 - « Soutenir le Carnet » dans « Mon forfait » (brief
+      `D:\7_Agents\briefs\2026-11-11-soutien-dans-les-apps.md`, labo
+      `D:\6_Societe\Pilotage\soutien\labo`, proposition 1 retenue par Brice).**
+      Branche `carnet-190-soutien`, PAS publiée (nouvelle fonction : go de
+      Brice ; le journal doit être en ligne avant, avec SOUTIEN_APPS_PUBLIC=1).
+      - Sous « Tout est déjà ouvert » (niveau `club` seulement) : une ligne
+        « Soutenir le Carnet » qui se déplie (prix 5,99 € par mois, « ou 57,50 €
+        à l'année » au clic, trois effets, bouton sobre, « Tu arrêtes quand tu
+        veux. »). Le bouton demande `POST /api/carnet/soutien` au journal et
+        ouvre la page Stripe dans un onglet (abonnement Carnet Premium existant,
+        marqué soutien ; aucun produit neuf).
+      - Soutien actif : « Tu soutiens le Carnet. Merci. » à la place de la
+        ligne, avec « Gérer mon soutien » (portail Stripe) pour arrêter.
+      - Rien ne se montre si le journal ne répond pas, si la vente n'est pas
+        ouverte, ou si un abonnement Carnet est déjà en cours (jamais deux).
+      - `src/lib/soutien-carnet.ts` (pur, `tests/soutien-carnet.test.ts`),
+        `src/lib/soutien-api.ts`, `src/components/SoutienCarnet.tsx`, textes
+        `soutien.*` (fr, en).
+
 - [x] **1.8.17 - Correctifs des retours de Cédric (Meet du 10/11, brief
       `D:\7_Agents\briefs\2026-11-10-carnet-1817-retours-cedric.md`).**
       Branche `carnet-1817`, PAS publiée (Yume dépose au Store).

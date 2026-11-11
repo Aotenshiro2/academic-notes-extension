@@ -117,6 +117,15 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.9.0',
+    title: 'Soutenir le Carnet, quand il est déjà compris dans ta formule',
+    items: [
+      "Si le Carnet Premium est compris dans ton Live Club, ton 10% Club, ta Formation ou ton accompagnement, « Mon forfait » montre une ligne discrète « Soutenir le Carnet », sous « Tout est déjà ouvert ». Elle se déplie : le prix de l'abonnement, ce que ça change, et un bouton.",
+      "Rien de plus n'est débloqué aujourd'hui : tout est déjà ouvert pour toi. Ton soutien continue si la formule qui incluait le Carnet s'arrête, et tu reçois un badge « Soutien » sur ton compte.",
+      "Quand tu soutiens le Carnet, « Mon forfait » te le dit, avec le lien pour gérer ou arrêter ton soutien. Tu arrêtes quand tu veux.",
+    ],
+  },
+  {
     version: '1.8.17',
     title: "Le mentor te dit quoi faire quand il ne peut pas répondre, et ton prix d'entrée dans « Prix »",
     items: [
