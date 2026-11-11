@@ -694,6 +694,34 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.9.2 - LA nouveauté de la 1.9 : le point d'attention avant la
+      séance, et le rappel du warmup (brief
+      `D:\7_Agents\briefs\2026-11-11-carnet-191-192.md`, labo
+      `D:\6_Societe\Pilotage\carnet-point-attention\labo`, proposition 1).**
+      Branche `carnet-192` (par-dessus `carnet-191`), PAS publiée (feature :
+      go de Brice à la mise en ligne).
+      - En tête de la carte du warmup, avant les questions : s'il y a au
+        moins 3 jugements de la même cause (B− et en dessous, avec une cause)
+        sur les 14 jours avant le début de la séance. Phrase du jugement le
+        plus récent de cette cause + « Qu'est-ce que tu fais différemment
+        aujourd'hui ? ». À égalité : les causes à égalité, le membre choisit.
+      - Gestes : fermer, ou « Je le garde en tête » (pastille au-dessus de
+        l'objectif du jour). La décision vit sur le warmup
+        (`NoteWarmup.attention`) : la séance en cours seulement (warmup de
+        moins de 12 h), le suivant se recalcule.
+      - Rappel : « Un warmup avant de commencer ? » + « Lancer » au-dessus de
+        la rangée d'outils, sur une note de moins d'une heure sans warmup ;
+        part à la croix ou au lancement, ne revient pas dans la même note
+        (localStorage `carnet-rappel-warmup-vu`).
+      - Calcul local (`storage.getJugements`, curseur) ; pas d'IA, pas de
+        route. Limite : un jugement corrigé dans le journal (relecture)
+        n'est pas redescendu dans le Carnet, et une restauration depuis le
+        journal ne ramène pas les jugements (sync à sens unique).
+      - `src/lib/point-attention.ts` (pur, `tests/point-attention.test.ts`),
+        `src/components/PointAttention.tsx`, `WarmupCard.tsx`,
+        `OutilsNoteRangee.tsx`, textes `attention.*` et `rappelWarmup.*`
+        (fr, en).
+
 - [x] **1.9.1 - Correctif : le menu du clic droit (brief
       `D:\7_Agents\briefs\2026-11-11-carnet-191-192.md`).** Branche
       `carnet-191`, PAS publiée (Yume dépose au Store après la 1.9.0).
