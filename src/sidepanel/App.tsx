@@ -27,7 +27,14 @@ import { useSessionCarnet, useAccesCompte } from '@/lib/use-session-carnet'
 import { useTravailDeFond } from '@/lib/use-travail-fond'
 import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { plateformeOnglet } from '@/lib/besoins'
+import { prepareImageForStorage } from '@/lib/image-utils'
+import { useDemandesPanneau } from '@/lib/use-demandes-panneau'
+import { selectionEnHtml, ligneSource, type DemandePanneau } from '@/lib/demandes-panneau'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
+
+// L'onglet visé par une demande du menu du clic droit (1.9.1) ; sans elle,
+// les boutons du panneau visent l'onglet actif de la fenêtre.
+interface CibleOnglet { tabId: number; windowId: number }
 
 function App() {
   // Suppression du système de vue par tabs
@@ -216,13 +223,15 @@ function App() {
     return true
   }
 
-  const handleAddContent = async (content: string, noteId: string | null) => {
+  // Rend l'identifiant de la note où le contenu est allé (1.9.1 : la sélection
+  // du menu y pose ensuite sa ligne de source), null en cas d'échec.
+  const handleAddContent = async (content: string, noteId: string | null): Promise<string | null> => {
     try {
       // Une image collée/glissée dans la barre doit devenir son PROPRE bloc :
       // noyée dans un bloc texte, elle n'avait pas de poubelle au survol et le
       // bloc devenait impossible à supprimer (retour utilisateur 04/08).
       const blocks = splitHtmlIntoMessages(content)
-      if (blocks.length === 0) return
+      if (blocks.length === 0) return null
 
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
       const currentTab = tabs[0]
@@ -281,9 +290,11 @@ function App() {
           noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
         }
       }, 100) // Délai légèrement plus long pour laisser le temps au contenu de se mettre à jour
+      return targetNoteId
     } catch (error) {
       console.error('Error adding content:', error)
       toast.error(t('pleinEcran.erreurAjout'))
+      return null
     }
   }
 
@@ -381,13 +392,16 @@ function App() {
   // compte y a droit (1.8.0). Repli silencieux sur les heuristiques dès que
   // l'IA ne répond pas : quota atteint, hors ligne, clé absente. L'élève n'a
   // jamais de panne, seulement une capture moins bonne.
-  const handleSmartCapture = async () => {
+  // `cible` : l'onglet d'une demande du menu du clic droit (1.9.1). Les
+  // boutons appellent sans cible, d'où les petites enveloppes plus bas (un
+  // onClick passerait son événement en premier argument).
+  const captureIntelligente = async (cible?: CibleOnglet) => {
     setIsSmartCapturing(true)
     setSmartCaptureError(null)
 
     try {
       // Extraction du contenu structuré via service worker (heuristiques)
-      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE' })
+      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: cible?.tabId })
 
       if (!result?.success) {
         throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
@@ -396,7 +410,9 @@ function App() {
       // Capturer le screenshot de la page
       let screenshotDataUrl = ''
       try {
-        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
+        screenshotDataUrl = cible
+          ? await chrome.tabs.captureVisibleTab(cible.windowId, { format: 'jpeg', quality: 85 })
+          : await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
       } catch (screenshotError) {
         console.warn('Screenshot capture failed:', screenshotError)
       }
@@ -453,13 +469,13 @@ function App() {
   }
 
   // Fonction de capture intelligente pour ajouter à la note courante
-  const handleSmartCaptureToCurrentNote = async () => {
+  const captureIntelligenteDansNote = async (cible?: CibleOnglet) => {
     if (!currentNoteId) return
     setIsSmartCapturing(true)
     setSmartCaptureError(null)
 
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE' })
+      const result = await chrome.runtime.sendMessage({ type: 'SMART_CAPTURE', tabId: cible?.tabId })
       if (!result?.success) {
         throw new Error(result?.error || t('pleinEcran.extractionEchouee'))
       }
@@ -468,7 +484,9 @@ function App() {
       // porte l'analyse, et la passe secrétaire doit pouvoir le lire.
       let screenshotDataUrl = ''
       try {
-        screenshotDataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
+        screenshotDataUrl = cible
+          ? await chrome.tabs.captureVisibleTab(cible.windowId, { format: 'jpeg', quality: 85 })
+          : await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 })
       } catch (e) {
         console.warn('Screenshot capture failed:', e)
       }
@@ -509,6 +527,57 @@ function App() {
       setIsSmartCapturing(false)
     }
   }
+
+  const handleSmartCapture = () => captureIntelligente()
+  const handleSmartCaptureToCurrentNote = () => captureIntelligenteDansNote()
+
+  // ---- Le menu du clic droit (1.9.1) ----
+  // Le service worker ouvre le panneau et lui confie la demande : le panneau
+  // fait le même geste que ses boutons, dans la note ouverte s'il y en a une,
+  // sinon dans une note neuve (lib/demandes-panneau).
+  const traiterDemande = async (demande: DemandePanneau) => {
+    ecrans.fermer()
+    const cible: CibleOnglet = { tabId: demande.tabId, windowId: demande.windowId }
+
+    if (demande.type === 'capture-intelligente') {
+      if (currentNoteId) await captureIntelligenteDansNote(cible)
+      else await captureIntelligente(cible)
+      return
+    }
+
+    const quand = new Date().toLocaleString('fr-FR')
+
+    if (demande.type === 'selection') {
+      const noteId = await handleAddContent(selectionEnHtml(demande.texte), currentNoteId)
+      if (noteId) {
+        await storage.addMessageToNote(noteId, { type: 'meta', content: ligneSource(demande.titre, demande.url, quand) })
+        await loadData()
+        setNoteRefreshTrigger(Date.now())
+      }
+      return
+    }
+
+    // capture-ecran : comme le bouton « Capture d'écran » (note ouverte) ou la
+    // carte « Capturer cette page » de l'accueil (sans note)
+    setIsCapturing(true)
+    try {
+      const onglet = await chrome.tabs.get(demande.tabId)
+      const image = await chrome.tabs.captureVisibleTab(demande.windowId, { format: 'jpeg', quality: 85 })
+      if (currentNoteId) {
+        await handleScreenshotToNote(await prepareImageForStorage(image), ligneSource(onglet.title || '', onglet.url || '', quand))
+      } else {
+        const newNoteId = await enregistrerNoteDeLaPage(onglet, image)
+        setCurrentNoteId(newNoteId)
+        await loadData()
+      }
+    } catch (error) {
+      console.error('Error capturing screenshot from the menu:', error)
+      toast.error(t('panneau.erreurCapturePage'))
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+  useDemandesPanneau(traiterDemande)
 
   // Exports : toujours relire la note depuis le storage — le state `notes` de
   // l'App peut être en retard sur les dernières éditions (warmup, cooldown…)

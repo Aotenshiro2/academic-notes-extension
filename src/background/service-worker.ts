@@ -2,6 +2,7 @@ import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
 import { storage, runFullBackup } from '@/lib/storage'
 import { installerCaptureErreurs } from '@/lib/diagnostic-traces'
+import { CLE_DEMANDE_PANNEAU, type DemandePanneau } from '@/lib/demandes-panneau'
 
 // 1.8.14 : les erreurs du service worker rejoignent l'anneau du diagnostic
 // (message nettoyé, fichier, ligne ; rien ne part sans le geste du membre).
@@ -101,42 +102,69 @@ function setupContextMenus() {
   })
 }
 
+// Ouvre le panneau sur un geste (clic dans le menu, raccourci). sidePanel.open
+// n'est accepté que pendant le geste : l'appel part AVANT toute attente.
+function ouvrirPanneauSurGeste(tabId: number): void {
+  openSidePanel(tabId).catch(error => console.warn('[SW] Panneau non ouvert :', error))
+}
+
+// 1.9.1 : la demande est confiée au panneau (lib/demandes-panneau), qui fait
+// le même geste que ses propres boutons. Avant, ces entrées enregistraient en
+// silence une note à l'ancien format, sans ouvrir le panneau : « rien ne se
+// passait ».
+function confierAuPanneau(demande: DemandePanneau): void {
+  chrome.storage.session.set({ [CLE_DEMANDE_PANNEAU]: demande })
+    .catch(error => console.warn('[SW] Demande au panneau perdue :', error))
+}
+
 // Gestion des clics sur les menus contextuels
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab?.id) return
+  const tabId = tab.id
+  const windowId = tab.windowId
+  const at = Date.now()
+
+  ouvrirPanneauSurGeste(tabId)
 
   switch (info.menuItemId) {
     case 'open-sidebar':
-      await openSidePanel(tab.id)
       break
 
     case 'capture-selection':
       if (info.selectionText) {
-        await captureSelection(tab.id, info.selectionText)
+        confierAuPanneau({
+          type: 'selection', tabId, windowId, at,
+          texte: info.selectionText,
+          url: info.pageUrl || tab.url || '',
+          titre: tab.title || '',
+        })
       }
       break
 
     case 'capture-page':
-      await capturePage(tab.id)
+      // La capture intelligente, comme le bouton du panneau
+      confierAuPanneau({ type: 'capture-intelligente', tabId, windowId, at })
       break
 
     case 'take-screenshot':
-      await takeScreenshot(tab.id)
+      confierAuPanneau({ type: 'capture-ecran', tabId, windowId, at })
       break
   }
 })
 
 // Gestion des commandes clavier
-chrome.commands.onCommand.addListener(async (command, tab) => {
+chrome.commands.onCommand.addListener((command, tab) => {
   if (!tab?.id) return
 
   switch (command) {
     case 'toggle-sidebar':
-      await openSidePanel(tab.id)
+      ouvrirPanneauSurGeste(tab.id)
       break
 
     case 'quick-capture':
-      await capturePage(tab.id)
+      // Même chemin que « Capturer cette page » du menu (1.9.1)
+      ouvrirPanneauSurGeste(tab.id)
+      confierAuPanneau({ type: 'capture-intelligente', tabId: tab.id, windowId: tab.windowId, at: Date.now() })
       break
   }
 })
