@@ -694,6 +694,23 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.9.1 - Correctif : le menu du clic droit (brief
+      `D:\7_Agents\briefs\2026-11-11-carnet-191-192.md`).** Branche
+      `carnet-191`, PAS publiée (Yume dépose au Store après la 1.9.0).
+      - Cause : les entrées du menu (« Capturer cette page », « Capturer la
+        sélection », « Prendre une capture d'écran ») et Alt+Maj+C appelaient
+        de vieilles fonctions du service worker qui enregistraient une note à
+        l'ancien format (texte brut, sans capture ni blocs), sans ouvrir le
+        panneau ni montrer la note : rien de visible.
+      - Correction : le service worker ouvre le panneau sur le clic (geste
+        qui permet `sidePanel.open`) et lui confie la demande par
+        `chrome.storage.session` ; le panneau fait le geste de ses boutons
+        (capture intelligente, texte + ligne de source, capture d'écran),
+        dans la note ouverte sinon une note neuve. `src/lib/demandes-panneau.ts`
+        (pur, `tests/demandes-panneau.test.ts`), `use-demandes-panneau.ts`.
+      - Ménage du TODO : DOL (1.6.2), famille maison (1.8.5), dictée vocale
+        validée par Brice le 11/11.
+
 - [x] **1.9.0 - « Soutenir le Carnet » dans « Mon forfait » (brief
       `D:\7_Agents\briefs\2026-11-11-soutien-dans-les-apps.md`, labo
       `D:\6_Societe\Pilotage\soutien\labo`, proposition 1 retenue par Brice).**
@@ -847,7 +864,9 @@ Ce que BRICE aurait noté (6 entrées, en anglais « pour aller plus vite ») :
 Ses entrées se relisent comme des cartes de révision. Celles de la machine se
 lisaient comme un sommaire.
 
-- [ ] **La famille « maison » doit lire le journal, pas le gratter.** Correction
+- [x] ✅ **LIVRÉ en 1.8.5** (stratégie `journal-aok` + `resoudreCanvasJournal`
+      côté serveur, cloison par userId ; coché au ménage de la 1.9.1).
+      **La famille « maison » doit lire le journal, pas le gratter.** Correction
       de Brice, et j'avais tort dans l'autre sens : j'avais proposé qu'un canvas
       de 111 notes « n'a rien à enseigner et devrait le dire ». Faux. Le canvas
       EST du contenu, et surtout **c'est NOTRE contenu** : le carnet est connecté
@@ -958,7 +977,7 @@ lisaient comme un sommaire.
 La `ROADMAP.md` racine (avril 2026) a été archivée. **Arbitrage Brice du
 27/08/2026** sur ce qui y restait d'ouvert côté extension :
 
-- [x] **Dictée vocale Whisper** ✅ **FAIT le 28/08/2026 (v1.7.0, zip généré, À DOGFOODER)** :
+- [x] **Dictée vocale Whisper** ✅ **FAIT le 28/08/2026 (v1.7.0), VALIDÉE par Brice le 11/11/2026** (« la dictée vocale c'est ok » : plus rien à dogfooder) :
       bouton micro dans la capture bar, Whisper small via @huggingface/transformers
       dans un Web Worker (WebGPU si dispo, wasm sinon), 100 % local. Modèle
       (~170 Mo) téléchargé au 1er usage puis en cache. Runtime onnx embarqué
@@ -1392,7 +1411,11 @@ Correctif appliqué (option propre de Codex) :
 - ✅ Version 1.6.1 (package.json + manifest).
 - [ ] Reste : valider l'UX en réel (Brave) puis générer le zip v1.6.1.
 
-### 4. Fonctionnalité DOL — Draw on Liquidity
+### ✅ 4. Fonctionnalité DOL — Draw on Liquidity — LIVRÉE en 1.6.2 (10/07/2026)
+
+Le cahier des charges d'origine, gardé pour l'histoire ; ce qui a été livré :
+section « ✅ 4. DOL » plus haut (DolBar, statuts, sync, exports). Cases
+cochées au ménage de la 1.9.1.
 
 **Problème à résoudre :** pendant l'analyse HTF (avant la séance), on identifie la
 direction et le niveau qui attire le prix. Une fois en séance, absorbé par les
@@ -1406,13 +1429,14 @@ dessous. Définir le DOL avant le trade donne une cible logique et un biais
 directionnel à ne pas perdre.
 
 **Comportement voulu dans la note :**
-- [ ] Définir un ou plusieurs niveaux DOL au moment de l'analyse HTF :
+- [x] Définir un ou plusieurs niveaux DOL au moment de l'analyse HTF :
       prix + biais/direction + instrument + commentaire court.
-- [ ] Le DOL reste visible en permanence pendant la séance (épinglé dans le
+- [x] Le DOL reste visible en permanence pendant la séance (épinglé dans le
       header du sidepanel / en haut de la note) pour ne jamais perdre la
       direction HTF en étant plongé dans les LTF.
-- [ ] Statut d'un niveau : actif / atteint / invalidé.
-- [ ] (à discuter) Sync vers le journal, comme les tags et concepts.
+- [x] Statut d'un niveau : actif / atteint / invalidé.
+- [x] (à discuter) Sync vers le journal, comme les tags et concepts
+      (`Note.dols` JSONB, migration `2026-07-10-dols.sql`).
 
 ---
 **Dernière mise à jour :** 27 août 2026

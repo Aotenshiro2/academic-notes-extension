@@ -117,6 +117,14 @@ const CONFIDENTIALITE: CleI18n[] = [
 
 const CHANGELOG = [
   {
+    version: '1.9.1',
+    title: 'Le menu du clic droit fait enfin ce qu\'il dit',
+    items: [
+      "« Capturer cette page », dans le menu du clic droit, ne faisait rien de visible. Il ouvre maintenant le Carnet et lance la capture intelligente, comme le bouton du panneau : dans ta note ouverte s'il y en a une, sinon dans une note neuve. Le raccourci Alt+Maj+C fait la même chose.",
+      "« Capturer la sélection » ouvre le Carnet et pose le texte choisi dans ta note, avec la page d'où il vient. « Prendre une capture d'écran » ouvre le Carnet et pose la capture de la page.",
+    ],
+  },
+  {
     version: '1.9.0',
     title: 'Soutenir le Carnet, quand il est déjà compris dans ta formule',
     items: [
