@@ -30,6 +30,10 @@ import { t, type CleI18n } from '@/lib/i18n'
 // L'offre et le lien pré-rempli vivent dans lib/offres : la carte d'upsell du
 // mentorat lit la même source, sinon les deux prix divergent (c'était le cas).
 import { OFFRES, formatPrix, lienPaiement, type Periode } from '@/lib/offres'
+// 1.9.0 : « Soutenir le Carnet », sous « Tout est déjà ouvert » (labo du soutien, 11/11/2026).
+import { lireSoutien } from '@/lib/soutien-api'
+import type { EtatSoutien } from '@/lib/soutien-carnet'
+import { SoutienCarnet } from './SoutienCarnet'
 
 const AVANTAGES: CleI18n[] = [
   'forfait.avantageCapture',
@@ -44,9 +48,12 @@ function PlansView({ onBack }: { onBack: () => void }) {
   const [userId, setUserId] = useState<string | null>(null)
   const [periode, setPeriode] = useState<Periode>('an')
   const [chargement, setChargement] = useState(true)
+  const [soutien, setSoutien] = useState<EtatSoutien | null>(null)
 
   useEffect(() => {
     let vivant = true
+    // Le soutien se lit à part (il passe par Stripe) : l'écran ne l'attend pas, la ligne arrive quand elle est sûre.
+    void lireSoutien().then(e => { if (vivant) setSoutien(e) })
     Promise.all([fetchAccesCaptureIA(), getSession()])
       .then(([{ acces }, session]) => {
         if (!vivant) return
@@ -116,6 +123,7 @@ function PlansView({ onBack }: { onBack: () => void }) {
           </ul>
           <div className="mt-4">{rappelGratuit}</div>
         </div>
+        <SoutienCarnet niveau={niveau} etat={soutien} />
       </div>
     )
   }
