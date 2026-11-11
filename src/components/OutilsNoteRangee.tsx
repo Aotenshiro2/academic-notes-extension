@@ -1,10 +1,11 @@
 import { toast } from '../lib/toast'
-import React, { useState } from 'react'
-import { Loader2, Sunrise, Sparkles, Lock } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Loader2, Sunrise, Sparkles, Lock, X } from 'lucide-react'
 import DolBar from '@/components/DolBar'
 import storage from '@/lib/storage'
 import { etudierNote } from '@/lib/capture-ia'
 import { blocEtude, contenuAEtudier, noteAvecDol, noteAvecWarmup, noteEnrichieParEtude } from '@/lib/outils-note'
+import { rappelWarmupAMontrer, ajouterNoteVue } from '@/lib/point-attention'
 import { t } from '@/lib/i18n'
 import type { DolLevel } from '@/types/academic'
 
@@ -47,8 +48,27 @@ export default function OutilsNoteRangee({ noteId, etudeOuverte, modeleEtude, on
     await onChange()
   }
 
+  // Le rappel du warmup (1.9.2) : une ligne discrète à l'ouverture d'une
+  // nouvelle note. Elle part quand on la ferme ou qu'on lance le warmup, et ne
+  // revient pas dans la même note (lib/point-attention). Lu à l'ouverture de
+  // la note, jamais en fond.
+  const [rappel, setRappel] = useState(false)
+  useEffect(() => {
+    let vivant = true
+    setRappel(false)
+    storage.getNote(noteId).then(note => {
+      if (vivant) setRappel(rappelWarmupAMontrer(note, Date.now(), lireNotesVues()))
+    }).catch(() => { /* pas de rappel */ })
+    return () => { vivant = false }
+  }, [noteId])
+  const ecarterRappel = () => {
+    setRappel(false)
+    ecrireNotesVues(ajouterNoteVue(lireNotesVues(), noteId))
+  }
+
   // « Lancer un warmup » : il s'ajoute au fil au moment du clic
   const lancerWarmup = async () => {
+    ecarterRappel()
     const fresh = await storage.getNote(noteId)
     if (!fresh) return
     await storage.saveNote(noteAvecWarmup(fresh, crypto.randomUUID(), Date.now()))
@@ -118,51 +138,86 @@ export default function OutilsNoteRangee({ noteId, etudeOuverte, modeleEtude, on
   }
 
   return (
-    <div className={`flex flex-wrap items-center gap-1 ${className ?? ''}`}>
-      <DolBar
-        dols={[]}
-        onAdd={(dol) => { void poserDol(dol) }}
-        onCycleStatus={() => {}}
-        onDelete={() => {}}
-      />
-      <button
-        onClick={() => { void lancerWarmup() }}
-        className={`${BOUTON} text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10`}
-        title={t('panneau.warmupAide')}
-      >
-        <Sunrise size={13} className="flex-shrink-0" />
-        {t('capture.warmup')}
-      </button>
-      {/* « Approfondir » : l'action d'étude en dernier. Libellé court pour tenir
-          sur la ligne à 360 px ; le texte complet et l'aide sont dans le title.
-          Verrouillé, il reste visible (voir la fonction convertit mieux qu'un
-          bouton absent) : le clic passe quand même, le serveur refuse et la vue
-          montre l'explication du forfait. */}
-      <button
-        onClick={() => { if (!etudeEnCours) void approfondir() }}
-        disabled={etudeEnCours}
-        className={`${BOUTON} ${
-          etudeEnCours
-            ? 'text-muted-foreground cursor-wait'
+    <div className={className}>
+      {rappel && (
+        <div data-rappel-warmup className="flex items-center gap-2 mb-1 px-1 text-[12px] text-muted-foreground">
+          <Sunrise size={13} className="flex-shrink-0 text-blue-600/80 dark:text-blue-400/80" />
+          <span className="min-w-0">{t('rappelWarmup.texte')}</span>
+          <button
+            onClick={() => { void lancerWarmup() }}
+            className="px-2 py-0.5 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+          >
+            {t('rappelWarmup.lancer')}
+          </button>
+          <button
+            onClick={ecarterRappel}
+            className="ml-auto p-0.5 rounded text-muted-foreground/70 hover:text-foreground"
+            aria-label={t('commun.fermer')}
+            title={t('commun.fermer')}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-1">
+        <DolBar
+          dols={[]}
+          onAdd={(dol) => { void poserDol(dol) }}
+          onCycleStatus={() => {}}
+          onDelete={() => {}}
+        />
+        <button
+          onClick={() => { void lancerWarmup() }}
+          className={`${BOUTON} text-blue-600/80 dark:text-blue-400/80 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10`}
+          title={t('panneau.warmupAide')}
+        >
+          <Sunrise size={13} className="flex-shrink-0" />
+          {t('capture.warmup')}
+        </button>
+        {/* « Approfondir » : l'action d'étude en dernier. Libellé court pour tenir
+            sur la ligne à 360 px ; le texte complet et l'aide sont dans le title.
+            Verrouillé, il reste visible (voir la fonction convertit mieux qu'un
+            bouton absent) : le clic passe quand même, le serveur refuse et la vue
+            montre l'explication du forfait. */}
+        <button
+          onClick={() => { if (!etudeEnCours) void approfondir() }}
+          disabled={etudeEnCours}
+          className={`${BOUTON} ${
+            etudeEnCours
+              ? 'text-muted-foreground cursor-wait'
+              : etudeOuverte
+                ? 'aura-ia aura-ia-discrete text-foreground/80 hover:text-foreground hover:bg-muted'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+          title={etudeEnCours
+            ? t('note.approfondirEnCours')
             : etudeOuverte
-              ? 'aura-ia aura-ia-discrete text-foreground/80 hover:text-foreground hover:bg-muted'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-        }`}
-        title={etudeEnCours
-          ? t('note.approfondirEnCours')
-          : etudeOuverte
-            ? `${t('note.approfondir')}\n${t('note.approfondirAide')}`
-            : `${t('note.approfondirVerrouille')}\n${t('note.approfondirRefus')}`}
-        aria-label={etudeOuverte || etudeEnCours ? t('note.approfondir') : t('note.approfondirVerrouille')}
-        aria-busy={etudeEnCours}
-      >
-        {etudeEnCours
-          ? <Loader2 size={13} className="animate-spin flex-shrink-0" />
-          : etudeOuverte
-            ? <Sparkles size={13} className="flex-shrink-0" />
-            : <Lock size={13} className="flex-shrink-0" />}
-        {t('note.approfondirCourt')}
-      </button>
+              ? `${t('note.approfondir')}\n${t('note.approfondirAide')}`
+              : `${t('note.approfondirVerrouille')}\n${t('note.approfondirRefus')}`}
+          aria-label={etudeOuverte || etudeEnCours ? t('note.approfondir') : t('note.approfondirVerrouille')}
+          aria-busy={etudeEnCours}
+        >
+          {etudeEnCours
+            ? <Loader2 size={13} className="animate-spin flex-shrink-0" />
+            : etudeOuverte
+              ? <Sparkles size={13} className="flex-shrink-0" />
+              : <Lock size={13} className="flex-shrink-0" />}
+          {t('note.approfondirCourt')}
+        </button>
+      </div>
     </div>
   )
+}
+
+// Les notes où le rappel est parti (fermé ou warmup lancé). localStorage :
+// partagé par le panneau et le plein écran (même origine), propre à la machine.
+const CLE_RAPPEL = 'carnet-rappel-warmup-vu'
+function lireNotesVues(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLE_RAPPEL) ?? '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch { return [] }
+}
+function ecrireNotesVues(ids: string[]): void {
+  try { localStorage.setItem(CLE_RAPPEL, JSON.stringify(ids)) } catch { /* best-effort */ }
 }

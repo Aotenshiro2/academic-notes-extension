@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Sunrise, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
+import PointAttention, { PastilleAttention } from './PointAttention'
 import { t, type CleI18n } from '@/lib/i18n'
 import type { NoteWarmup } from '@/types/academic'
 
@@ -103,8 +104,15 @@ export default function WarmupCard({ warmup, onSave, timeLabel, defaultOpen, onD
 
       {open && (
         <div className="px-3 pb-3 space-y-2.5">
+          {/* Le point d'attention (1.9.2) : en tête, avant les questions. Il ne
+              se montre que pour la séance en cours et au-dessus du seuil. */}
+          {warmup && <PointAttention warmup={warmup} onSave={onSave} />}
           {FIELDS.map(f => (
             <div key={f.key}>
+              {/* « Je le garde en tête » : la pastille, au-dessus de l'objectif */}
+              {f.key === 'objective' && warmup?.attention?.garde && (
+                <div className="mb-1.5"><PastilleAttention warmup={warmup} /></div>
+              )}
               <div className="text-[11px] font-medium mb-0.5 text-blue-600 dark:text-blue-400">{t(f.label)}</div>
               <textarea
                 defaultValue={warmup?.[f.key] ?? ''}

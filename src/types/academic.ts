@@ -238,6 +238,17 @@ export interface NoteWarmup {
   objective?: string       // objectif du jour (qualitatif)
   emotionLevel?: number    // émotion accumulée au démarrage (0–100)
   doneAt?: number
+  /** Le point d'attention de CE warmup (1.9.2) : ce que le membre en a fait.
+   *  Vaut pour la séance du warmup seulement ; le suivant se recalcule. */
+  attention?: WarmupAttention
+}
+
+/** Le geste du membre sur le point d'attention (lib/point-attention.ts). */
+export interface WarmupAttention {
+  /** Fermé sans le garder */
+  fermeLe?: number
+  /** « Je le garde en tête » : la cause choisie et sa phrase, en pastille */
+  garde?: { cause: AnnotationCause; phrase: string; le: number }
 }
 
 // ── DOL — Draw on Liquidity (ICT / Smart Money) ──────────────────────────────

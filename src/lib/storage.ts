@@ -14,7 +14,8 @@ import type {
   SyncStatus,
   AIConfig,
   NoteSummary,
-  TradeSegment
+  TradeSegment,
+  Annotation
 } from '@/types/academic'
 import { activiteDeLaNote } from './activite'
 
@@ -598,6 +599,21 @@ export const storage = {
       if (note) notes.push(note)
     }
     return notes
+  },
+
+  /**
+   * Les jugements de toutes les notes, sans rien d'autre (1.9.2, le point
+   * d'attention du warmup). Curseur, une note à la fois : jamais le corpus
+   * entier en mémoire. Lu à l'ouverture d'un warmup de la séance en cours.
+   */
+  async getJugements(): Promise<Pick<Annotation, 'grade' | 'phrase' | 'causeCategory' | 'createdAt'>[]> {
+    const jugements: Pick<Annotation, 'grade' | 'phrase' | 'causeCategory' | 'createdAt'>[] = []
+    await db.notes.each(note => {
+      for (const a of note.annotations ?? []) {
+        jugements.push({ grade: a.grade, phrase: a.phrase, causeCategory: a.causeCategory, createdAt: a.createdAt })
+      }
+    })
+    return jugements
   },
 
   async searchNotes(query: string): Promise<NoteSummary[]> {
