@@ -121,9 +121,11 @@ const CHANGELOG = [
     title: 'La nouveauté de la 1.9 : ton point d\'attention avant la séance',
     items: [
       "Quand tu lances ton warmup, le Carnet te remontre l'erreur qui revient le plus dans tes derniers jugements, avec tes propres mots. Il apparaît en tête du warmup quand au moins 3 de tes jugements en B− ou moins des 14 derniers jours viennent de la même cause (technique, connaissance ou émotionnelle). En dessous, il ne s'affiche pas.",
-      "Il reprend la phrase de ton jugement le plus récent pour cette cause et te pose une question : qu'est-ce que tu fais différemment aujourd'hui ? Si deux causes reviennent autant l'une que l'autre, il te montre les deux et tu choisis celle que tu gardes en tête.",
+      "Il reprend la phrase de ton jugement le plus récent pour cette cause et te pose la question qui va avec : ce que tu vérifies avant d'entrer pour une cause technique, ce que tu veux revoir avant ta séance pour une cause de connaissance, ce que tu fais différemment aujourd'hui pour une cause émotionnelle. Si deux causes reviennent autant l'une que l'autre, il te montre les deux et tu choisis celle que tu gardes en tête.",
       "« Je le garde en tête » le range en pastille au-dessus de ton objectif du jour, pour cette séance. La croix le ferme. Tout se calcule dans ton Carnet, sur tes notes : pas d'IA, rien ne part.",
       "À l'ouverture d'une nouvelle note, une ligne discrète te propose un warmup avant de commencer. Elle part dès que tu la fermes ou que tu lances le warmup, et ne revient pas dans la même note.",
+      "Quand tu arrives sur une de tes plateformes (TopStepX, le tableau de bord Topstep, Tradovate, SimpleFX, TradingView), une petite bulle en bas à droite te propose d'ouvrir le Carnet : un clic, et il s'ouvre. Elle vient une fois par onglet, pas si le Carnet est déjà ouvert. La croix la ferme, « Ne plus proposer ici » la retire de ce site.",
+      "Dans les réglages, la section de la bulle : un interrupteur pour l'arrêter partout, la liste des sites, et « Ajouter ce site » pour la plateforme ouverte dans ton onglet.",
     ],
   },
   {

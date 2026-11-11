@@ -703,8 +703,12 @@ on verra aux retours.
       - En tête de la carte du warmup, avant les questions : s'il y a au
         moins 3 jugements de la même cause (B− et en dessous, avec une cause)
         sur les 14 jours avant le début de la séance. Phrase du jugement le
-        plus récent de cette cause + « Qu'est-ce que tu fais différemment
-        aujourd'hui ? ». À égalité : les causes à égalité, le membre choisit.
+        plus récent de cette cause + une question par cause (brief
+        `D:\7_Agents\briefs\2026-11-11-carnet-192-questions-et-bulle.md`) :
+        technique « Qu'est-ce que tu vérifies avant d'entrer aujourd'hui ? »,
+        connaissance « Qu'est-ce que tu veux revoir avant ta séance ? »,
+        émotionnelle « Qu'est-ce que tu fais différemment aujourd'hui ? ».
+        À égalité : les causes à égalité, le membre choisit.
       - Gestes : fermer, ou « Je le garde en tête » (pastille au-dessus de
         l'objectif du jour). La décision vit sur le warmup
         (`NoteWarmup.attention`) : la séance en cours seulement (warmup de
@@ -721,6 +725,19 @@ on verra aux retours.
         `src/components/PointAttention.tsx`, `WarmupCard.tsx`,
         `OutilsNoteRangee.tsx`, textes `attention.*` et `rappelWarmup.*`
         (fr, en).
+      - La bulle « Ouvrir le Carnet » (même brief) : sur les sites de la
+        liste (par défaut TopStepX, dashboard.topstep.com, Tradovate,
+        SimpleFX, TradingView), une petite bulle en bas à droite, une fois par
+        onglet, pas si le panneau est ouvert dans la fenêtre
+        (`runtime.getContexts`), effacée sous une fenêtre de la plateforme.
+        « Ouvrir le Carnet » = `sidePanel.open` au service worker sur le clic
+        (message du content script) ; refusé, la bulle dit de cliquer sur
+        l'icône. × ferme pour l'onglet, « Ne plus proposer ici » retire le
+        site. Réglages : interrupteur, liste, « Ajouter ce site ». Aucune
+        permission nouvelle. `src/lib/bulle-carnet.ts` (pur,
+        `tests/bulle-carnet.test.ts`), `src/content/bulle-carnet-ui.ts`
+        (Shadow DOM fermé), `src/components/BulleReglages.tsx`, textes
+        `bulle.*` et `reglages.bulle*` (fr, en).
 
 - [x] **1.9.1 - Correctif : le menu du clic droit (brief
       `D:\7_Agents\briefs\2026-11-11-carnet-191-192.md`).** Branche
