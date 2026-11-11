@@ -3,15 +3,16 @@ import {
   CLE_COMPTES_DEMO, CLE_COMPTES_REELS, CLE_STOCKAGE_COMPTES, HOTE_PILOTAGE,
   comptesDepuisStockage, memeListe, userIdDepuisCookies, type ListeComptesPilotage,
 } from '@/lib/pilotage-comptes'
+import { proposerLaBulle } from './bulle-carnet-ui'
 
 // IMPORTANT : ce fichier est injecté par Chrome/Brave en script CLASSIQUE
 // (pas un module ES). Aucun import runtime n'est autorisé ici — seuls les
 // `import type` (effacés à la compilation) le sont. Le stockage vit dans le
 // service worker : ce script extrait le DOM et lui envoie les données.
-// Seule exception : `pilotage-comptes.ts`, pur et importé par CE SEUL
-// point d'entrée (le panneau n'en importe que des types), que Vite fond donc
-// dans ce fichier. Vérifier après chaque build qu'aucun `import` n'apparaît
-// dans dist/content/content-script.js.
+// Seules exceptions : `pilotage-comptes.ts` et `bulle-carnet-ui.ts` (1.9.2),
+// importés par CE SEUL point d'entrée (le reste n'en importe que des types),
+// que Vite fond donc dans ce fichier. Vérifier après chaque build qu'aucun
+// `import` n'apparaît dans dist/content/content-script.js.
 
 // Écouter les messages du background script
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
@@ -410,6 +411,10 @@ function init() {
   } else {
     enableContentSelection()
   }
+
+  // 1.9.2 : la bulle « Ouvrir le Carnet », sur les sites de la liste
+  // (document_idle : la page est chargée)
+  proposerLaBulle().catch(() => { /* rien à proposer */ })
 }
 
 // Signal de présence pour le journal AOKnowledge

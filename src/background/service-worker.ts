@@ -3,6 +3,11 @@ import { findStrategy } from '@/lib/smart-capture/registry'
 import { storage, runFullBackup } from '@/lib/storage'
 import { installerCaptureErreurs } from '@/lib/diagnostic-traces'
 import { CLE_DEMANDE_PANNEAU, type DemandePanneau } from '@/lib/demandes-panneau'
+import {
+  CLE_BULLE, CLE_BULLE_ONGLETS, hoteDansListe, lireReglagesBulle, marquerOnglet,
+  ongletDejaPropose, reglagesBulleDefaut, retirerSite, type TextesBulle,
+} from '@/lib/bulle-carnet'
+import { CLE_LANGUE, langueDepuisStockage, tPour, type Langue } from '@/lib/i18n'
 
 // 1.8.14 : les erreurs du service worker rejoignent l'anneau du diagnostic
 // (message nettoyé, fichier, ligne ; rien ne part sans le geste du membre).
@@ -70,8 +75,73 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Academic Notes Extension installed')
   setupContextMenus()
+  poserListeBulle()
   // keepAlive déjà appelé au module level — ne pas dupliquer
 })
+
+// ── La bulle « Ouvrir le Carnet » (1.9.2, lib/bulle-carnet.ts) ───────────────
+
+// À l'installation et à la mise à jour : la liste de départ, si rien n'est
+// réglé. Le content script ne lit que ce qui est stocké.
+function poserListeBulle(): void {
+  chrome.storage.local.get(CLE_BULLE)
+    .then(lu => lu[CLE_BULLE] ? undefined : chrome.storage.local.set({ [CLE_BULLE]: reglagesBulleDefaut() }))
+    .catch(error => console.warn('[SW] Liste de la bulle non posée :', error))
+}
+
+function textesBulle(langue: Langue): TextesBulle {
+  return {
+    titre: tPour(langue, 'bulle.titre'),
+    ouvrir: tPour(langue, 'bulle.ouvrir'),
+    nePlusProposer: tPour(langue, 'bulle.nePlusProposer'),
+    fermer: tPour(langue, 'bulle.fermer'),
+    cliqueIcone: tPour(langue, 'bulle.cliqueIcone'),
+    retire: tPour(langue, 'bulle.retire'),
+  }
+}
+
+// Le panneau du Carnet est-il ouvert dans cette fenêtre ? (runtime.getContexts,
+// Chrome 116+). Edge 157 rend le panneau sans sa fenêtre (windowId -1, essai
+// du 11/11) : sans fenêtre connue, un panneau ouvert quelque part suffit pour
+// ne pas proposer. Sans getContexts : on propose.
+async function panneauOuvertDans(windowId: number): Promise<boolean> {
+  const getContexts = (chrome.runtime as unknown as {
+    getContexts?: (filtre: { contextTypes: string[] }) => Promise<{ windowId?: number }[]>
+  }).getContexts
+  if (typeof getContexts !== 'function') return false
+  try {
+    const panneaux = await getContexts({ contextTypes: ['SIDE_PANEL'] })
+    if (panneaux.length === 0) return false
+    const fenetresConnues = panneaux.filter(p => typeof p.windowId === 'number' && p.windowId >= 0)
+    return fenetresConnues.length === 0 || fenetresConnues.some(p => p.windowId === windowId)
+  } catch { return false }
+}
+
+function hoteDe(url: string | undefined): string {
+  try { return new URL(url ?? '').hostname } catch { return '' }
+}
+
+// Le content script a vu un site de la liste : une fois par onglet, panneau fermé.
+async function decisionBulle(sender: chrome.runtime.MessageSender): Promise<{ proposer: boolean; textes?: TextesBulle }> {
+  const tab = sender.tab
+  if (!tab?.id || (sender.frameId ?? 0) !== 0) return { proposer: false }
+  const lu = await chrome.storage.local.get([CLE_BULLE, CLE_LANGUE])
+  const reglages = lireReglagesBulle(lu[CLE_BULLE])
+  if (!reglages.actif || !hoteDansListe(hoteDe(sender.url ?? tab.url), reglages.sites)) return { proposer: false }
+  const onglets = (await chrome.storage.session.get(CLE_BULLE_ONGLETS))[CLE_BULLE_ONGLETS]
+  if (ongletDejaPropose(onglets, tab.id)) return { proposer: false }
+  if (await panneauOuvertDans(tab.windowId)) return { proposer: false }
+  await chrome.storage.session.set({ [CLE_BULLE_ONGLETS]: marquerOnglet(onglets, tab.id) })
+  return { proposer: true, textes: textesBulle(langueDepuisStockage(lu[CLE_LANGUE])) }
+}
+
+// « Ne plus proposer ici » : le site de la page sort de la liste.
+async function retirerSiteBulle(sender: chrome.runtime.MessageSender): Promise<void> {
+  const hote = hoteDe(sender.url ?? sender.tab?.url)
+  if (!hote) return
+  const lu = await chrome.storage.local.get(CLE_BULLE)
+  await chrome.storage.local.set({ [CLE_BULLE]: retirerSite(lireReglagesBulle(lu[CLE_BULLE]), hote) })
+}
 
 // Configuration des menus contextuels (clic droit uniquement)
 function setupContextMenus() {
@@ -197,6 +267,28 @@ async function handleMessage(
     const tabId = message.tabId || sender.tab?.id
 
     switch (message.type) {
+      // 1.9.2 : le clic du membre sur la bulle. sidePanel.open part avant
+      // toute attente, pendant le geste ; refusé, la bulle montre l'icône.
+      case 'BULLE_CARNET_OUVRIR':
+        if (!sender.tab?.id) { sendResponse({ ok: false }); break }
+        try {
+          await openSidePanel(sender.tab.id)
+          sendResponse({ ok: true })
+        } catch (error) {
+          console.warn('[SW] Panneau non ouvert depuis la bulle :', error)
+          sendResponse({ ok: false })
+        }
+        break
+
+      case 'BULLE_CARNET_DEMANDE':
+        sendResponse(await decisionBulle(sender))
+        break
+
+      case 'BULLE_CARNET_RETIRER':
+        await retirerSiteBulle(sender)
+        sendResponse({ ok: true })
+        break
+
       case 'CAPTURE_CURRENT_PAGE':
         if (tabId) {
           const result = await capturePage(tabId)

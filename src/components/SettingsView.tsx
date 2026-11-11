@@ -14,6 +14,7 @@ import type { Settings as SettingsType } from '@/types/academic'
 import { getShowMeta, setShowMeta } from '@/lib/show-meta'
 import { getAffichageSecours, setAffichageSecours } from '@/lib/affichage-secours'
 import { t, LANGUES, getLangue, setLangue, type Langue } from '@/lib/i18n'
+import BulleReglages from './BulleReglages'
 import StorageHealth from './StorageHealth'
 
 interface SettingsViewProps {
@@ -209,6 +210,9 @@ function SettingsView({
           </div>
         </div>
       </div>
+
+      {/* La bulle « Ouvrir le Carnet » sur les plateformes (1.9.2) */}
+      <BulleReglages />
 
       {/* Dictée vocale */}
       <div className="mb-6">

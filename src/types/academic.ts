@@ -413,6 +413,10 @@ export type MessageType =
   // 1.8.13 : du panneau au content script, au moment du geste
   | 'RELIRE_COMPTES_PILOTAGE'
   | 'LIRE_GRAPHIQUE_TV'
+  // 1.9.2 : la bulle « Ouvrir le Carnet », du content script au service worker
+  | 'BULLE_CARNET_DEMANDE'
+  | 'BULLE_CARNET_OUVRIR'
+  | 'BULLE_CARNET_RETIRER'
 
 export interface ExtensionMessage {
   type: MessageType

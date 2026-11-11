@@ -1048,7 +1048,10 @@ const FR = {
   'attention.libelle.emotionnel': 'Émotionnel',
   'attention.tuAvaisEcrit': 'Tu avais écrit :',
   'attention.tesMots': 'Tes mots :',
-  'attention.question': 'Qu’est-ce que tu fais différemment aujourd’hui ?',
+  // Une question par cause (Brice, 11/11) ; à égalité, attention.laquelle
+  'attention.question.technique': 'Qu’est-ce que tu vérifies avant d’entrer aujourd’hui ?',
+  'attention.question.connaissance': 'Qu’est-ce que tu veux revoir avant ta séance ?',
+  'attention.question.emotionnel': 'Qu’est-ce que tu fais différemment aujourd’hui ?',
   'attention.laquelle': 'Laquelle tu veux garder en tête aujourd’hui ?',
   'attention.garder': 'Je le garde en tête',
   'attention.pastille': 'En tête aujourd’hui :',
@@ -1058,6 +1061,24 @@ const FR = {
   // Le rappel du warmup à l'ouverture d'une nouvelle note (1.9.2)
   'rappelWarmup.texte': 'Un warmup avant de commencer ?',
   'rappelWarmup.lancer': 'Lancer',
+
+  // La bulle « Ouvrir le Carnet » sur les plateformes (1.9.2). Le service
+  // worker la traduit (tPour) et l'envoie au content script.
+  'bulle.titre': 'Le Carnet du Trader',
+  'bulle.ouvrir': 'Ouvrir le Carnet',
+  'bulle.nePlusProposer': 'Ne plus proposer ici',
+  'bulle.fermer': 'Fermer',
+  'bulle.cliqueIcone': 'Clique sur l’icône du Carnet dans la barre de ton navigateur.',
+  'bulle.retire': 'C’est noté, la bulle ne viendra plus sur ce site. Tu peux la remettre dans les réglages du Carnet.',
+  'reglages.bulle': 'Bulle « Ouvrir le Carnet »',
+  'reglages.bulleDesc': 'Quand tu arrives sur un de ces sites, une petite bulle en bas à droite te propose d’ouvrir le Carnet. Une fois par onglet.',
+  'reglages.bulleAucun': 'Aucun site dans la liste.',
+  'reglages.bulleAjouter': 'Ajouter ce site',
+  'reglages.bulleAjoute': '{site} ajouté à la liste',
+  'reglages.bulleDejaLa': '{site} est déjà dans la liste',
+  'reglages.bullePasDePage': 'Ouvre d’abord ta plateforme dans l’onglet actif.',
+  'reglages.bulleRetirer': 'Retirer {site}',
+  'reglages.bulleDefaut': 'Remettre les plateformes de départ',
 
   // Cooldown d'un trade (CooldownPopover)
   'cooldown.emotion': 'Émotion',
@@ -2155,7 +2176,9 @@ const EN: Partial<Record<CleI18n, string>> = {
   'attention.libelle.emotionnel': 'Emotional',
   'attention.tuAvaisEcrit': 'You wrote:',
   'attention.tesMots': 'Your words:',
-  'attention.question': 'What will you do differently today?',
+  'attention.question.technique': 'What will you check before you enter a trade today?',
+  'attention.question.connaissance': 'What do you want to review before your session?',
+  'attention.question.emotionnel': 'What will you do differently today?',
   'attention.laquelle': 'Which one do you want to keep in mind today?',
   'attention.garder': 'I’ll keep it in mind',
   'attention.pastille': 'In mind today:',
@@ -2164,6 +2187,22 @@ const EN: Partial<Record<CleI18n, string>> = {
 
   'rappelWarmup.texte': 'A warmup before you start?',
   'rappelWarmup.lancer': 'Start',
+
+  'bulle.titre': 'Le Carnet du Trader',
+  'bulle.ouvrir': 'Open the Carnet',
+  'bulle.nePlusProposer': 'Don’t show it here again',
+  'bulle.fermer': 'Close',
+  'bulle.cliqueIcone': 'Click the Carnet icon in your browser toolbar.',
+  'bulle.retire': 'Got it, the bubble won’t come back on this site. You can bring it back in the Carnet settings.',
+  'reglages.bulle': '“Open the Carnet” bubble',
+  'reglages.bulleDesc': 'When you land on one of these sites, a small bubble at the bottom right offers to open the Carnet. Once per tab.',
+  'reglages.bulleAucun': 'No site in the list.',
+  'reglages.bulleAjouter': 'Add this site',
+  'reglages.bulleAjoute': '{site} added to the list',
+  'reglages.bulleDejaLa': '{site} is already in the list',
+  'reglages.bullePasDePage': 'First open your platform in the active tab.',
+  'reglages.bulleRetirer': 'Remove {site}',
+  'reglages.bulleDefaut': 'Restore the default platforms',
 
   'cooldown.emotion': 'Emotion',
   'cooldown.emotionAide': 'What I felt on this trade',
@@ -2304,16 +2343,35 @@ function estLangue(v: unknown): v is Langue {
   return typeof v === 'string' && LANGUES.some(l => l.code === v)
 }
 
+// 1.9.2 : le service worker n'a pas de localStorage. Pour traduire la bulle
+// « Ouvrir le Carnet », il lit la langue dans chrome.storage.local, où les
+// pages de l'extension la recopient (une fois par page, puis à chaque choix).
+let langueRecopiee: Langue | null = null
+function recopierLangue(langue: Langue): void {
+  if (langueRecopiee === langue) return
+  langueRecopiee = langue
+  try {
+    if (typeof chrome !== 'undefined') chrome.storage?.local?.set({ [CLE]: langue }).catch(() => { /* best-effort */ })
+  } catch { /* hors extension (tests) */ }
+}
+
+/** La langue recopiée par les pages (chrome.storage.local), pour le service worker. */
+export function langueDepuisStockage(valeur: unknown): Langue {
+  return estLangue(valeur) ? valeur : LANGUE_REFERENCE
+}
+export const CLE_LANGUE = CLE
+
 export function getLangue(): Langue {
   try {
     const v = localStorage.getItem(CLE)
-    if (estLangue(v)) return v
+    if (estLangue(v)) { recopierLangue(v); return v }
   } catch { /* stockage indisponible : on retombe sur le français */ }
   return LANGUE_REFERENCE
 }
 
 export function setLangue(langue: Langue): void {
   try { localStorage.setItem(CLE, langue) } catch { /* best-effort */ }
+  recopierLangue(langue)
   window.dispatchEvent(new Event(EVT))
 }
 
@@ -2408,7 +2466,11 @@ export function subscribeLangueAnalyse(cb: (v: LangueAnalyse) => void): () => vo
  * compilation.
  */
 export function t(cle: CleI18n, remplacements?: Record<string, string | number>): string {
-  const langue = getLangue()
+  return tPour(getLangue(), cle, remplacements)
+}
+
+/** Comme t(), dans une langue donnée : pour le service worker (1.9.2). */
+export function tPour(langue: Langue, cle: CleI18n, remplacements?: Record<string, string | number>): string {
   let texte = DICO[langue]?.[cle] ?? FR[cle] ?? cle
   if (remplacements) {
     for (const [nom, valeur] of Object.entries(remplacements)) {

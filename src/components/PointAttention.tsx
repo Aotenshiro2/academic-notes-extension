@@ -25,6 +25,13 @@ export const LIBELLE_CAUSE: Record<AnnotationCause, CleI18n> = {
   connaissance: 'attention.libelle.connaissance',
   emotionnel: 'attention.libelle.emotionnel',
 }
+// Une question par cause (Brice, 11/11). À égalité, la question qui fait
+// choisir (attention.laquelle) reste la même.
+const QUESTION: Record<AnnotationCause, CleI18n> = {
+  technique: 'attention.question.technique',
+  connaissance: 'attention.question.connaissance',
+  emotionnel: 'attention.question.emotionnel',
+}
 
 const BOUTON = 'inline-flex items-center rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors'
 
@@ -105,7 +112,7 @@ export default function PointAttention({ warmup, onSave }: PointAttentionProps) 
               <blockquote className="border-l-2 border-blue-500 pl-2.5 italic">{t('attention.citation', { phrase: causes[0].phrase })}</blockquote>
             </>
           )}
-          <p className="font-semibold">{t('attention.question')}</p>
+          <p className="font-semibold">{t(QUESTION[causes[0].cause])}</p>
           <div>
             <button
               onClick={() => garder(causes[0])}
