@@ -2,7 +2,7 @@ import { getBearerToken, getSession } from './auth'
 import { messageAOnglet } from './message-onglet'
 import { JOURNAL_API } from './sync'
 import type { CompteConnu, ListeComptesPilotage } from './pilotage-comptes'
-import { normaliseLecture, normaliseQuota, type Lecture, type Quota, type TradeNormalise } from './documents-lecture'
+import { lireLignesApercu, normaliseLecture, normaliseQuota, type LigneApercu, type Lecture, type Quota, type TradeNormalise } from './documents-lecture'
 import type { PositionImportee } from './positions-jour'
 import { normaliseLectureOrdre, type LectureOrdre } from './prix-trade'
 
@@ -200,7 +200,9 @@ export type DemandeImport = {
   fuseau: string
 }
 
-export type ApercuImport = { lus: number; nouveaux: number; dejaConnus: number; erreurs: string[]; colonnesADire: boolean }
+export type { LigneApercu }
+
+export type ApercuImport = { lus: number; nouveaux: number; dejaConnus: number; erreurs: string[]; colonnesADire: boolean; lignes: LigneApercu[] }
 
 export type ResultatImport<T> = { ok: boolean; valeur?: T; erreur?: 'non-connecte' | 'refus' | 'reseau'; message?: string | null }
 
@@ -214,16 +216,26 @@ function lireApercu(data: Record<string, unknown>): ApercuImport {
     erreurs: Array.isArray(data.erreurs) ? data.erreurs.filter((e): e is string => typeof e === 'string') : [],
     // Un CSV inconnu : le journal rend ses en-têtes et attend qu'on lui dise les colonnes (écran de Pilotage).
     colonnesADire: Array.isArray(data.entetes) && nombre(data.lus) === 0,
+    lignes: lireLignesApercu(data.apercu),
   }
 }
 
-async function importer(demande: DemandeImport, confirmer: boolean): Promise<ResultatImport<ApercuImport & { importes: number }>> {
+/** `liees` : les positions que le journal a rattachées tout seul à un trade du Carnet (même instrument, même moment). */
+async function importer(demande: DemandeImport, confirmer: boolean): Promise<ResultatImport<ApercuImport & { importes: number; liees: number }>> {
   const r = await appeler('POST', '/api/pilotage/trades/import', confirmer ? { ...demande, confirmer: true } : demande)
   if (!r || r.status === 401) return { ok: false, erreur: 'non-connecte', message: null }
   if (r.status === 0) return { ok: false, erreur: 'reseau', message: null }
   if (r.status < 200 || r.status >= 300) return { ok: false, erreur: 'refus', message: messageDe(r) }
-  return { ok: true, valeur: { ...lireApercu(r.data), importes: nombre(r.data.importes) } }
+  return { ok: true, valeur: { ...lireApercu(r.data), importes: nombre(r.data.importes), liees: nombre(r.data.liees) } }
 }
+
+/**
+ * Des trades viennent d'être rangés (1.10.0) : les notes ouvertes relisent
+ * leurs liens avec Pilotage (le journal a pu en poser tout seul). Un
+ * événement de la page, au geste : ni relecture en fond ni délai.
+ */
+export const EVENEMENT_TRADES_RANGES = 'carnet:trades-ranges'
+export const annoncerTradesRanges = () => window.dispatchEvent(new Event(EVENEMENT_TRADES_RANGES))
 
 /** L'aperçu : rien n'est écrit (nouveaux, déjà connus). */
 export const apercuImport = (demande: DemandeImport) => importer(demande, false)

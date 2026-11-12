@@ -48,6 +48,8 @@ import { plateformeOnglet } from '@/lib/besoins'
 import storage, { restoredFromBackup } from '@/lib/storage'
 import { enrichirCapture } from '@/lib/capture-ia'
 import { poserBlocsDeCapture, poserCaptureDansNote, enregistrerNoteDeLaPage } from '@/lib/capture-blocs'
+import { useTradesDeLaPage } from '@/lib/use-trades-page'
+import TradesDeLaPage from '@/components/TradesDeLaPage'
 import { stateSync } from '@/lib/state-sync'
 import { captureExternalScreen } from '@/lib/external-capture'
 import { exportNoteToPDF } from '@/lib/pdf-export'
@@ -124,6 +126,8 @@ function FullscreenApp() {
   // question au serveur quand la session est lue ; le serveur re-vérifie à
   // chaque appel.
   const acces = useAccesCompte(connecte, settings?.modeleEtude)
+  // « Les trades de cette page » (1.10.0), après une capture intelligente.
+  const tradesDeLaPage = useTradesDeLaPage()
   const etudeOuverte = acces.etude
   const captureIaActive = acces.captureIa
 
@@ -463,6 +467,8 @@ function FullscreenApp() {
       ouvrirNote(newNoteId)
       setEditorContent('')
       await loadData()
+      // 1.10.0 : une page de trades propose de les ranger dans Pilotage.
+      void tradesDeLaPage.proposer(result, screenshotDataUrl)
     } catch (error) {
       console.error('Smart capture error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
@@ -527,6 +533,7 @@ function FullscreenApp() {
           noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
         }
       }, 100)
+      void tradesDeLaPage.proposer(result, apercu)
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
@@ -1065,6 +1072,11 @@ function FullscreenApp() {
           title={tabPickerConfig.title}
           description={tabPickerConfig.description}
         />
+      )}
+
+      {/* Les trades de la page capturée, à ranger dans Pilotage (1.10.0) */}
+      {tradesDeLaPage.demande && (
+        <TradesDeLaPage key={tradesDeLaPage.demande.id} demande={tradesDeLaPage.demande} onClose={tradesDeLaPage.fermer} />
       )}
 
       {/* Dialog d'analyse AI */}

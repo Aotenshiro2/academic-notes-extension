@@ -172,5 +172,48 @@ export function lecturesRestantes(quota: Quota, maintenant = Date.now()): number
   return Math.max(0, quota.limite - quota.utilisees) + (offertesActives(quota, maintenant) ? quota.offertes : 0)
 }
 
+/**
+ * Une ligne de l'aperçu de l'import (`trades/import` sans `confirmer`, les 30
+ * premières exécutions, 1.10.0) : instants en ISO, déjà ramenés au fuseau du
+ * membre ; `nouveau` false = déjà importée sur ce compte (même clé, ou même
+ * empreinte), elle ne sera pas rangée.
+ */
+export type LigneApercu = {
+  symbole: string
+  direction: 'long' | 'short' | null
+  quantite: number
+  entreLe: string
+  sortiLe: string | null
+  prixEntree: number | null
+  prixSortie: number | null
+  pnl: number
+  devise: string
+  nouveau: boolean
+}
+
+/** Les lignes de l'aperçu, vérifiées : une ligne mal formée est laissée de côté, jamais devinée. */
+export function lireLignesApercu(brut: unknown): LigneApercu[] {
+  if (!Array.isArray(brut)) return []
+  const lignes: LigneApercu[] = []
+  for (const item of brut.slice(0, 200)) {
+    const l = objet(item)
+    if (!l || typeof l.symbole !== 'string' || !l.symbole.trim() || typeof l.entreLe !== 'string' || !Number.isFinite(Date.parse(l.entreLe))) continue
+    const devise = texte(l.devise)?.toUpperCase() ?? ''
+    lignes.push({
+      symbole: l.symbole.trim().slice(0, 40),
+      direction: l.direction === 'long' || l.direction === 'short' ? l.direction : null,
+      quantite: nombre(l.quantite) ?? 0,
+      entreLe: l.entreLe,
+      sortiLe: typeof l.sortiLe === 'string' && Number.isFinite(Date.parse(l.sortiLe)) ? l.sortiLe : null,
+      prixEntree: nombre(l.prixEntree),
+      prixSortie: nombre(l.prixSortie),
+      pnl: nombre(l.pnl) ?? 0,
+      devise: /^[A-Z]{3}$/.test(devise) ? devise : 'USD',
+      nouveau: l.nouveau !== false,
+    })
+  }
+  return lignes
+}
+
 /** Lu sans aide (CSV connu, export reconnu) ou par une lecture intelligente. */
 export const lectureIntelligente = (lecture: Pick<Lecture, 'methode'>) => lecture.methode === 'texte' || lecture.methode === 'vision'

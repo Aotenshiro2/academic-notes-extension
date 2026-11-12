@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TradeSegment } from '@/types/academic'
-import { fetchPositions } from './pilotage-api'
+import { EVENEMENT_TRADES_RANGES, fetchPositions } from './pilotage-api'
 import { bornesDesTrades, liesAuTrade } from './lien-trade'
 import type { PositionImportee } from './positions-jour'
 
@@ -49,6 +49,14 @@ export function useLiensTrades(trades: TradeSegment[] | null | undefined) {
   useEffect(() => {
     setEtat('chargement')
     void recharger()
+  }, [recharger])
+
+  // Des trades viennent d'être rangés (capture d'une page, import) : le
+  // journal a pu les lier tout seul. Relu sur l'événement, au geste.
+  useEffect(() => {
+    const relire = () => { void recharger() }
+    window.addEventListener(EVENEMENT_TRADES_RANGES, relire)
+    return () => window.removeEventListener(EVENEMENT_TRADES_RANGES, relire)
   }, [recharger])
 
   const liesDe = useCallback((tradeId: string) => liesAuTrade(positions, tradeId), [positions])

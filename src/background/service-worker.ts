@@ -1,5 +1,6 @@
 import type { ExtensionMessage, CaptureResult } from '@/types/academic'
 import { findStrategy } from '@/lib/smart-capture/registry'
+import { releverTradesDeLaPage } from '@/lib/smart-capture/trades-page'
 import { storage, runFullBackup } from '@/lib/storage'
 import { installerCaptureErreurs } from '@/lib/diagnostic-traces'
 import { CLE_DEMANDE_PANNEAU, type DemandePanneau } from '@/lib/demandes-panneau'
@@ -916,7 +917,44 @@ function extractStructuredContent() {
   }
 }
 
+/**
+ * La capture intelligente d'un onglet : le contenu (stratégie du site, puis
+ * heuristiques), et depuis la 1.10.0 le relevé des tableaux de trades de la
+ * page (`tradesPage`, lib/smart-capture/trades-page.ts). Le panneau décide
+ * ensuite s'il y a des trades fermés à lire pour Pilotage
+ * (lib/trades-page.ts). Un relevé qui échoue ne fait jamais échouer la
+ * capture.
+ */
 async function smartCapture(tabId: number) {
+  const resultat = await smartCaptureContenu(tabId)
+  if (!resultat?.success) return resultat
+  // La bulle « Ouvrir le Carnet » (1.9.2) part de la page : le membre capture
+  // avec le Carnet ouvert, elle n'a plus rien à proposer, et en bas à droite
+  // elle cacherait la colonne P&L sur la capture d'écran qui suit.
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, func: () => { document.querySelectorAll('[data-carnet-bulle]').forEach(e => e.remove()) } })
+  } catch { /* page fermée ou protégée : rien à retirer */ }
+  try {
+    const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: releverTradesDeLaPage })
+    if (r?.result) (resultat as Record<string, unknown>).tradesPage = r.result
+  } catch (e) {
+    console.warn('[SmartCapture] Relevé des trades impossible :', e)
+  }
+  // Porte ouverte : une stratégie qui lit les trades sans IA (aucune en 1.10.0).
+  const strategie = findStrategy((resultat as { url?: string }).url ?? '')
+  if (strategie?.lireTrades) {
+    try {
+      const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: strategie.lireTrades })
+      const trades = (r?.result as { trades?: unknown[] } | undefined)?.trades
+      if (Array.isArray(trades) && trades.length) (resultat as Record<string, unknown>).tradesDirects = trades
+    } catch (e) {
+      console.warn('[SmartCapture] Lecture directe des trades impossible :', e)
+    }
+  }
+  return resultat
+}
+
+async function smartCaptureContenu(tabId: number) {
   try {
     const tab = await chrome.tabs.get(tabId)
     const url = tab.url || ''

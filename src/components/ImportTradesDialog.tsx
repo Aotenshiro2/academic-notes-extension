@@ -9,7 +9,7 @@ import {
 } from '@/lib/documents-attribution'
 import { recouvrements, sansLesFaitsDeja, type Recouvrement } from '@/lib/documents-doublons'
 import {
-  TAILLE_MAX_BASE64, apercuImport, comptesEnvoyes, confirmerImport, demanderConnexion, demanderRelectureComptesPilotage,
+  TAILLE_MAX_BASE64, annoncerTradesRanges, apercuImport, comptesEnvoyes, confirmerImport, demanderConnexion, demanderRelectureComptesPilotage,
   fuseauDuNavigateur, lireDocument, ouvrirPilotage, type ApercuImport,
 } from '@/lib/pilotage-api'
 import { useComptesPilotage } from '@/lib/use-comptes-pilotage'
@@ -93,8 +93,8 @@ const nouvelId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
 const jourCourt = (instant: number) => new Date(instant).toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit' })
 
-/** « Lectures intelligentes : 3 sur 10 ce mois-ci », comme le compteur de Pilotage. */
-function phraseQuota(quota: Quota): string {
+/** « Lectures intelligentes : 3 sur 10 ce mois-ci », comme le compteur de Pilotage (aussi dans TradesDeLaPage). */
+export function phraseQuota(quota: Quota): string {
   if (quota.limite === null) return t('import.quotaSansLimite')
   if (lecturesRestantes(quota) === 0) return t('import.quotaEpuisees')
   if (offertesActives(quota)) {
@@ -319,7 +319,10 @@ function ImportTradesDialog({ onClose, jour, onRange }: ImportTradesDialogProps)
     }
     setBilans(resultats)
     setEtape('rapport')
-    if (resultats.some(b => b.importes > 0)) onRange?.()
+    if (resultats.some(b => b.importes > 0)) {
+      onRange?.()
+      annoncerTradesRanges()
+    }
   }
 
   const recommencer = () => {

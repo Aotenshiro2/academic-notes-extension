@@ -29,6 +29,8 @@ import { splitHtmlIntoMessages, titleFromMessages } from '@/lib/html-blocks'
 import { plateformeOnglet } from '@/lib/besoins'
 import { prepareImageForStorage } from '@/lib/image-utils'
 import { useDemandesPanneau } from '@/lib/use-demandes-panneau'
+import { useTradesDeLaPage } from '@/lib/use-trades-page'
+import TradesDeLaPage from '@/components/TradesDeLaPage'
 import { selectionEnHtml, ligneSource, type DemandePanneau } from '@/lib/demandes-panneau'
 import type { AcademicNote, NoteSummary, NoteFolder, Settings as SettingsType } from '@/types/academic'
 
@@ -82,6 +84,8 @@ function App() {
   // et le bouton « Approfondir » de la rangée du bas. Ne sert QU'À AFFICHER,
   // le serveur re-vérifie le droit et le budget à chaque appel.
   const acces = useAccesCompte(isAuthed, settings?.modeleEtude)
+  // « Les trades de cette page » (1.10.0), après une capture intelligente.
+  const tradesDeLaPage = useTradesDeLaPage()
   const captureIaActive = acces.captureIa
   const etudeOuverte = acces.etude
 
@@ -458,6 +462,8 @@ function App() {
       setCurrentNoteId(newNoteId)
       setEditorContent('')
       await loadData()
+      // 1.10.0 : une page de trades propose de les ranger dans Pilotage.
+      void tradesDeLaPage.proposer(result, screenshotDataUrl)
     } catch (error) {
       console.error('Smart capture error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('smart.echec'))
@@ -519,6 +525,7 @@ function App() {
           noteDisplayRef.current.scrollTop = noteDisplayRef.current.scrollHeight
         }
       }, 100)
+      void tradesDeLaPage.proposer(result, screenshotDataUrl)
     } catch (error) {
       console.error('Smart capture to current note error:', error)
       setSmartCaptureError(error instanceof Error ? error.message : t('pleinEcran.erreurCapture'))
@@ -788,6 +795,11 @@ function App() {
         onNotesUpdate={loadData}
         onNoteSupprimee={(id) => { if (id === currentNoteId) setCurrentNoteId(null) }}
       />
+
+      {/* Les trades de la page capturée, à ranger dans Pilotage (1.10.0) */}
+      {tradesDeLaPage.demande && (
+        <TradesDeLaPage key={tradesDeLaPage.demande.id} demande={tradesDeLaPage.demande} onClose={tradesDeLaPage.fermer} />
+      )}
 
       {/* Dialog d'analyse AI */}
       {analyzeNote && (
