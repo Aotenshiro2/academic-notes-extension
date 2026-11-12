@@ -113,9 +113,21 @@ const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite8',
   'guide.confidentialite9',
   'guide.confidentialite10',
+  'guide.confidentialite11',
 ]
 
 const CHANGELOG = [
+  {
+    version: '1.10.0',
+    title: 'La capture intelligente range tes trades dans Pilotage',
+    items: [
+      "Sur une page de ta plateforme qui montre tes trades (historique, positions fermées, ordres exécutés), la capture intelligente fait ta note comme avant, puis elle lit les trades fermés de la capture et te les montre : instrument, sens, quantité, prix, date et P&L.",
+      "Le compte est celui que la page affiche, son numéro ou son nom, reconnu parmi tes comptes Pilotage. Si la page ne le dit pas, le Carnet le devine d'après la capture, et te demande « Quel compte ? » au moindre doute.",
+      "Les trades déjà importés sur ce compte, par un export ou une capture précédente, sont écartés et marqués « déjà importé ». Rien n'entre sans ton clic sur « Ranger » : les trades vont au même endroit qu'un import de Pilotage, et « Lier » les rattache ensuite aux trades de tes notes.",
+      "C'est la même lecture que Pilotage, comptée dans tes lectures du mois. Une page qui n'a pas changé, capturée deux fois en moins de 12 heures, n'est pas relue. Il faut être connecté, avec tes comptes Pilotage déjà vus par le Carnet : sans eux, la capture reste une note, comme avant.",
+      "La lecture prend jusqu'à 25 trades par capture : pour un long historique, fais défiler le tableau et relance la capture. Les positions encore ouvertes ne se rangent pas : seuls les trades fermés vont dans Pilotage.",
+    ],
+  },
   {
     version: '1.9.2',
     title: 'La nouveauté de la 1.9 : ton point d\'attention avant la séance',

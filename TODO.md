@@ -694,6 +694,44 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.10.0 - La capture intelligente range les trades d'une page dans
+      Pilotage (brief `D:\7_Agents\briefs\2026-11-12-carnet-trades-capture.md`,
+      décision de Brice du 11/11 : « une capture intelligente qui récupère les
+      trades doit nourrir la base comme Pilotage »).** Branche `carnet-1100`,
+      PAS publiée (feature : go de Brice).
+      - Après la note, le service worker relève les tableaux de la page
+        (`src/lib/smart-capture/trades-page.ts`, exécuté dans la page :
+        `<table>` et grilles ARIA, mots qui peuvent être un compte, texte des
+        zones compte). Le panneau (`lib/trades-page.ts`, pur) garde un tableau
+        de trades FERMÉS (instrument, P&L, quatre familles de colonnes, une
+        sortie, deux prix ou deux heures ; pas de positions ouvertes seules).
+      - Connecté et avec les comptes Pilotage connus, la capture d'écran part à
+        `documents/lire` (mêmes paliers, gardée au coffre, nom
+        `capture-trades-AAAA-MM-JJ-HHMM.jpg`). Sinon rien ne s'ouvre : la note
+        suffit. Même tableau à l'identique dans les 12 h : pas de seconde
+        lecture (`carnet-trades-page-lues`, chrome.storage.local), un message.
+      - Boîte « Les trades de cette page » (`TradesDeLaPage.tsx`) : lignes de
+        l'aperçu du journal (instrument, sens, quantité, prix, date, P&L,
+        « déjà importé » grisé), compte vu sur la page (mot entier, la
+        sélection d'abord) sinon deviné par la lecture, « Quel compte ? » au
+        doute, « Ranger » = `trades/import` avec `confirmer`, rapport (rangés,
+        écartés, liés tout seuls par le journal), puis « Lier » relit ses liens
+        (`carnet:trades-ranges`).
+      - Source des trades : `capture:<plateforme>` d'après l'adresse
+        (`capture:topstepx`, ou l'hôte), jamais d'après la lecture : deux
+        captures de la même page se reconnaissent par la clé.
+      - Porte ouverte : `SiteStrategy.lireTrades` (lecture sans IA du
+        tableau) et `lotsDeLaCapture({ directs })` ; aucune stratégie ne la
+        remplit (TopStepX, Tradovate : relever les vrais tableaux d'abord).
+      - Liste des sites : `docs/sites-capture-intelligente.md` (plateformes,
+        état, ce que le Live Club référence, ce qui manque).
+      - Guide (changelog, confidentialité 11) et politique de confidentialité
+        (section 2) à jour. Aucune permission nouvelle.
+      - Reste : aucun essai sur une vraie page connectée (démo factice
+        seulement) ; doublons avec un import CSV du même trade : seulement avec
+        le correctif du journal (branche à part, empreinte entre sources sur
+        le même compte).
+
 - [x] **1.9.2 - LA nouveauté de la 1.9 : le point d'attention avant la
       séance, et le rappel du warmup (brief
       `D:\7_Agents\briefs\2026-11-11-carnet-191-192.md`, labo
