@@ -9,10 +9,16 @@ import {
   ongletDejaPropose, reglagesBulleDefaut, retirerSite, type TextesBulle,
 } from '@/lib/bulle-carnet'
 import { CLE_LANGUE, langueDepuisStockage, tPour, type Langue } from '@/lib/i18n'
+import { ecouterLiensDeConnexion } from '@/lib/connexion-lien-extension'
 
 // 1.8.14 : les erreurs du service worker rejoignent l'anneau du diagnostic
 // (message nettoyé, fichier, ligne ; rien ne part sans le geste du membre).
 installerCaptureErreurs('serviceWorker')
+
+// 1.10.1 : le lien de connexion de l'email, passé par la page de retour du
+// journal (externally_connectable), connecte le Carnet. Au premier niveau :
+// Chrome réveille le service worker pour ce message.
+ecouterLiensDeConnexion()
 
 // Fallback pour les navigateurs Chromium sans sidePanel (Opera, etc.)
 async function openSidePanel(tabId: number): Promise<void> {

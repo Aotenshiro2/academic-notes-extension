@@ -48,6 +48,11 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "externally_connectable": {
+    "matches": [
+      "https://journal.aoknowledge.com/*"
+    ]
+  },
   "commands": {
     "toggle-sidebar": {
       "suggested_key": {
