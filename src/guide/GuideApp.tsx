@@ -101,7 +101,8 @@ const TIPS: CleI18n[] = [
 // (1.8.14) : « Envoyer un diagnostic », qui ne part qu'au clic du membre. La 9
 // (1.8.14) : « Lire une capture », l'image envoyée à l'IA à son geste. La 10
 // (1.8.15) : « Il me manque quelque chose » et les signaux de friction
-// (section 6 de la politique publiée).
+// (section 6 de la politique publiée). La 12 (1.10.1) : la connexion par
+// adresse (section 2 de la politique publiée).
 const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite1',
   'guide.confidentialite2',
@@ -114,9 +115,21 @@ const CONFIDENTIALITE: CleI18n[] = [
   'guide.confidentialite9',
   'guide.confidentialite10',
   'guide.confidentialite11',
+  'guide.confidentialite12',
 ]
 
 const CHANGELOG = [
+  {
+    version: '1.10.1',
+    title: 'La connexion de tout AOKnowledge, aussi dans le Carnet',
+    items: [
+      "Un seul champ pour te connecter : tape ton email et clique « Continuer ». Le Carnet reconnaît ton adresse et te montre la bonne porte, la même que sur aoknowledge.com : Google si ton compte se connecte avec Google, sinon un lien de connexion envoyé par email.",
+      "Clique « Me connecter » dans l'email, depuis le navigateur où le Carnet est installé : le Carnet se connecte tout seul. Tu préfères taper le code à 6 chiffres de l'email ? Il reste à un clic. « Renvoyer » se débloque au bout d'une minute, pour ne pas annuler l'email que tu attends.",
+      "Pas encore de compte ? « Créer mon compte gratuit » suffit, en un clic avec Google pour une adresse Gmail : tes notes partent à l'abri dans ton Journal d'Études. Déjà client avec une autre adresse (Skool, PayPal, Stripe) ? Le Carnet te le rappelle, pour que tu retrouves tes accès. Une adresse déjà rattachée à un compte ne crée jamais de second compte.",
+      "Le mot de passe reste possible, en lien sous le champ. Mot de passe oublié ? Le lien par email te connecte sans lui.",
+      "Rien ne change pour tes notes : si tu es déjà connecté, tu le restes, et la synchronisation avec ton Journal d'Études continue comme avant.",
+    ],
+  },
   {
     version: '1.10.0',
     title: 'La capture intelligente range tes trades dans Pilotage',

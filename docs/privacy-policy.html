@@ -60,7 +60,7 @@
     <div class="header">
         <h1>Politique de confidentialité</h1>
         <p><strong>Le Carnet du Trader</strong> (anciennement Trading Notes by AOKnowledge), extension Chrome éditée par AOKnowledge</p>
-        <p><em>Dernière mise à jour : 12 novembre 2026</em></p>
+        <p><em>Dernière mise à jour : 16 novembre 2026</em></p>
     </div>
 
     <div class="highlight">
@@ -71,7 +71,7 @@
     <p>Vos notes, captures d'écran, trades, jugements, warmups, cooldowns et réglages sont stockés dans le stockage local de votre navigateur (IndexedDB et <code>chrome.storage</code>). L'extension garde aussi localement la liste des notes que vous ouvrez chaque jour, pour afficher votre panneau d'activité. Rien de tout cela n'est envoyé à nos serveurs tant que vous n'êtes pas connecté.</p>
 
     <h2>2. Avec un compte AOKnowledge</h2>
-    <p>Vous pouvez vous connecter avec Google ou avec une adresse email et un mot de passe. Nous recevons alors :</p>
+    <p>Vous pouvez vous connecter avec Google, avec un lien (ou un code à 6 chiffres) reçu par email, ou avec une adresse email et un mot de passe. Pour vous montrer le bon moyen (depuis la version 1.10.1), l'adresse que vous tapez est d'abord envoyée à nos serveurs (Journal d'Études), qui répondent seulement par où entrer ; pour limiter les abus, cette étape ne garde qu'une empreinte chiffrée de l'adresse et de votre adresse IP. L'email de connexion vous est envoyé par notre prestataire Resend ; son lien s'ouvre sur une page du Journal d'Études, qui le transmet à l'extension sans s'en servir. Nous recevons alors :</p>
     <ul>
         <li><strong>Votre identité de compte :</strong> adresse email, et votre nom si vous le renseignez ou si Google le transmet.</li>
         <li><strong>Vos compteurs d'activité, si la synchronisation est active :</strong> pour chaque jour, le nombre de notes et captures, de messages au mentor, de trades, de jugements et de notes ouvertes, tels que votre panneau d'activité les affiche, avec un identifiant tiré au hasard pour l'appareil. Aucun contenu.</li>
@@ -102,7 +102,7 @@
     <h2>8. Forfait, paiement, newsletter, export</h2>
     <ul>
         <li><strong>Forfait :</strong> votre adresse email sert à vérifier auprès de Stripe si vous avez un abonnement Carnet Premium ou un accès inclus. Les paiements se font sur les pages de Stripe : l'extension n'a pas accès à vos données de carte.</li>
-        <li><strong>Newsletter :</strong> si vous cochez l'inscription à la newsletter en créant votre compte, votre email et votre prénom sont transmis à notre outil d'emailing (Kit). Désinscription en un clic depuis chaque email.</li>
+        <li><strong>Newsletter :</strong> si vous cochez l'inscription à la newsletter en créant votre compte, votre email est transmis à notre outil d'emailing (Kit), avec votre prénom s'il figure dans votre profil. Désinscription en un clic depuis chaque email.</li>
         <li><strong>Export Google Drive :</strong> à votre demande uniquement, la note est déposée dans votre Google Drive. L'accès accordé se limite aux fichiers créés par l'extension.</li>
     </ul>
 
@@ -122,7 +122,7 @@
         <tr><td>Stripe</td><td>Paiements et vérification du forfait</td></tr>
         <tr><td>Google</td><td>Connexion avec Google, export vers Google Drive (à votre demande)</td></tr>
         <tr><td>Kit</td><td>Newsletter, si vous vous y inscrivez</td></tr>
-        <tr><td>Resend, Telegram</td><td>Alertes à l'équipe quand vous demandez un humain au support ; diagnostics que vous nous envoyez (Telegram)</td></tr>
+        <tr><td>Resend, Telegram</td><td>Emails de connexion (lien et code à 6 chiffres, Resend) ; alertes à l'équipe quand vous demandez un humain au support ; diagnostics que vous nous envoyez (Telegram)</td></tr>
     </table>
 
     <h2>11. Permissions demandées par l'extension</h2>
@@ -134,6 +134,7 @@
         <li><code>contextMenus</code> : le menu du clic droit.</li>
         <li><code>identity</code> : la connexion à votre compte AOKnowledge et à Google.</li>
         <li><code>notifications</code>, <code>alarms</code> : les notifications de l'extension et les sauvegardes locales automatiques.</li>
+        <li><code>externally_connectable</code> (depuis la version 1.10.1, ce n'est pas une permission) : seule la page de connexion du Journal d'Études (journal.aoknowledge.com) peut transmettre à l'extension le lien de connexion que vous avez reçu par email, et seulement quand l'extension attend ce lien. Aucun autre site.</li>
     </ul>
 
     <h2>12. Conservation et suppression</h2>

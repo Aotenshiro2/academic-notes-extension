@@ -694,6 +694,49 @@ on verra aux retours.
         tête (réponse du service worker remplacée dans l'essai) ; écrans et
         travail de fond jamais essayés connectés.
 
+- [x] **1.10.1 - La connexion de tout l'écosystème, aussi dans le Carnet
+      (brief `D:\7_Agents\briefs\2026-11-16-connexion-ecosysteme.md`, consigne
+      de Brice du 16/11 : tous les formulaires de l'écosystème passent au
+      parcours de aoknowledge.com/connexion).** Branche
+      `carnet-connexion-ecosysteme`, PAS publiée (mise en ligne : go de Brice,
+      APRÈS celle du journal).
+      - `ConnexionCarnet.tsx` remplace les onglets Connexion / Inscription de
+        `AccountView` : un champ email et « Continuer », puis UNE porte selon
+        la route du journal `/api/connexion/adresse` (google, connue,
+        inconnue, rattachee ; simple = la route ne répond pas, l'email part).
+        Voies principales (Brice, 16/11 : le code est « secondaire à la
+        limite ») : Google pour un compte Google, le LIEN de l'email pour une
+        adresse connue. Le code à 6 chiffres (`verifyOtp` type `email`) est à
+        un clic sous le lien ; le mot de passe en lien sous le champ.
+      - Le lien connecte le Carnet : la page de retour du journal
+        (`https://journal.aoknowledge.com/auth/carnet`, À CODER CÔTÉ JOURNAL)
+        lit `#token_hash&type` et le passe à l'extension par
+        `chrome.runtime.sendMessage` (manifest : `externally_connectable`,
+        la seule origine du journal). Le service worker vérifie le jeton avec
+        le client de l'extension (`connexion-lien-extension.ts`), si le Carnet
+        attend un lien pour cette adresse depuis moins d'une heure ; l'écran
+        voit la session arriver (`chrome.storage.onChanged`).
+      - Porte « inconnue » : le Carnet est un produit d'appel, « Créer mon
+        compte gratuit » est le geste principal (Google en un clic pour un
+        Gmail), le rappel « déjà client avec une autre adresse ? » dessous.
+      - Règles pures : `connexion-adresse.ts` (reprise du site) et
+        `connexion-lien.ts` ; appels dans `auth.ts` (`reconnaitreAdresse`,
+        `envoyerCode`, `verifierCode`, Google avec `login_hint`) ; décompte
+        `use-envoi-code.ts`. Textes `connexion.*` en FR et EN.
+      - « Mot de passe oublié ? » envoie le lien de connexion (le lien de
+        réinitialisation en PKCE ne pouvait pas s'ouvrir sur le journal).
+        Repli (route indisponible) : `signInWithOtp`, retour sur la même page
+        du journal (`?code=`, à ajouter aux Redirect URLs de Supabase) ;
+        l'écran propose aussi Google et le mot de passe.
+      - Remplace le travail orphelin de la branche `carnet-1811-connexion`
+        (message du mot de passe refusé, « Déjà client AOKnowledge ? ») :
+        repris dans le nouveau parcours, la branche peut être retirée.
+      - Origine à autoriser par le journal : l'identifiant du Store
+        `phajegonlmgnjkkfdooedoddnmgpheic` (et `klggbgjkojkcblgodajdjhhineocchbe`
+        pour le dossier de dev avec clé). Sans elle, 403 et repli.
+      - Synchronisation, session gardée (`chrome.storage.local`), déconnexion
+        locale : inchangées. Tests `connexion-adresse` et `connexion-lien`.
+
 - [x] **1.10.0 - La capture intelligente range les trades d'une page dans
       Pilotage (brief `D:\7_Agents\briefs\2026-11-12-carnet-trades-capture.md`,
       décision de Brice du 11/11 : « une capture intelligente qui récupère les
